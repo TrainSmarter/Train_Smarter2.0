@@ -7,6 +7,7 @@
 ## Dependencies
 - Requires: PROJ-1–PROJ-6 (alle Kern-Features)
 - Requires: PROJ-4 (Authentication) — `app_metadata.is_platform_admin` Flag
+- Requires: PROJ-7 (Training Workspace) — Platform Template Editor nutzt dieselbe Plan-Struktur
 
 ## Übersicht
 Plattform-Administratoren haben Zugang zu einem Admin-Bereich für Benutzerverwaltung, Übungs-Datenbank-Pflege, Audit-Log und System-Statistiken. Der Admin-Bereich ist ausschließlich für interne Nutzung (nicht für Endkunden).
@@ -14,6 +15,7 @@ Plattform-Administratoren haben Zugang zu einem Admin-Bereich für Benutzerverwa
 ## User Stories
 - Als Platform-Admin möchte ich alle registrierten Benutzer sehen und verwalten (Rolle ändern, Account sperren)
 - Als Platform-Admin möchte ich die globale Übungs-Datenbank pflegen (Übungen hinzufügen, bearbeiten, löschen)
+- Als Platform-Admin möchte ich Platform Templates auf allen Planungsebenen erstellen und veröffentlichen, damit alle Trainer einen professionellen Einstiegspunkt haben
 - Als Platform-Admin möchte ich ein Audit-Log aller kritischen Aktionen einsehen
 - Als Platform-Admin möchte ich System-Statistiken sehen (Registrierungen, aktive User, Nutzung)
 
@@ -23,6 +25,7 @@ Plattform-Administratoren haben Zugang zu einem Admin-Bereich für Benutzerverwa
 - [ ] Figma Screen: Admin Dashboard (Statistik-Übersicht)
 - [ ] Figma Screen: Benutzerverwaltung (Tabelle mit Filter/Suche)
 - [ ] Figma Screen: Übungs-Datenbank-Editor
+- [ ] Figma Screen: Platform Templates — Übersicht + Editor
 - [ ] Figma Screen: Audit-Log
 
 ### Benutzerverwaltung
@@ -32,6 +35,16 @@ Plattform-Administratoren haben Zugang zu einem Admin-Bereich für Benutzerverwa
 - [ ] Suche: Nach Name oder E-Mail
 - [ ] Aktionen: Rolle ändern, Account sperren/entsperren, Passwort-Reset-E-Mail senden
 - [ ] Gesperrter Account kann sich nicht einloggen (Supabase Auth disabled)
+
+### Platform Templates
+- [ ] Route: `/admin/templates`
+- [ ] Übersicht aller Platform Templates (nach Level gruppiert: Mehrjahres / Jahres / Makro / Meso / Mikro)
+- [ ] Template erstellen: Titel, Level, Sport-Typ, Schwierigkeitsgrad, Beschreibung, Planinhalt (via Training Workspace Editor)
+- [ ] Template als Entwurf speichern (`is_published: false`) oder veröffentlichen (`is_published: true`)
+- [ ] Veröffentlichte Templates erscheinen sofort im Universal-Selector aller Trainer (PROJ-7)
+- [ ] Template bearbeiten: Original aktualisierbar (geklonte Trainer-Kopien bleiben unverändert — isolierte Snapshots)
+- [ ] Template löschen: Soft-Delete — bereits geklonte Trainer-Templates bleiben erhalten
+- [ ] Filter: Level, Sport-Typ, Schwierigkeit, Status (Entwurf/Veröffentlicht)
 
 ### Übungs-Datenbank
 - [ ] Route: `/admin/exercises`

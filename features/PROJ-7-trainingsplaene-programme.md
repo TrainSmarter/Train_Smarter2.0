@@ -13,20 +13,63 @@
 
 **Route:** `/training`
 
-Der Training-Bereich ist ein einheitlicher Workspace mit einem **Context-Selector**, der bestimmt, wessen Plan gerade angezeigt/bearbeitet wird:
+Der Training-Bereich ist ein einheitlicher Workspace mit einem **Universal-Selector** oben, der bestimmt, wessen Plan (oder welches Template) gerade geladen ist:
 
 ```
-Training Workspace
-├── [Kein Kontext gewählt] → Trainer bearbeitet eigene Planvorlagen / Template-Bibliothek
-├── [Athlet ausgewählt ▼] → Plan dieses Athleten (Hierarchie + Kalender-Tab via PROJ-8)
-└── [Mannschaft ausgewählt ▼] → Mannschaftsplan (Hierarchie + Kalender-Tab via PROJ-8)
+Universal-Selector (Dropdown)
+  ── Eigene Planung ──
+  Mein Plan / Meine Templates
+  ── Platform Templates ──      ← Admin-Bibliothek (alle Ebenen, read-only)
+  Hypertrophie Block 4W
+  Wettkampfvorbereitung 8W
+  Einsteiger Jahresplan
+  [weitere Admin-Templates...]
+  ── Meine Athleten ──
+  Max Müller
+  Anna Schmidt
+  ── Mannschaften ──
+  TSV München U18
 ```
 
 **Verhalten:**
-- Standard beim Öffnen: Kein Kontext → Trainer-eigene Planung (Template-Builder)
-- Athlet/Mannschaft wählen: Kontext-Selector (Dropdown) oben im Workspace — Plan wird in identischer Planstruktur angezeigt
-- Planstruktur (Mehrjahresplan → Einheit) ist für alle Kontexte identisch; nur die Daten ändern sich
-- Athlet-Perspektive: Athlet öffnet `/training` → sieht seinen eigenen Plan (keine Context-Selector-Option)
+- Standard beim Öffnen: Eigene Planung (eigene Templates + leere Planung)
+- Platform Template wählen: Template wird in identischer Planstruktur angezeigt → Trainer kann es direkt klonen und anpassen (Original bleibt unverändert)
+- Athlet/Mannschaft wählen: Deren Plan wird in identischer Planstruktur angezeigt (+ Kalender-Tab via PROJ-8)
+- Planstruktur (Mehrjahresplan → Einheit) ist für alle Kontexte identisch — nur die Daten und Bearbeitungsrechte ändern sich
+- Athlet-Perspektive: Athlet öffnet `/training` → sieht seinen eigenen Plan (kein Universal-Selector sichtbar)
+
+## Platform Templates — Konzept
+
+Platform Templates werden von Platform-Admins (PROJ-10) erstellt und gepflegt. Sie sind für alle registrierten Trainer lesend zugänglich und können auf allen Planungsebenen existieren.
+
+**Alle Template-Ebenen verfügbar:**
+- Mehrjahresplan-Templates (z.B. "4-Jahres-Olympia-Zyklus")
+- Jahresplan-Templates (z.B. "Einsteiger Jahresplan Kraft")
+- Makrozyklus-Templates (z.B. "Hypertrophie Block 8 Wochen")
+- Mesozyklus-Templates (z.B. "3:1 Belastungs-Entlastungs-Block")
+- Mikrozyklus-Templates / Wochenpläne (z.B. "Push/Pull/Legs Split")
+
+**Library-Modell (keine Einschränkungen):**
+- Templates sind read-only im Original (Admin-Eigentum)
+- Trainer können jedes Template jederzeit klonen → wird zu persönlichem Template → frei bearbeitbar
+- Kein Versions-Tracking: Geklonte Templates sind isolierte Kopien, unabhängig vom Original
+- Keine Genehmigung nötig — sofort nutzbar nach Klonen
+
+**Datenbankschema (Phase 2):**
+```
+platform_templates
+├── id: uuid (PK)
+├── created_by: uuid (FK → auth.users, must have is_platform_admin = true)
+├── level: "multi_year" | "year" | "macro" | "meso" | "micro"
+├── title: text
+├── description: text
+├── sport_type: text (z.B. "Kraft", "Ausdauer", "Kampfsport")
+├── difficulty: "beginner" | "intermediate" | "advanced"
+├── duration_weeks: integer | null
+├── payload: jsonb  ← serialisiertes Plan-Objekt (gleiche Struktur wie Trainer-Templates)
+├── is_published: boolean (default: false — Admin kann Entwürfe haben)
+└── created_at: timestamp
+```
 
 ## Alleinstellungsmerkmal
 Das vollständige Periodisierungssystem ist das zentrale Differenzierungsmerkmal von Train Smarter 2.0 gegenüber allen Konkurrenten (TrainingPeaks, Trainerize, TeamBuildr, CoachAccountable). Kein anderes Tool bietet die vollständige Hierarchie von Mehrjahresplänen bis zur einzelnen Trainingseinheit in einem konsistenten UX.
