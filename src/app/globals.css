@@ -59,8 +59,8 @@
     /* ── Radius ─────────────────────────────────────────────── */
     --radius: 0.5rem;
 
-    /* ── Sidebar collapsed width (PROJ-3: 88px instead of shadcn default 48px) */
-    --sidebar-width-icon: 5.5rem;
+    /* ── Sidebar collapsed width (56px — standard for icon sidebars) */
+    --sidebar-width-icon: 3.5rem;
 
     /* ── Chart — 8 distinguishable data series ──────────────── */
     --chart-1: 173 80% 40%;   /* teal-500    #14B8A6 */
