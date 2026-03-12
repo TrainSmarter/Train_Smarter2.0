@@ -71,8 +71,50 @@ platform_templates
 └── created_at: timestamp
 ```
 
+## Zoom Navigation — Kernprinzip
+
+Der Training Workspace basiert auf einem **nahtlosen Zoom-Prinzip**: Der Trainer navigiert durch die gesamte Planungshierarchie durch Hinein- und Herauszoomen — ohne Kontextverlust.
+
+```
+ZOOM OUT ←─────────────────────────────────────────────────────→ ZOOM IN
+
+Mehrjahresplan  →  Jahresplan  →  Makrozyklus  →  Mesozyklus  →  Mikrozyklus  →  Trainingseinheit  →  Übung
+   (4 Jahre)       (1 Jahr)       (8–16 Wo.)      (3–4 Wo.)       (7 Tage)        (1 Tag)
+```
+
+**Navigation:**
+- **Hineinzoomen:** Klick auf ein Element öffnet die nächste Ebene darunter
+- **Herauszoomen:** Breadcrumb-Leiste (immer sichtbar) ermöglicht Sprung zu jeder übergeordneten Ebene
+- **URL-basiert:** Jede Zoom-Ebene hat eine eigene URL — Browser-Back funktioniert korrekt, Links sind teilbar
+- **Kein Kontextverlust:** Beim Rauszoomen wird die zuletzt aktive Position wiederhergestellt (z.B. welche Woche war geöffnet)
+
+**Breadcrumb-Beispiel:**
+```
+Training  >  Max Müller  >  Jahresplan 2026  >  GPP Phase I  >  Hypertrophie Block  >  Woche 3  >  Montag
+   ↑              ↑               ↑                  ↑                  ↑                 ↑           ↑
+  (zurück      (Athlet-       (Jahresplan-        (Makro-             (Meso-           (Mikro-    (aktuell)
+  zum Sel.)    wechsel)          ebene)           ebene)              ebene)            ebene)
+```
+
+**Visualisierung je Ebene:**
+| Ebene | Darstellung |
+|-------|-------------|
+| Mehrjahresplan | Horizontale Zeitleiste (Jahre als Spalten, Makrozyklen als Farbblöcke) |
+| Jahresplan | Jahres-Timeline mit Makrozyklus-Blöcken + Lücken als Übergangsphase |
+| Makrozyklus | Meso-Blöcke + Belastungs-/Entlastungs-Muster visuell dargestellt |
+| Mesozyklus | Wochenraster (Mikrozyklen als Zeilen) |
+| Mikrozyklus | 7-Tage-Wochenansicht + Kalender-Tab (PROJ-8) |
+| Trainingseinheit | Übungsliste mit Sets/Reps/Gewicht/RPE |
+| Übung | Einzelübung-Detail (Anleitung, Video-Link, Verlauf) |
+
+**Warum das ein Alleinstellungsmerkmal ist:**
+- TrainingPeaks: Separate Seiten für Calendar, Plan, Workout — kein Zoom-Prinzip
+- Trainerize: Nur Tages- und Wochenansicht — keine Hierarchie sichtbar
+- TeamBuildr: Block-Planung ohne Drill-Down
+- Train Smarter 2.0: Einziges Tool mit nahtlosem Zoom durch alle 7 Ebenen
+
 ## Alleinstellungsmerkmal
-Das vollständige Periodisierungssystem ist das zentrale Differenzierungsmerkmal von Train Smarter 2.0 gegenüber allen Konkurrenten (TrainingPeaks, Trainerize, TeamBuildr, CoachAccountable). Kein anderes Tool bietet die vollständige Hierarchie von Mehrjahresplänen bis zur einzelnen Trainingseinheit in einem konsistenten UX.
+Das vollständige Periodisierungssystem kombiniert mit dem Zoom-Navigationsprinzip ist das zentrale Differenzierungsmerkmal von Train Smarter 2.0. Kein Konkurrent bietet die vollständige Hierarchie mit nahtlosem Drill-Down/Zoom-Out in einem konsistenten Workspace.
 
 ## Planungshierarchie
 ```
