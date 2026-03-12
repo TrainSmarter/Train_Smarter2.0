@@ -1,4 +1,4 @@
-# PROJ-7: Periodisierungssystem & Trainingspläne
+# PROJ-7: Training Workspace & Periodisierungssystem
 
 ## Status: Planned
 **Created:** 2026-03-12
@@ -8,6 +8,25 @@
 - Requires: PROJ-1–PROJ-4 (Fundament)
 - Requires: PROJ-5 (Athleten-Management) — Trainer weist Pläne zu
 - Soft dependency: PROJ-8 (Trainingskalender) — Mikrozyklen werden im Kalender sichtbar
+
+## Training Workspace Konzept
+
+**Route:** `/training`
+
+Der Training-Bereich ist ein einheitlicher Workspace mit einem **Context-Selector**, der bestimmt, wessen Plan gerade angezeigt/bearbeitet wird:
+
+```
+Training Workspace
+├── [Kein Kontext gewählt] → Trainer bearbeitet eigene Planvorlagen / Template-Bibliothek
+├── [Athlet ausgewählt ▼] → Plan dieses Athleten (Hierarchie + Kalender-Tab via PROJ-8)
+└── [Mannschaft ausgewählt ▼] → Mannschaftsplan (Hierarchie + Kalender-Tab via PROJ-8)
+```
+
+**Verhalten:**
+- Standard beim Öffnen: Kein Kontext → Trainer-eigene Planung (Template-Builder)
+- Athlet/Mannschaft wählen: Kontext-Selector (Dropdown) oben im Workspace — Plan wird in identischer Planstruktur angezeigt
+- Planstruktur (Mehrjahresplan → Einheit) ist für alle Kontexte identisch; nur die Daten ändern sich
+- Athlet-Perspektive: Athlet öffnet `/training` → sieht seinen eigenen Plan (keine Context-Selector-Option)
 
 ## Alleinstellungsmerkmal
 Das vollständige Periodisierungssystem ist das zentrale Differenzierungsmerkmal von Train Smarter 2.0 gegenüber allen Konkurrenten (TrainingPeaks, Trainerize, TeamBuildr, CoachAccountable). Kein anderes Tool bietet die vollständige Hierarchie von Mehrjahresplänen bis zur einzelnen Trainingseinheit in einem konsistenten UX.

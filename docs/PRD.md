@@ -28,12 +28,12 @@ Train Smarter 2.0 ist ein kompletter Neuaufbau einer professionellen Trainingsma
 |----------|---------|--------|
 | P0 (MVP) | PROJ-1: Design System Foundation | Deployed |
 | P0 (MVP) | PROJ-2: UI Component Library | Deployed |
-| P0 (MVP) | PROJ-3: App Shell & Navigation | Planned |
+| P0 (MVP) | PROJ-3: App Shell & Navigation | Deployed |
 | P0 (MVP) | PROJ-4: Authentication & Onboarding | Planned |
-| P0 (MVP) | PROJ-5: Athleten-Management | Planned |
-| P0 (MVP) | PROJ-6: Body & Ernährung Tracking | Planned |
-| P1 | PROJ-7: Periodisierungssystem & Trainingspläne | Planned |
-| P1 | PROJ-8: Trainingskalender | Planned |
+| P0 (MVP) | PROJ-5: Athleten-Management (Organisation) | Planned |
+| P0 (MVP) | PROJ-6: Feedback & Monitoring | Planned |
+| P1 | PROJ-7: Training Workspace & Periodisierung | Planned |
+| P1 | PROJ-8: Trainingskalender (Sub-View im Workspace) | Planned |
 | P2 | PROJ-9: Club-Verwaltung | Planned |
 | P2 | PROJ-10: Admin-Bereich | Planned |
 

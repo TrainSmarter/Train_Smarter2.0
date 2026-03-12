@@ -8,8 +8,20 @@
 - Requires: PROJ-1–PROJ-4 (Fundament)
 - Requires: PROJ-7 (Trainingspläne & Programme) — Einheiten kommen aus Programmen
 
+## Positionierung im Training Workspace
+PROJ-8 ist eine Sub-View innerhalb des Training Workspace (PROJ-7). Der Kalender erscheint als Tab/Ansicht wenn ein Kontext (Athlet oder Mannschaft) gewählt ist:
+
+```
+Training Workspace (/training)
+  Kontext: [Athlet X ▼]
+    Tab: Planhierarchie   ← PROJ-7
+    Tab: Kalender         ← PROJ-8 (diese Spec)
+```
+
+Für Athleten ist die Kalender-Ansicht die primäre Ansicht innerhalb von `/training`.
+
 ## Übersicht
-Kalenderansicht aller geplanten und abgeschlossenen Trainingseinheiten. Athleten sehen ihren persönlichen Trainingskalender. Trainer können den Kalender ihrer Athleten einsehen.
+Kalenderansicht aller geplanten und abgeschlossenen Trainingseinheiten. Athleten sehen ihren persönlichen Trainingskalender. Trainer können den Kalender ihrer Athleten oder einer Mannschaft einsehen.
 
 ## User Stories
 - Als Athlet möchte ich alle meine Trainingseinheiten in einem Monats- oder Wochenkalender sehen
@@ -26,7 +38,7 @@ Kalenderansicht aller geplanten und abgeschlossenen Trainingseinheiten. Athleten
 - [ ] Figma Screen: Ad-hoc Einheit hinzufügen Modal
 
 ### Kalender-Ansicht
-- [ ] Route: `/training/calendar`
+- [ ] Route: `/training` (Kalender-Tab im Training Workspace, aktiviert wenn Kontext gewählt)
 - [ ] Toggle zwischen Monats- und Wochenansicht
 - [ ] Monatsansicht: Jeder Tag zeigt Einheiten-Chips (Name + Status-Farbe)
 - [ ] Wochenansicht: Zeitachse mit Einheiten-Blöcken

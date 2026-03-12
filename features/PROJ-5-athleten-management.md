@@ -31,7 +31,7 @@ Trainer können Athleten einladen, verwalten und deren Profile einsehen. Athlete
 - [ ] Figma Screen: Einladung empfangen (Banner im Dashboard des Athleten)
 
 ### Athleten-Übersicht (Trainer)
-- [ ] Route: `/athletes`
+- [ ] Route: `/organisation/athletes`
 - [ ] Grid: 3 Spalten Desktop, 2 Spalten Tablet, 1 Spalte Mobile
 - [ ] Athleten-Card zeigt: Avatar (Initial), Vollständiger Name, E-Mail, Status-Badge (Aktiv/Einladung ausstehend)
 - [ ] "Athlet einladen" Button (primary, oben rechts)
@@ -49,7 +49,7 @@ Trainer können Athleten einladen, verwalten und deren Profile einsehen. Athlete
 - [ ] Einladung erneut senden: Button auf ausstehender Card (Rate-Limit: 1x pro 24h)
 
 ### Athlet-Profil Detailseite (Trainer)
-- [ ] Route: `/athletes/[id]`
+- [ ] Route: `/organisation/athletes/[id]`
 - [ ] Header: Avatar, Name, E-Mail, Verbindungsdatum, Status
 - [ ] Profilbild falls vorhanden (Supabase Storage)
 - [ ] Basisdaten: Geburtsdatum, Alter
