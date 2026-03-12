@@ -48,6 +48,16 @@ All features tracked in `features/INDEX.md`. Every skill reads it at start and u
 - **shadcn/ui first:** NEVER create custom versions of installed shadcn components
 - **Human-in-the-loop:** All workflows have user approval checkpoints
 
+## Figma Sync (MANDATORY)
+
+**Figma is the Single Source of Truth for all design decisions.**
+
+Whenever a component is created or modified, or design tokens change, the Figma file MUST be updated automatically via the Figma MCP server — without waiting for an explicit request.
+
+- **Channel:** `24frju6h`
+- **File:** `https://www.figma.com/design/AxOnJViNOMcviAAUmcudhA/Train-Smarter2.0`
+- **Full rules:** @.claude/rules/figma-sync.md
+
 ## Build & Test Commands
 
 ```bash

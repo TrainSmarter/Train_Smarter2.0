@@ -12,13 +12,13 @@
 
 | ID | Feature | Status | Spec | Created |
 |----|---------|--------|------|---------|
-| PROJ-1 | Design System Foundation | Deployed | [PROJ-1-design-system-foundation.md](PROJ-1-design-system-foundation.md) | 2026-03-12 |
-| PROJ-2 | UI Component Library | Deployed | [PROJ-2-ui-component-library.md](PROJ-2-ui-component-library.md) | 2026-03-12 |
+| PROJ-1 | Design System Foundation | In Review | [PROJ-1-design-system-foundation.md](PROJ-1-design-system-foundation.md) | 2026-03-12 |
+| PROJ-2 | UI Component Library | In Review | [PROJ-2-ui-component-library.md](PROJ-2-ui-component-library.md) | 2026-03-12 |
 | PROJ-3 | App Shell & Navigation | Planned | [PROJ-3-app-shell-navigation.md](PROJ-3-app-shell-navigation.md) | 2026-03-12 |
 | PROJ-4 | Authentication & Onboarding | Planned | [PROJ-4-authentication-onboarding.md](PROJ-4-authentication-onboarding.md) | 2026-03-12 |
 | PROJ-5 | Athleten-Management | Planned | [PROJ-5-athleten-management.md](PROJ-5-athleten-management.md) | 2026-03-12 |
 | PROJ-6 | Body & Ernährung Tracking | Planned | [PROJ-6-body-ernaehrung-tracking.md](PROJ-6-body-ernaehrung-tracking.md) | 2026-03-12 |
-| PROJ-7 | Trainingspläne & Programme | Planned | [PROJ-7-trainingsplaene-programme.md](PROJ-7-trainingsplaene-programme.md) | 2026-03-12 |
+| PROJ-7 | Periodisierungssystem & Trainingspläne | Planned | [PROJ-7-trainingsplaene-programme.md](PROJ-7-trainingsplaene-programme.md) | 2026-03-12 |
 | PROJ-8 | Trainingskalender | Planned | [PROJ-8-trainingskalender.md](PROJ-8-trainingskalender.md) | 2026-03-12 |
 | PROJ-9 | Club-Verwaltung | Planned | [PROJ-9-club-verwaltung.md](PROJ-9-club-verwaltung.md) | 2026-03-12 |
 | PROJ-10 | Admin-Bereich | Planned | [PROJ-10-admin-bereich.md](PROJ-10-admin-bereich.md) | 2026-03-12 |
