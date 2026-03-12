@@ -7,7 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import "../globals.css";
 
 const inter = Inter({
-  subsets: ["latin", "latin-ext"],
+  subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
 });

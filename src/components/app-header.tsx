@@ -24,6 +24,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ pageTitle = "Dashboard" }: AppHeaderProps) {
   const t = useTranslations("header");
+  const tSidebar = useTranslations("sidebar");
 
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6">
@@ -36,7 +37,7 @@ export function AppHeader({ pageTitle = "Dashboard" }: AppHeaderProps) {
         <div className="flex aspect-square size-6 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary-700 text-primary-foreground">
           <Dumbbell className="size-3.5" />
         </div>
-        <span className="font-semibold text-sm">Train Smarter</span>
+        <span className="font-semibold text-sm">{tSidebar("brand")}</span>
       </div>
       <Separator orientation="vertical" className="mx-2 h-4 lg:hidden" />
 
