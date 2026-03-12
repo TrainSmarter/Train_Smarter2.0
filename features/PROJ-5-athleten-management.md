@@ -100,14 +100,18 @@ trainer_athlete_connections
 ├── can_see_nutrition: boolean (default: false)  → Ernährungstagebuch
 ├── can_see_calendar: boolean (default: true)    → Trainingskalender
 │
+│  — Granulare Sichtbarkeit (Trainer kontrolliert diese) —
+├── can_see_analysis: boolean (default: false)   → Athlet sieht eigene Auswertungs-Charts in Feedback (PROJ-6)
+│
 └── UNIQUE (trainer_id, athlete_id)
 ```
 
 ### Sichtbarkeits-Regeln
 - Trainer sieht Athleten-Daten **nur** wenn die entsprechende `can_see_*` Flag `true` ist
-- Athlet kann jederzeit einzelne Flags deaktivieren (Einstellungen → Datenschutz)
-- RLS-Policies prüfen diese Flags server-seitig — kein Client-seitiger Bypass möglich
-- Standard-Einstellung: Körperdaten ja, Ernährung nein, Kalender ja
+- Athlet kann jederzeit `can_see_body_data`, `can_see_nutrition`, `can_see_calendar` deaktivieren (Einstellungen → Datenschutz)
+- `can_see_analysis` wird vom **Trainer** gesetzt: aktiviert/deaktiviert die Auswertungs-Charts des Athleten in PROJ-6
+- RLS-Policies prüfen alle Flags server-seitig — kein Client-seitiger Bypass möglich
+- Standard: Körperdaten ja, Ernährung nein, Kalender ja, Analyse-Charts nein
 
 ### Rollen-Wechsel (Athlet → Trainer)
 - Ein Nutzer kann sowohl Athlet als auch Trainer sein (future: role switch)

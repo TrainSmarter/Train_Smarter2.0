@@ -8,6 +8,18 @@
 - Requires: PROJ-1–PROJ-5 (Fundament + Athleten-Management)
 - Requires: PROJ-4 (Authentication) — Supabase Auth + app_metadata
 
+## Navigation-Kontext
+Club-Verwaltung ist Teil der **Organisation**-Kategorie im Training Workspace (Nav-Item: `Organisation`).
+
+```
+/organisation
+  /athletes       ← PROJ-5 (individuelle Trainer-Athlet-Verbindungen)
+  /clubs          ← PROJ-9 (Club-/Vereinsstrukturen)
+  /clubs/[id]     ← Club-Detail + Mitglieder
+```
+
+Trainer ohne Club-Mitgliedschaft sehen unter Organisation nur ihre individuellen Athleten (PROJ-5). PROJ-9 erweitert Organisation um Club-Strukturen.
+
 ## Übersicht
 Organisationen (Vereine/Clubs) können mehrere Trainer und deren Athleten unter einem Dach verwalten. Club-Admins verwalten Mitgliedschaften, Trainer laden Athleten ein wie bisher — aber innerhalb des Club-Kontexts.
 
@@ -24,7 +36,7 @@ Organisationen (Vereine/Clubs) können mehrere Trainer und deren Athleten unter 
 - [ ] Figma Screen: Mitglied einladen
 
 ### Club-Erstellung
-- [ ] Route: `/clubs/new`
+- [ ] Route: `/organisation/clubs/new`
 - [ ] Felder: Club-Name, Beschreibung, Logo (optional)
 - [ ] Ersteller wird automatisch Club-Admin
 - [ ] Maximal 1 Club pro Trainer (in v2.0)

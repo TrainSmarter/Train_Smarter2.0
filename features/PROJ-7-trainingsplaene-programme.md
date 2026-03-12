@@ -129,80 +129,101 @@ Mehrjahresplan (1–4 Jahre)
 
 ## User Stories
 
-### Trainer — Planung
-- Als Trainer möchte ich einen Mehrjahresplan für meinen Athleten anlegen, damit ich die langfristige Entwicklung strukturiere
-- Als Trainer möchte ich Jahrespläne innerhalb eines Mehrjahresplans erstellen und Makrozyklen zuweisen
-- Als Trainer möchte ich Makrozyklen (z.B. "Vorbereitungsphase", "Wettkampfphase") mit Zielen und Phasentypen definieren
-- Als Trainer möchte ich Mesozyklen als Blöcke innerhalb eines Makrozyklus strukturieren (z.B. Hypertrophie → Kraft → Peaking)
-- Als Trainer möchte ich Mikrozyklen (Wochen) mit konkreten Trainingstagen befüllen
-- Als Trainer möchte ich Trainingspläne als Vorlagen speichern und für andere Athleten wiederverwenden
-- Als Trainer möchte ich einen Makrozyklus einem Athleten zuweisen (mit Startdatum)
+### Trainer — Universal-Selector & Navigation
+- Als Trainer möchte ich beim Öffnen des Training Workspace im Universal-Selector zwischen eigener Planung, meinen Athleten, meinen Mannschaften und Platform Templates wählen, damit ich sofort den richtigen Kontext habe
+- Als Trainer möchte ich durch alle Planungsebenen nahtlos hineinzoomen (Klick auf Element) und herauszoomen (Breadcrumb), damit ich nie den Überblick verliere
+- Als Trainer möchte ich per Breadcrumb direkt zu jeder übergeordneten Ebene springen (z.B. von Mikrozyklus zurück zum Jahresplan), ohne durch Zwischenebenen navigieren zu müssen
+- Als Trainer möchte ich ein Platform Template im Universal-Selector auswählen, es als Klon in meine persönliche Planung übernehmen und dann frei bearbeiten
+- Als Trainer möchte ich eigene Pläne als persönliche Templates speichern und sie im Universal-Selector unter "Meine Templates" finden
+
+### Trainer — Planung (Hierarchie)
+- Als Trainer möchte ich einen Mehrjahresplan anlegen, damit ich die langfristige Entwicklung eines Athleten strukturiere
+- Als Trainer möchte ich Jahrespläne innerhalb eines Mehrjahresplans erstellen und Makrozyklen auf einer Zeitleiste sehen
+- Als Trainer möchte ich Makrozyklen (z.B. "Vorbereitungsphase") mit Phasentyp, Dauer und Zielen definieren
+- Als Trainer möchte ich Mesozyklen als Blöcke innerhalb eines Makrozyklus strukturieren (z.B. Hypertrophie → Kraft → Peaking) und das Belastungs-/Entlastungsmuster visuell sehen
+- Als Trainer möchte ich Mikrozyklen (Wochen) mit konkreten Trainingstagen per Drag-and-Drop befüllen
+- Als Trainer möchte ich einen fertigen Plan einem Athleten oder einer Mannschaft zuweisen (mit Startdatum)
 
 ### Athlet — Ausführung
-- Als Athlet möchte ich meine aktuelle Woche (Mikrozyklus) und die heutige Einheit sehen
-- Als Athlet möchte ich eine Einheit durchführen und Satz für Satz abharken
-- Als Athlet möchte ich mein Ist-Gewicht pro Übung erfassen (tatsächlich ausgeführt vs. geplant)
-- Als Athlet möchte ich eine Einheit als abgeschlossen markieren
+- Als Athlet möchte ich beim Öffnen von `/training` sofort meine aktuelle Woche (Mikrozyklus) und die heutige Einheit sehen — ohne Kontext-Selector
+- Als Athlet möchte ich eine Einheit durchführen und Satz für Satz mit Ist-Gewicht und RPE abharken
+- Als Athlet möchte ich eine Einheit als abgeschlossen markieren und mein Gesamtvolumen sehen
+- Als Athlet möchte ich in den Kalender (PROJ-8) zoomen um meine Woche im Überblick zu sehen
 
 ## Acceptance Criteria
 
 ### Figma Screens
-- [ ] Figma Screen: Planungsübersicht — Mehrjahresplan / Jahresplan Zeitleiste (Trainer)
-- [ ] Figma Screen: Makrozyklus-Editor (Mesozyklen als Blöcke visualisiert)
-- [ ] Figma Screen: Mikrozyklus-Editor (Wochenansicht mit Trainingstagen)
-- [ ] Figma Screen: Trainingseinheit-Editor (Übungsliste mit Sets/Reps/RPE)
-- [ ] Figma Screen: Vorlagen-Bibliothek (Trainer)
-- [ ] Figma Screen: Athlet — Aktuelle Woche / Heutige Einheit
+- [ ] Figma Screen: Training Workspace — Universal-Selector + Breadcrumb-Navigation
+- [ ] Figma Screen: Zoom-Ebene Mehrjahresplan (Jahres-Timeline, Makrozyklen als Farbblöcke)
+- [ ] Figma Screen: Zoom-Ebene Makrozyklus-Editor (Mesozyklen als Blöcke, Belastungsmuster)
+- [ ] Figma Screen: Zoom-Ebene Mikrozyklus (7-Tage-Wochenansicht mit Drag-and-Drop)
+- [ ] Figma Screen: Zoom-Ebene Trainingseinheit (Übungsliste mit Sets/Reps/RPE)
+- [ ] Figma Screen: Platform Templates im Universal-Selector (Bibliotheks-Ansicht)
+- [ ] Figma Screen: Athlet — Training Workspace (kein Selector, direkt Mikrozyklus/Woche)
 - [ ] Figma Screen: Athlet — Einheit durchführen (Satz-für-Satz)
 
-### Planungsübersicht (Trainer)
-- [ ] Route: `/training/plans`
-- [ ] Zeitleisten-Ansicht: Alle Makrozyklen eines Athleten auf einer horizontalen Achse (Jahr-View)
-- [ ] Farbkodierung nach Phasentyp: Vorbereitung (teal), Wettkampf (violet), Übergang (slate), Rehabilitation (warning)
-- [ ] "Neuer Plan" Button → Wizard startet
+### Universal-Selector
+- [ ] Route: `/training` (Einstieg — Universal-Selector prominent sichtbar wenn kein Kontext aktiv)
+- [ ] Dropdown-Gruppen: "Eigene Planung", "Platform Templates", "Meine Athleten", "Mannschaften"
+- [ ] Suchfeld im Dropdown (filtert alle Gruppen gleichzeitig)
+- [ ] Zuletzt verwendeter Kontext wird beim nächsten Öffnen vorausgewählt
+- [ ] Athlet-Perspektive: Kein Universal-Selector sichtbar (direkt auf eigenen Plan)
 
-### Mehrjahres- und Jahresplan
-- [ ] Trainer kann Mehrjahresplan anlegen: Titel, Zeitraum (Start/Ende), Ziel (Freitext)
-- [ ] Mehrjahresplan enthält 1–4 Jahrespläne (automatisch nach Kalenderjahr unterteilt)
-- [ ] Jahresplan zeigt alle Makrozyklen des Jahres als Zeitleiste
-- [ ] Lücken zwischen Makrozyklen werden als "Übergangsphase" markiert
+### Zoom-Navigation (alle Ebenen)
+- [ ] Breadcrumb immer sichtbar: `Training > [Kontext] > [Jahresplan] > [Makro] > [Meso] > [Woche] > [Tag]`
+- [ ] Jede Ebene hat eigene URL (Browser-Back navigiert eine Ebene hoch)
+- [ ] Klick auf Element → nächste Ebene (Hineinzoomen)
+- [ ] Klick auf Breadcrumb-Item → direkt zu dieser Ebene (Herauszoomen)
 
-### Makrozyklus-Editor
-- [ ] Route: `/training/plans/[id]/macro/[macroId]`
-- [ ] Felder: Name (z.B. "GPP Phase 1"), Phasentyp (Vorbereitung/Kraft/Hypertrophie/Peaking/Wettkampf/Regeneration), Startdatum, Dauer (Wochen)
-- [ ] Mesozyklen als Blöcke innerhalb des Makrozyklus anlegen (Drag-Reorder)
-- [ ] Jeder Mesozyklus: Name, Schwerpunkt, Dauer (1–4 Wochen), Intensitätsstufe (niedrig/mittel/hoch/sehr hoch)
-- [ ] Belastungs-Entlastungs-Muster: z.B. 3:1 (3 Belastungswochen + 1 Entlastungswoche) — visuell dargestellt
-- [ ] Als Vorlage speichern: Makrozyklus ohne Athleten-Bindung speicherbar
+### Zoom-Ebene: Jahresplan / Mehrjahresplan
+- [ ] Route: `/training/[plan-id]`
+- [ ] Horizontale Zeitleiste: Makrozyklen als Farbblöcke auf Jahresachse
+- [ ] Farbkodierung: Vorbereitung (teal), Wettkampf (violet), Übergang (slate), Regeneration (warning)
+- [ ] Lücken zwischen Makrozyklen → "Übergangsphase" Placeholder
+- [ ] "Neuer Makrozyklus" Button öffnet Editor
+- [ ] Mehrjahresplan: 1–4 Jahres-Tabs, automatisch nach Kalenderjahr
 
-### Mikrozyklus-Editor (Woche)
-- [ ] Jeder Mesozyklus enthält N Wochen (Mikrozyklen)
-- [ ] Route: `/training/plans/[id]/week/[weekId]`
-- [ ] Wochenansicht: 7 Tage als Spalten, Trainingstage per Drag-and-Drop befüllbar
-- [ ] Trainingstag: Name (z.B. "Oberkörper A"), Typ (Kraft/Ausdauer/Mobility/Regeneration/Wettkampf/Rest)
-- [ ] Übung hinzufügen: Suche aus globaler Übungsdatenbank oder Freitext
+### Zoom-Ebene: Makrozyklus
+- [ ] Route: `/training/[plan-id]/macro/[macro-id]`
+- [ ] Mesozyklen als horizontale Blöcke (Drag-Reorder)
+- [ ] Felder: Name, Phasentyp (Vorbereitung/Kraft/Hypertrophie/Peaking/Wettkampf/Regeneration), Dauer (Wochen)
+- [ ] Belastungs-/Entlastungs-Muster visuell (z.B. 3:1 — 3 Belastungswochen farbig, 1 Entlastung gedimmt)
+- [ ] "Als persönliches Template speichern" Button
+
+### Zoom-Ebene: Mesozyklus
+- [ ] Route: `/training/[plan-id]/macro/[macro-id]/meso/[meso-id]`
+- [ ] Wochenraster: Alle Mikrozyklen des Mesozyklus als Zeilen
+- [ ] Schwerpunkt, Intensitätsstufe (niedrig/mittel/hoch/sehr hoch) pro Meso editierbar
+
+### Zoom-Ebene: Mikrozyklus (Woche)
+- [ ] Route: `/training/[plan-id]/macro/[macro-id]/meso/[meso-id]/week/[week-id]`
+- [ ] 7-Tage-Grid: Spalten = Tage, Trainingstage per Drag-and-Drop befüllbar
+- [ ] Trainingstag: Name, Typ (Kraft/Ausdauer/Mobility/Regeneration/Wettkampf/Rest)
+- [ ] Woche kopieren als Template für nächste Woche (mit optionaler Progression +2.5–5%)
+- [ ] Tab-Wechsel zu Kalender-Ansicht (PROJ-8) auf dieser Ebene
+
+### Zoom-Ebene: Trainingseinheit
+- [ ] Route: `/training/[plan-id]/macro/[macro-id]/meso/[meso-id]/week/[week-id]/day/[day-id]`
+- [ ] Übung hinzufügen: Suche aus globaler Übungsdatenbank (PROJ-10) oder Freitext
 - [ ] Je Übung: Sets × Reps/Dauer, % 1RM oder absolutes Gewicht, RPE-Ziel (1–10), Pausendauer (s), Notiz
-- [ ] Kopieren: Woche als Vorlage für nächste Woche übernehmen (mit optionaler Progression +2.5–5%)
 
-### Zuweisung
-- [ ] Modal: Athlet auswählen (aus eigenen Athleten), Startdatum setzen
-- [ ] System berechnet automatisch alle Einheitendaten (Datum = Startdatum + Offset)
-- [ ] Warnung wenn Athlet bereits einen aktiven Plan hat
-- [ ] Überlappungs-Check: Keine zwei Makrozyklen können am selben Tag beginnen
+### Platform Templates — Klonen
+- [ ] Template im Universal-Selector wählen → Read-only Vorschau der Planstruktur
+- [ ] "Klonen & Bearbeiten" Button → Kopie wird zu persönlichem Template (Original unverändert)
+- [ ] Geklontes Template erscheint sofort unter "Eigene Planung" im Universal-Selector
 
-### Athlet-Ansicht
-- [ ] Dashboard-Widget: Aktuelle Woche (Mikrozyklus) mit Fortschrittsbalken + nächste Einheit
-- [ ] Route: `/training` — Heutige Einheit (Übungsliste, geplante Sets/Reps/Gewicht)
-- [ ] Einheit durchführen: Satz für Satz abhaken, Ist-Gewicht eintragen
-- [ ] RPE erfassen (tatsächlich empfunden): 1–10 Skala nach jeder Übung
+### Zuweisung an Athlet/Mannschaft
+- [ ] Aus beliebiger Zoom-Ebene: "Zuweisen" Button → Modal: Kontext (Athlet/Mannschaft) + Startdatum
+- [ ] System berechnet alle Einheitendaten (Datum = Startdatum + Offset)
+- [ ] Warnung wenn Athlet/Mannschaft bereits aktiven Plan hat
+- [ ] Überlappungs-Check: Keine zwei Makrozyklen am selben Startdatum
+
+### Athlet-Ansicht (Training Workspace)
+- [ ] Route: `/training` → Direkt auf Mikrozyklus-Ebene der aktuellen Woche
+- [ ] Dashboard-Widget: Aktuelle Woche mit Fortschrittsbalken + heutige Einheit
+- [ ] Einheit durchführen: Satz für Satz abhaken, Ist-Gewicht + RPE eintragen
 - [ ] Einheit abschließen → Timestamp + Gesamtvolumen gespeichert
 - [ ] Einheit überspringen: Grund angeben (Verletzung/Reisen/Sonstiges)
-
-### Vorlagen-Bibliothek
-- [ ] Route: `/training/templates`
-- [ ] Liste aller gespeicherten Makrozyklus-Vorlagen des Trainers
-- [ ] Vorlage klonen → wird zu neuem Makrozyklus (bearbeitbar, nicht mehr Vorlage)
-- [ ] Vorlagen privat (v2.0 Scope)
 
 ## Edge Cases
 - Makrozyklus löschen der aktiv zugewiesen ist → Warnung + Bestätigung + Athlet-Benachrichtigung
