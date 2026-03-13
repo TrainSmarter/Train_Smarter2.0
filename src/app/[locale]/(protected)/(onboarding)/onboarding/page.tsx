@@ -320,6 +320,9 @@ export default function OnboardingPage() {
             await supabase.auth.updateUser({
               data: { onboarding_completed: true },
             });
+
+            // Refresh session so middleware reads updated JWT before redirect
+            await supabase.auth.refreshSession();
           }
         } catch {
           // Continue to dashboard even if DB write fails
@@ -438,9 +441,9 @@ export default function OnboardingPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline font-medium"
-                      aria-label={`${t("step1.termsLink")} ${t("step1.opensInNewTab")}`}
+                      aria-label={`${chunks} ${t("step1.opensInNewTab")}`}
                     >
-                      {t("step1.termsLink")}
+                      {chunks}
                     </a>
                   ),
                   privacy: (chunks) => (
@@ -449,9 +452,9 @@ export default function OnboardingPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline font-medium"
-                      aria-label={`${t("step1.privacyLink")} ${t("step1.opensInNewTab")}`}
+                      aria-label={`${chunks} ${t("step1.opensInNewTab")}`}
                     >
-                      {t("step1.privacyLink")}
+                      {chunks}
                     </a>
                   ),
                 })}

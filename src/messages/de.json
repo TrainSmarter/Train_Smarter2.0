@@ -210,7 +210,7 @@
     "step1": {
       "title": "Datenschutz & Einwilligungen",
       "subtitle": "Bevor du loslegst, benötigen wir deine Zustimmung.",
-      "termsRequired": "Ich akzeptiere die {terms} und die {privacy}.",
+      "termsRequired": "Ich akzeptiere die <terms>AGB</terms> und die <privacy>Datenschutzerklärung</privacy>.",
       "termsLink": "AGB",
       "privacyLink": "Datenschutzerklärung",
       "bodyDataOptional": "Ich erlaube die Verarbeitung meiner Körperdaten (Gewicht, Größe, Körperzusammensetzung).",
