@@ -22,9 +22,11 @@ interface AppHeaderProps {
   pageTitle?: string;
 }
 
-export function AppHeader({ pageTitle = "Dashboard" }: AppHeaderProps) {
+export function AppHeader({ pageTitle }: AppHeaderProps) {
   const t = useTranslations("header");
+  const tNav = useTranslations("nav");
   const tSidebar = useTranslations("sidebar");
+  const title = pageTitle ?? tNav("dashboard");
 
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6">
@@ -44,7 +46,7 @@ export function AppHeader({ pageTitle = "Dashboard" }: AppHeaderProps) {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
+            <BreadcrumbPage>{title}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>

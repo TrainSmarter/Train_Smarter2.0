@@ -47,6 +47,14 @@ export default function OnboardingPage() {
   // Step 4 state
   const [inviteEmail, setInviteEmail] = React.useState("");
   const [inviteCode, setInviteCode] = React.useState("");
+
+  // Focus management — move focus to step heading on step change
+  const stepHeadingRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!isLoading && stepHeadingRef.current) {
+      stepHeadingRef.current.focus();
+    }
+  }, [currentStep, isLoading]);
   const [inviteFeedback, setInviteFeedback] = React.useState<{
     type: "success" | "error";
     message: string;
@@ -398,7 +406,7 @@ export default function OnboardingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-h2">
+          <CardTitle className="text-h2" ref={stepHeadingRef} tabIndex={-1}>
             {currentStep === 1 && t("step1.title")}
             {currentStep === 2 && t("step2.title")}
             {currentStep === 3 && t("step3.title")}

@@ -18,11 +18,15 @@ import {
 } from "@/components/ui/sidebar";
 import { NavMain } from "@/components/nav-main";
 import { UserButton } from "@/components/user-button";
-import { mockUser } from "@/lib/mock-session";
+import type { AuthUser } from "@/lib/mock-session";
 
-export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
-  const role = mockUser.app_metadata.roles[0];
-  const isPlatformAdmin = mockUser.app_metadata.is_platform_admin;
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  user: AuthUser | null;
+}
+
+export function AppSidebar({ user, ...props }: AppSidebarProps) {
+  const role = user?.app_metadata.roles[0];
+  const isPlatformAdmin = user?.app_metadata.is_platform_admin ?? false;
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const t = useTranslations("sidebar");
@@ -73,7 +77,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
         <SidebarSeparator />
-        <UserButton user={mockUser} />
+        {user && <UserButton user={user} />}
       </SidebarFooter>
 
       <SidebarRail />

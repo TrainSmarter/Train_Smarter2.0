@@ -1,7 +1,5 @@
 /**
- * Mock session — Supabase User shape.
- * PROJ-4 will replace this import with real Supabase auth (`@supabase/ssr` + `getUser()`).
- * Shape intentionally mirrors the real Supabase JWT so PROJ-4 is a drop-in replacement.
+ * Auth user types — extracted from Supabase JWT.
  *
  * Role architecture (Phase 1 — defined in PROJ-4):
  * - `app_metadata.roles`: UserRole[] — stored as ARRAY (e.g. ["TRAINER"]) for Dual-Role readiness (PROJ-11+)
@@ -9,9 +7,11 @@
  * - NO "ADMIN" UserRole: platform admins are regular TRAINER/ATHLETE accounts with is_platform_admin=true
  */
 
+import type { User } from "@supabase/supabase-js";
+
 export type UserRole = "ATHLETE" | "TRAINER";
 
-export interface MockUser {
+export interface AuthUser {
   id: string;
   email: string;
   /** Client-editable profile data (display only, never used for access control) */
@@ -28,22 +28,25 @@ export interface MockUser {
   };
 }
 
+/** Also export as MockUser for backwards compatibility with existing imports */
+export type MockUser = AuthUser;
+
 /**
- * Default mock user — change roles/is_platform_admin here to test role-based navigation.
- * TRAINER sees: Dashboard, Training (all), Body & Ernährung, Organisation, Account, Settings.
- * ATHLETE sees: Dashboard, Training (Kalender only), Body & Ernährung, Account, Settings.
- * is_platform_admin: true → additionally sees Admin section.
+ * Convert a Supabase User object into a serializable AuthUser.
+ * Safe to pass from Server Components to Client Components as props.
  */
-export const mockUser: MockUser = {
-  id: "mock-user-001",
-  email: "lukas@trainsmarter.app",
-  user_metadata: {
-    first_name: "Lukas",
-    last_name: "Kitzberger",
-    avatar_url: undefined,
-  },
-  app_metadata: {
-    roles: ["TRAINER"],
-    is_platform_admin: false,
-  },
-};
+export function toAuthUser(user: User): AuthUser {
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    user_metadata: {
+      first_name: user.user_metadata?.first_name ?? "",
+      last_name: user.user_metadata?.last_name ?? "",
+      avatar_url: user.user_metadata?.avatar_url,
+    },
+    app_metadata: {
+      roles: (user.app_metadata?.roles as UserRole[]) ?? [],
+      is_platform_admin: user.app_metadata?.is_platform_admin === true,
+    },
+  };
+}

@@ -15,9 +15,10 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { FormField } from "@/components/form-field";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { createClient } from "@/lib/supabase/client";
-import type { ForgotPasswordFormData } from "@/lib/validations/auth";
+import { forgotPasswordSchema, type ForgotPasswordFormData } from "@/lib/validations/auth";
 
 export default function ForgotPasswordPage() {
   const t = useTranslations("auth.forgotPassword");
@@ -31,6 +32,7 @@ export default function ForgotPasswordPage() {
     handleSubmit,
     formState: { errors },
   } = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
     defaultValues: { email: "" },
   });
 
@@ -111,7 +113,7 @@ export default function ForgotPasswordPage() {
             required
             autoComplete="email"
             error={errors.email?.message}
-            {...register("email", { required: true })}
+            {...register("email")}
           />
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>

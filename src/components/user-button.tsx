@@ -23,10 +23,10 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from "@/components/ui/sidebar";
-import type { MockUser } from "@/lib/mock-session";
+import type { AuthUser } from "@/lib/mock-session";
 
 interface UserButtonProps {
-  user: MockUser;
+  user: AuthUser;
 }
 
 function getInitials(firstName: string, lastName: string): string {
