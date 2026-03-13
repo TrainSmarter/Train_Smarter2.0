@@ -180,6 +180,8 @@ Aktive Links brauchen zusätzlich `aria-current={isActive ? "page" : undefined}`
     first_name: string
     last_name: string
     avatar_url?: string
+  }
+  app_metadata: {
     roles: ("ATHLETE" | "TRAINER")[]  // Array für Dual-Role-Readiness (PROJ-11+); roles[0] für Single-Role-Zugriff
     is_platform_admin: boolean
   }
@@ -211,8 +213,8 @@ PROJ-4 ersetzt nur den Import — keine Konsumenten müssen angepasst werden.
 ### Neue Dateien
 
 ```
-src/app/(protected)/layout.tsx         ← Server Component, liest Cookie, gibt defaultOpen weiter
-src/app/(protected)/dashboard/page.tsx ← Demo-Seite
+src/app/[locale]/(protected)/layout.tsx         ← Server Component, liest Cookie, gibt defaultOpen weiter
+src/app/[locale]/(protected)/dashboard/page.tsx ← Demo-Seite
 src/components/app-sidebar.tsx         ← Sidebar mit Logo + NavMain + SidebarRail
 src/components/nav-main.tsx            ← Rollenbasierte Nav, Collapsibles mit auto-expand
 src/components/app-header.tsx          ← Header mit SidebarTrigger + Bell + User

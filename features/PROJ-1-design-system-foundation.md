@@ -66,57 +66,65 @@ Aufbau des Design-System-Fundaments als Single Source of Truth — parallel in F
 - [x] `@font-face` Deklarationen mit `font-display: swap` in globals.css
 - [x] Dark-Mode Farb-Mapping via CSS Custom Properties funktioniert
 
-## Design Token Spezifikationen
+## Design Token Spezifikationen (v2 — aktuell)
 
-### Primary (Orange)
+### Primary (Teal)
 ```
-primary-50:  #FFF5F3
-primary-100: #FFE8E4
-primary-200: #FFD0C8
-primary-300: #FFA898
-primary-400: #FF7A66
-primary-500: #E05540  ← Brand Color
-primary-600: #C44230
-primary-700: #A33527
-primary-800: #7D2820
-primary-900: #5C1F18
-```
-
-### Navy (Indigo)
-```
-navy-50:  #EEF2FF
-navy-100: #E0E7FF
-navy-200: #C7D2FE
-navy-300: #A5B4FC
-navy-400: #818CF8
-navy-500: #6366F1
-navy-600: #4F46E5  ← Primary Button Color
-navy-700: #4338CA
-navy-800: #3730A3
-navy-900: #312E81
+primary-50:  #F0FDFA
+primary-100: #CCFBF1
+primary-200: #99F6E4
+primary-300: #5EEAD4
+primary-400: #2DD4BF
+primary-500: #14B8A6
+primary-600: #0D9488  ← Brand Color
+primary-700: #0F766E
+primary-800: #115E59
+primary-900: #134E4A
 ```
 
-### Typography Scale (Poppins)
+### Secondary (Violet)
 ```
+violet-50:  #F5F3FF
+violet-100: #EDE9FE
+violet-200: #DDD6FE
+violet-300: #C4B5FD
+violet-400: #A78BFA
+violet-500: #8B5CF6
+violet-600: #7C3AED  ← Accent Color
+violet-700: #6D28D9
+violet-800: #5B21B6
+violet-900: #2E1065
+```
+
+### Semantic Colors
+```
+success: #10B981  |  warning: #F59E0B  |  error: #EF4444  |  info/sky: #0284C7
+```
+
+### Typography Scale (Inter Variable)
+```
+display: 40px / line-height 48px / weight 700 / tracking -0.02em
 h1: 32px / line-height 40px / weight 700 / tracking -0.02em
-h2: 24px / line-height 32px / weight 700 / tracking -0.01em
+h2: 24px / line-height 32px / weight 600 / tracking -0.01em
 h3: 20px / line-height 28px / weight 600 / tracking -0.01em
-h4: 18px / line-height 28px / weight 600
-h5: 16px / line-height 24px / weight 600
+h4: 16px / line-height 24px / weight 600
+h5: 14px / line-height 20px / weight 600
 
 body-lg: 16px / line-height 24px / weight 400
 body:    14px / line-height 20px / weight 400  ← Default
-body-sm: 12px / line-height 18px / weight 400
+body-sm: 13px / line-height 20px / weight 400
 
-label:   12px / line-height 16px / weight 600 / tracking +0.05em / UPPERCASE
-button:  14px / line-height 20px / weight 600
-caption: 11px / line-height 16px / weight 500
+label:   12px / line-height 16px / weight 500 / tracking +0.04em / UPPERCASE
+button:  14px / line-height 20px / weight 500
+caption: 12px / line-height 16px / weight 400
+mono:    14px / line-height 20px / font-mono
 ```
 
 ### Spacing (8px Grid)
 ```
 xs: 4px  | sm: 8px  | md: 16px | lg: 24px
 xl: 32px | 2xl: 48px | 3xl: 64px
+Touch target: 44px (WCAG 2.5.5)
 ```
 
 ## Edge Cases
