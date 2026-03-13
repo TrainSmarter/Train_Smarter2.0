@@ -42,9 +42,11 @@ export default function ResetPasswordPage() {
     defaultValues: { password: "", confirmPassword: "" },
   });
 
-  // Exchange PKCE code for session on mount
+  // Verify token or exchange code on mount
   React.useEffect(() => {
-    async function exchangeCode() {
+    async function verifyAccess() {
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type");
       const code = searchParams.get("code");
       const errorParam = searchParams.get("error");
       const errorDescription = searchParams.get("error_description");
@@ -58,38 +60,63 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      if (!code) {
-        // No code, try if already authenticated (came from auth/callback redirect)
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
+      const supabase = createClient();
+
+      // Token hash flow (from email template link)
+      if (tokenHash && type === "recovery") {
+        try {
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: "recovery",
+          });
+
+          if (verifyError) {
+            if (verifyError.message?.includes("expired") || verifyError.code === "otp_expired") {
+              setPageState("expired");
+            } else {
+              setPageState("error");
+            }
+            return;
+          }
+
           setPageState("form");
-        } else {
+        } catch {
           setPageState("error");
         }
         return;
       }
 
-      try {
-        const supabase = createClient();
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      // PKCE code flow (from auth/callback redirect)
+      if (code) {
+        try {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-        if (exchangeError) {
-          if (exchangeError.message?.includes("expired") || exchangeError.code === "otp_expired") {
-            setPageState("expired");
-          } else {
-            setPageState("error");
+          if (exchangeError) {
+            if (exchangeError.message?.includes("expired") || exchangeError.code === "otp_expired") {
+              setPageState("expired");
+            } else {
+              setPageState("error");
+            }
+            return;
           }
-          return;
-        }
 
+          setPageState("form");
+        } catch {
+          setPageState("error");
+        }
+        return;
+      }
+
+      // No token/code — check if already authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
         setPageState("form");
-      } catch {
+      } else {
         setPageState("error");
       }
     }
 
-    exchangeCode();
+    verifyAccess();
   }, [searchParams]);
 
   async function onSubmit(data: ResetPasswordFormData) {
