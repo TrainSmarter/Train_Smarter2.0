@@ -293,7 +293,8 @@
       "invalidCredentials": "Email or password is incorrect.",
       "emailNotConfirmed": "Please confirm your email address first.",
       "genericError": "An error occurred. Please try again.",
-      "networkError": "Connection failed. Please check your internet connection."
+      "networkError": "Connection failed. Please check your internet connection.",
+      "rateLimited": "Too many sign-in attempts. Please wait a minute."
     },
     "register": {
       "title": "Create account",
@@ -318,6 +319,7 @@
       "passwordNumber": "At least 1 number required.",
       "invalidName": "Please enter a valid name.",
       "genericError": "Registration failed. Please try again.",
+      "rateLimited": "Too many requests. Please wait a minute and try again.",
       "success": "Registration successful! Please check your inbox."
     },
     "forgotPassword": {
@@ -330,7 +332,9 @@
       "backToLogin": "Back to login",
       "successTitle": "Email sent",
       "successMessage": "If an account with this email exists, you will receive a password reset link.",
-      "genericError": "An error occurred. Please try again."
+      "genericError": "An error occurred. Please try again.",
+      "rateLimited": "Too many requests. Please wait a minute and try again.",
+      "smtpError": "Email delivery is temporarily unavailable. Please try again later."
     },
     "resetPassword": {
       "title": "Set new password",

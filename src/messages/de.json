@@ -293,7 +293,8 @@
       "invalidCredentials": "E-Mail oder Passwort ist falsch.",
       "emailNotConfirmed": "Bitte bestätige zuerst deine E-Mail-Adresse.",
       "genericError": "Ein Fehler ist aufgetreten. Bitte versuche es erneut.",
-      "networkError": "Verbindung fehlgeschlagen. Bitte prüfe deine Internetverbindung."
+      "networkError": "Verbindung fehlgeschlagen. Bitte prüfe deine Internetverbindung.",
+      "rateLimited": "Zu viele Anmeldeversuche. Bitte warte eine Minute."
     },
     "register": {
       "title": "Konto erstellen",
@@ -318,6 +319,7 @@
       "passwordNumber": "Mind. 1 Zahl erforderlich.",
       "invalidName": "Bitte gib einen gültigen Namen ein.",
       "genericError": "Die Registrierung ist fehlgeschlagen. Bitte versuche es erneut.",
+      "rateLimited": "Zu viele Anfragen. Bitte warte eine Minute und versuche es erneut.",
       "success": "Registrierung erfolgreich! Bitte prüfe dein E-Mail-Postfach."
     },
     "forgotPassword": {
@@ -330,7 +332,9 @@
       "backToLogin": "Zurück zum Login",
       "successTitle": "E-Mail gesendet",
       "successMessage": "Wenn ein Konto mit dieser E-Mail existiert, erhältst du einen Link zum Zurücksetzen deines Passworts.",
-      "genericError": "Ein Fehler ist aufgetreten. Bitte versuche es erneut."
+      "genericError": "Ein Fehler ist aufgetreten. Bitte versuche es erneut.",
+      "rateLimited": "Zu viele Anfragen. Bitte warte eine Minute und versuche es erneut.",
+      "smtpError": "Der E-Mail-Versand ist vorübergehend nicht möglich. Bitte versuche es später erneut."
     },
     "resetPassword": {
       "title": "Neues Passwort festlegen",

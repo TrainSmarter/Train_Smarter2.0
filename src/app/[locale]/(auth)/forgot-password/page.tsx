@@ -52,7 +52,21 @@ export default function ForgotPasswordPage() {
       );
 
       if (authError) {
-        // Show success anyway to prevent account enumeration
+        // Rate limit: show specific error (safe to reveal — not account-specific)
+        if (authError.code === "over_email_send_rate_limit" || authError.message?.includes("rate")) {
+          setError(t("rateLimited"));
+          setIsSubmitting(false);
+          return;
+        }
+
+        // SMTP / delivery errors: show specific error
+        if (authError.message?.includes("smtp") || authError.message?.includes("send")) {
+          setError(t("smtpError"));
+          setIsSubmitting(false);
+          return;
+        }
+
+        // All other errors: show success to prevent account enumeration
         setIsSuccess(true);
         setIsSubmitting(false);
         return;

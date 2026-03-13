@@ -65,6 +65,8 @@ export default function LoginPage() {
 
         if (authError.message === "Invalid login credentials") {
           setError(t("invalidCredentials"));
+        } else if (authError.code === "over_request_rate_limit" || authError.message?.includes("rate")) {
+          setError(t("rateLimited"));
         } else {
           setError(t("genericError"));
         }

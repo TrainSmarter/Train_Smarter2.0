@@ -77,7 +77,11 @@ export default function RegisterPage() {
       });
 
       if (authError) {
-        setError(t("genericError"));
+        if (authError.code === "over_email_send_rate_limit" || authError.message?.includes("rate")) {
+          setError(t("rateLimited"));
+        } else {
+          setError(t("genericError"));
+        }
         setIsSubmitting(false);
         return;
       }
