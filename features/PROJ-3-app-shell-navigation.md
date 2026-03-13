@@ -341,7 +341,7 @@ Alle benötigten Mechanismen sind bereits vorhanden:
 ### Files Created
 - `src/lib/mock-session.ts` — Mock user in Supabase shape (TRAINER role default)
 - `src/lib/nav-config.ts` — Static nav config with role-based filtering
-- `src/components/nav-main.tsx` — Role-based navigation with collapsible sections, auto-expand via `usePathname()`
+- `src/components/nav-main.tsx` — Role-based navigation with flat top-level items (collapsible sections deferred until PROJ-6/7 add sub-routes)
 - `src/components/user-button.tsx` — Avatar + dropdown in SidebarFooter (Profil/Einstellungen/Abmelden)
 - `src/components/app-header.tsx` — Sticky header with SidebarTrigger, breadcrumb, notification bell, ThemeToggle
 - `src/components/app-sidebar.tsx` — Main sidebar with Logo, NavMain, UserButton, SidebarRail
@@ -350,10 +350,10 @@ Alle benötigten Mechanismen sind bereits vorhanden:
 
 ### Files Modified
 - `src/hooks/use-mobile.tsx` — MOBILE_BREAKPOINT changed from 768 to 1024 (spec: lg breakpoint)
-- `src/app/globals.css` — Added `--sidebar-width-icon: 5.5rem` (88px collapsed width)
+- `src/app/globals.css` — Added `--sidebar-width-icon: 3.5rem` (56px collapsed width)
 
 ### Tech Design Fixes Applied
-- [FIX-1] `--sidebar-width-icon: 5.5rem` in globals.css
+- [FIX-1] `--sidebar-width-icon: 3.5rem` in globals.css (56px — reduced from initial 88px per commit 681bd19)
 - [FIX-2] `collapsible="icon"` set explicitly on Sidebar component
 - [FIX-3] MOBILE_BREAKPOINT set to 1024 in use-mobile.tsx
 - [FIX-4] Active state uses `data-[active=true]:bg-primary data-[active=true]:text-primary-foreground`
@@ -1016,8 +1016,8 @@ Code-level review. All patterns used are well-supported:
 |-----|----------|--------|
 | BUG-6 | Medium | DEFERRED to PROJ-4 (email verification check) |
 | BUG-7 | Medium | DEFERRED to PROJ-4 (loading state during session check) |
-| BUG-P3-11 | Low | STILL OPEN -- spec says 88px collapsed, actual is 56px. Spec documentation needs update. |
-| BUG-P3-12 | Medium | STILL OPEN -- spec says collapsible sections, actual is flat items. Spec documentation needs update. |
+| BUG-P3-11 | Low | **FIXED** -- spec documentation updated: tech design now says 56px/3.5rem (matching code) |
+| BUG-P3-12 | Medium | **FIXED** -- spec documentation updated: nav-main.tsx description corrected to flat items, AC already noted collapsible deferred |
 | BUG-P3-13 | High | **CONFIRMED FIXED** -- nav-main.tsx line 3 correctly imports `{ usePathname, Link }` from `@/i18n/navigation` |
 | BUG-P3-14 | Low | **CONFIRMED FIXED** -- nav-config.ts line 106 uses `/account/settings` |
 | BUG-P3-15 | Medium | **CONFIRMED FIXED** -- globals.css line 63 now has `--sidebar-width-icon: 3.5rem` matching sidebar.tsx `SIDEBAR_WIDTH_ICON = "3.5rem"` |
@@ -1063,6 +1063,73 @@ Code-level review. All patterns used are well-supported:
 - **Regression:** No regressions on PROJ-1 or PROJ-2
 - **Production Ready:** YES
 - **Recommendation:** All functional bugs are fixed. The 2 remaining open bugs (BUG-P3-11, BUG-P3-12) are spec documentation issues only -- the code works correctly. Update the spec acceptance criteria sections to reflect the current flat navigation structure and 56px collapsed sidebar width. CSP header should be added before PROJ-4 deployment.
+
+## QA Test Results (Round 6 -- 2026-03-13)
+
+**Tested:** 2026-03-13
+**Tester:** QA Engineer (AI) -- Consolidated QA audit across PROJ-1 through PROJ-5
+**Build Status:** PASS -- `npm run build` succeeds (0 errors)
+**Lint Status:** PASS -- 0 errors, 1 warning (unrelated to PROJ-3)
+**Context:** Post-PROJ-5 implementation regression check. Latest commit: 6a8f650.
+
+---
+
+### Key Findings
+
+#### PROJ-3 BUG-6 and BUG-7 -- Deferred to PROJ-4: VERIFIED RESOLVED
+
+- BUG-6 (Email verification check in middleware): FIXED in PROJ-4. Middleware line 99 checks `!user.email_confirmed_at` and redirects unverified users to `/verify-email`. -- PASS
+- BUG-7 (Loading state during session check): ADDRESSED in PROJ-4 via middleware redirect pattern. Unauthenticated users never reach the protected layout. -- PASS
+
+#### PROJ-3 FINDING-1 (mock-session hardcoded role): RESOLVED
+
+- `mock-session.ts` has been refactored from a mock into a type-and-utility module (`AuthUser` type + `toAuthUser()` converter). No hardcoded mock user data remains. The `(protected)/layout.tsx` now fetches real Supabase user via `createClient()` and passes `toAuthUser(user)` to `AppSidebar`. -- PASS
+
+#### PROJ-3 FINDING-3 (No CSP header): RESOLVED
+
+- CSP header is now configured in `next.config.ts` with `default-src 'self'`, `script-src`, `connect-src` allowing Supabase, `img-src` with data/blob/https, `frame-ancestors 'none'`, `base-uri 'self'`, `form-action 'self'`. -- PASS
+
+### Acceptance Criteria Status
+
+- [x] Sidebar: collapsed 56px, expanded 256px, collapsible="icon", tooltips, logo, animation -- PASS
+- [x] Header: h-16, sticky z-30, mobile logo, notification bell -- PASS
+- [x] Rollenbasierte Navigation: TRAINER-only Organisation, Admin for platform admins, ATHLETE filtering -- PASS
+- [x] Layout: Server Component with cookie-based defaultOpen, flex-1 overflow-y-auto p-6 lg:p-8 -- PASS
+- [x] Mobile: Sheet overlay at lg breakpoint (1024px), tap-outside-closes -- PASS
+- [x] i18n: All imports from `@/i18n/navigation`, all strings translated -- PASS
+
+### Previously Open Bugs -- Status Update
+
+- BUG-6 (Medium): Email verification -- **RESOLVED** (implemented in PROJ-4)
+- BUG-7 (Medium): Loading state -- **RESOLVED** (addressed in PROJ-4)
+- BUG-P3-11 (Low): Sidebar collapsed width spec drift -- **FIXED** (spec documentation updated to 56px/3.5rem)
+- BUG-P3-12 (Medium): Navigation structure spec drift -- **FIXED** (spec documentation updated to flat items)
+
+### New Bugs Found
+
+#### BUG-P3-16: NEW -- AppSidebar still has misleading import name `mock-session`
+
+- **Severity:** Low
+- **Component:** `src/components/app-sidebar.tsx` line 22, `src/lib/mock-session.ts`
+- **Details:** The file `mock-session.ts` no longer contains any mock data -- it exports `AuthUser` type and `toAuthUser()` utility. But the filename `mock-session` is misleading and could confuse developers. Similarly, multiple files import from `@/lib/mock-session` for types/utilities that are not mocks. Should be renamed to something like `auth-types.ts`.
+- **Priority:** Nice to have -- no functional impact, purely naming/clarity
+
+### Security Audit
+
+- [x] Real Supabase auth replaces mock session in layout -- PASS
+- [x] Role-based middleware protection for /organisation (TRAINER) and /admin (platform admin) -- PASS
+- [x] CSP header configured -- PASS
+- [x] No dangerouslySetInnerHTML -- PASS
+
+### Summary
+
+- **Acceptance Criteria:** 22/26 tested -- 20 PASS, 5 SKIPPED (Figma), 1 by-design
+- **Previously Open Bugs:** 6 resolved (BUG-6, BUG-7, FINDING-1, FINDING-3, BUG-P3-11, BUG-P3-12)
+- **New Bugs:** 1 (BUG-P3-16 Low -- misleading filename)
+- **Open Bugs Total:** 1 (0 critical, 0 high, 0 medium, 1 low)
+  - BUG-P3-16 (Low): Misleading `mock-session.ts` filename
+- **Security:** PASS
+- **Production Ready:** YES
 
 ## Deployment
 

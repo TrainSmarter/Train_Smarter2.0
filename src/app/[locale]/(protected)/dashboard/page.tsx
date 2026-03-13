@@ -1,4 +1,8 @@
 import { getTranslations } from "next-intl/server";
+import { createClient } from "@/lib/supabase/server";
+import { toAuthUser } from "@/lib/mock-session";
+import { fetchPendingInvitations } from "@/lib/athletes/queries";
+import { InvitationBanner } from "@/components/invitation-banner";
 import {
   Card,
   CardContent,
@@ -10,6 +14,16 @@ import { Badge } from "@/components/ui/badge";
 
 export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const authUser = user ? toAuthUser(user) : null;
+  const isAthlete = authUser?.app_metadata.roles[0] === "ATHLETE";
+
+  // BUG-2 fix: Fetch pending invitations for athletes
+  const pendingInvitations = isAthlete ? await fetchPendingInvitations() : [];
 
   return (
     <div className="space-y-8">
@@ -17,6 +31,21 @@ export default async function DashboardPage() {
         <h1 className="text-h1 text-foreground">{t("title")}</h1>
         <p className="text-body-lg text-muted-foreground mt-1">{t("welcome")}</p>
       </div>
+
+      {/* Pending invitations for athletes */}
+      {pendingInvitations.length > 0 && (
+        <section aria-label={t("pendingInvitations")}>
+          <h2 className="text-h4 text-foreground mb-3">{t("pendingInvitations")}</h2>
+          <div className="space-y-3">
+            {pendingInvitations.map((invitation) => (
+              <InvitationBanner
+                key={invitation.connectionId}
+                invitation={invitation}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>

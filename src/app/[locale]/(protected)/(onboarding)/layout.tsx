@@ -10,7 +10,7 @@ export default async function OnboardingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const t = await getTranslations("sidebar");
+  const t = await getTranslations("auth");
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -19,7 +19,7 @@ export default async function OnboardingLayout({
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-700 text-primary-foreground">
           <Dumbbell className="h-4 w-4" />
         </div>
-        <span className="text-h4 text-foreground">{t("brand")}</span>
+        <span className="text-h4 text-foreground">{t("brandName")}</span>
       </header>
 
       {/* Wizard content */}

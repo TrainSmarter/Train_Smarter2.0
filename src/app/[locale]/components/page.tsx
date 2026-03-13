@@ -130,67 +130,67 @@ export default function ComponentLibraryPage() {
               {/* Variants */}
               <div>
                 <p className="text-label text-muted-foreground mb-3">
-                  Varianten
+                  {t("variants")}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                  <ButtonExtended variant="default">Primary</ButtonExtended>
+                  <ButtonExtended variant="default">{t("btnPrimary")}</ButtonExtended>
                   <ButtonExtended variant="secondary">
-                    Secondary
+                    {t("btnSecondary")}
                   </ButtonExtended>
-                  <ButtonExtended variant="ghost">Ghost</ButtonExtended>
-                  <ButtonExtended variant="success">Success</ButtonExtended>
-                  <ButtonExtended variant="danger">Danger</ButtonExtended>
+                  <ButtonExtended variant="ghost">{t("btnGhost")}</ButtonExtended>
+                  <ButtonExtended variant="success">{t("btnSuccess")}</ButtonExtended>
+                  <ButtonExtended variant="danger">{t("btnDanger")}</ButtonExtended>
                 </div>
               </div>
 
               {/* Sizes */}
               <div>
                 <p className="text-label text-muted-foreground mb-3">
-                  Sizes
+                  {t("sizes")}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                  <ButtonExtended size="sm">Small</ButtonExtended>
-                  <ButtonExtended size="default">Medium</ButtonExtended>
-                  <ButtonExtended size="lg">Large</ButtonExtended>
+                  <ButtonExtended size="sm">{t("btnSmall")}</ButtonExtended>
+                  <ButtonExtended size="default">{t("btnMedium")}</ButtonExtended>
+                  <ButtonExtended size="lg">{t("btnLarge")}</ButtonExtended>
                 </div>
               </div>
 
               {/* Loading */}
               <div>
                 <p className="text-label text-muted-foreground mb-3">
-                  Loading State
+                  {t("loadingState")}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                  <ButtonExtended loading>Speichern...</ButtonExtended>
+                  <ButtonExtended loading>{t("btnSaving")}</ButtonExtended>
                   <ButtonExtended variant="danger" loading>
-                    L&ouml;schen...
+                    {t("btnDeleting")}
                   </ButtonExtended>
                 </div>
                 <p className="text-caption text-muted-foreground mt-2">
-                  Loading-Buttons verwenden aria-disabled statt disabled, damit sie weiterhin fokussierbar bleiben (WCAG).
+                  {t("loadingA11yNote")}
                 </p>
               </div>
 
               {/* Icons */}
               <div>
                 <p className="text-label text-muted-foreground mb-3">
-                  Mit Icons
+                  {t("withIcons")}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
                   <ButtonExtended iconLeft={<Plus className="h-4 w-4" />}>
-                    Athlet hinzuf&uuml;gen
+                    {t("btnAddAthlete")}
                   </ButtonExtended>
                   <ButtonExtended
                     variant="danger"
                     iconLeft={<Trash2 className="h-4 w-4" />}
                   >
-                    L&ouml;schen
+                    {t("btnDelete")}
                   </ButtonExtended>
                   <ButtonExtended
                     variant="secondary"
                     iconRight={<Settings className="h-4 w-4" />}
                   >
-                    Einstellungen
+                    {t("btnSettings")}
                   </ButtonExtended>
                 </div>
               </div>
@@ -198,11 +198,11 @@ export default function ComponentLibraryPage() {
               {/* Full Width */}
               <div>
                 <p className="text-label text-muted-foreground mb-3">
-                  Full Width
+                  {t("fullWidth")}
                 </p>
                 <div className="max-w-sm">
                   <ButtonExtended fullWidth>
-                    Registrieren
+                    {t("btnRegister")}
                   </ButtonExtended>
                 </div>
               </div>
@@ -210,12 +210,12 @@ export default function ComponentLibraryPage() {
               {/* Disabled */}
               <div>
                 <p className="text-label text-muted-foreground mb-3">
-                  Disabled State
+                  {t("disabledState")}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                  <ButtonExtended disabled>Deaktiviert</ButtonExtended>
+                  <ButtonExtended disabled>{t("btnDisabled")}</ButtonExtended>
                   <ButtonExtended variant="success" disabled>
-                    Success Disabled
+                    {t("btnSuccessDisabled")}
                   </ButtonExtended>
                 </div>
               </div>
@@ -227,31 +227,31 @@ export default function ComponentLibraryPage() {
         <Section title="CardExtended">
           <div className="grid gap-4 sm:grid-cols-3">
             <CardExtended variant="default">
-              <CardHeaderExtended title="Default" subtitle="Standard Karte" />
+              <CardHeaderExtended title={t("cardDefault")} subtitle={t("cardDefaultSub")} />
               <ExtCardContent>
                 <p className="text-body text-muted-foreground">
-                  Keine Hover-Effekte.
+                  {t("cardDefaultBody")}
                 </p>
               </ExtCardContent>
             </CardExtended>
 
             <CardExtended variant="hover">
               <CardHeaderExtended
-                title="Hover"
-                subtitle="Hover f&uuml;r Lift-Effekt"
+                title={t("cardHover")}
+                subtitle={t("cardHoverSub")}
                 icon={<Users className="h-5 w-5" />}
               />
               <ExtCardContent>
                 <p className="text-body text-muted-foreground">
-                  -translate-y-0.5 + Shadow-Lift
+                  {t("cardHoverBody")}
                 </p>
               </ExtCardContent>
             </CardExtended>
 
             <CardExtended variant="interactive">
               <CardHeaderExtended
-                title="Interactive"
-                subtitle="Linker Akzent-Rand"
+                title={t("cardInteractive")}
+                subtitle={t("cardInteractiveSub")}
                 icon={<Activity className="h-5 w-5" />}
                 action={
                   <Button variant="ghost" size="sm">
@@ -261,12 +261,12 @@ export default function ComponentLibraryPage() {
               />
               <ExtCardContent>
                 <p className="text-body text-muted-foreground">
-                  4px Primary Border links + Hover
+                  {t("cardInteractiveBody")}
                 </p>
               </ExtCardContent>
               <CardFooter>
                 <Button variant="outline" size="sm">
-                  Details
+                  {t("cardDetails")}
                 </Button>
               </CardFooter>
             </CardExtended>
@@ -278,35 +278,35 @@ export default function ComponentLibraryPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatsCard
               color="blue"
-              title="Aktive Athleten"
+              title={t("statsActiveAthletes")}
               value="24"
               trend={{ value: 12, direction: "up" }}
               icon={<Users className="h-5 w-5" />}
             />
             <StatsCard
               color="green"
-              title="Compliance"
+              title={t("statsCompliance")}
               value="87%"
               trend={{ value: 5, direction: "up" }}
               icon={<TrendingUp className="h-5 w-5" />}
             />
             <StatsCard
               color="purple"
-              title="Programme"
+              title={t("statsPrograms")}
               value="8"
               trend={{ value: 0, direction: "neutral" }}
               icon={<BarChart3 className="h-5 w-5" />}
             />
             <StatsCard
               color="orange"
-              title="Sessions/Woche"
+              title={t("statsSessionsWeek")}
               value="4.2"
               trend={{ value: 3, direction: "down" }}
               icon={<Activity className="h-5 w-5" />}
             />
             <StatsCard
               color="red"
-              title="Verletzungen"
+              title={t("statsInjuries")}
               value="2"
               trend={{ value: 50, direction: "up" }}
               icon={<Heart className="h-5 w-5" />}
@@ -320,42 +320,42 @@ export default function ComponentLibraryPage() {
             <CardContent className="space-y-4 pt-6">
               <div>
                 <p className="text-label text-muted-foreground mb-3">
-                  Varianten (md)
+                  {t("variantsMd")}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  <BadgeExtended variant="success">Aktiv</BadgeExtended>
-                  <BadgeExtended variant="warning">Ausstehend</BadgeExtended>
-                  <BadgeExtended variant="error">Verletzt</BadgeExtended>
-                  <BadgeExtended variant="info">Neu</BadgeExtended>
-                  <BadgeExtended variant="gray">Inaktiv</BadgeExtended>
-                  <BadgeExtended variant="primary">Premium</BadgeExtended>
+                  <BadgeExtended variant="success">{t("badgeActive")}</BadgeExtended>
+                  <BadgeExtended variant="warning">{t("badgePending")}</BadgeExtended>
+                  <BadgeExtended variant="error">{t("badgeInjured")}</BadgeExtended>
+                  <BadgeExtended variant="info">{t("badgeNew")}</BadgeExtended>
+                  <BadgeExtended variant="gray">{t("badgeInactive")}</BadgeExtended>
+                  <BadgeExtended variant="primary">{t("badgePremium")}</BadgeExtended>
                 </div>
               </div>
               <div>
                 <p className="text-label text-muted-foreground mb-3">
-                  Size sm
+                  {t("sizeSm")}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <BadgeExtended variant="success" size="sm">
-                    Aktiv
+                    {t("badgeActive")}
                   </BadgeExtended>
                   <BadgeExtended variant="error" size="sm">
-                    Verletzt
+                    {t("badgeInjured")}
                   </BadgeExtended>
                   <BadgeExtended variant="info" size="sm">
-                    Neu
+                    {t("badgeNew")}
                   </BadgeExtended>
                 </div>
               </div>
               <div>
                 <p className="text-label text-muted-foreground mb-3">
-                  Vergleich mit shadcn Badge
+                  {t("comparisonShadcn")}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  <Badge>shadcn Default</Badge>
-                  <Badge variant="secondary">shadcn Secondary</Badge>
-                  <Badge variant="destructive">shadcn Destructive</Badge>
-                  <Badge variant="outline">shadcn Outline</Badge>
+                  <Badge>{t("shadcnDefault")}</Badge>
+                  <Badge variant="secondary">{t("shadcnSecondary")}</Badge>
+                  <Badge variant="destructive">{t("shadcnDestructive")}</Badge>
+                  <Badge variant="outline">{t("shadcnOutline")}</Badge>
                 </div>
               </div>
             </CardContent>
@@ -365,35 +365,33 @@ export default function ComponentLibraryPage() {
         {/* -- AlertExtended --------------------------------------- */}
         <Section title="AlertExtended">
           <div className="space-y-3">
-            <AlertExtended variant="success" title="Erfolgreich gespeichert">
-              Die &Auml;nderungen wurden erfolgreich &uuml;bernommen.
+            <AlertExtended variant="success" title={t("alertSuccessTitle")}>
+              {t("alertSuccessBody")}
             </AlertExtended>
 
             <AlertExtended
               variant="warning"
-              title="Achtung"
+              title={t("alertWarningTitle")}
               action={
                 <Button variant="outline" size="sm">
-                  &Uuml;berpr&uuml;fen
+                  {t("alertWarningAction")}
                 </Button>
               }
             >
-              Einige Felder sind noch nicht ausgef&uuml;llt.
+              {t("alertWarningBody")}
             </AlertExtended>
 
-            <AlertExtended variant="error" title="Fehler beim Speichern">
-              Die Verbindung zum Server konnte nicht hergestellt werden. Bitte
-              versuche es erneut.
+            <AlertExtended variant="error" title={t("alertErrorTitle")}>
+              {t("alertErrorBody")}
             </AlertExtended>
 
             {alertVisible && (
               <AlertExtended
                 variant="info"
-                title="Tipp"
+                title={t("alertInfoTitle")}
                 onDismiss={() => setAlertVisible(false)}
               >
-                Du kannst Athleten auch per E-Mail einladen. Klicke auf das
-                X um diese Nachricht zu schlie&szlig;en.
+                {t("alertInfoBody")}
               </AlertExtended>
             )}
             {!alertVisible && (
@@ -402,7 +400,7 @@ export default function ComponentLibraryPage() {
                 size="sm"
                 onClick={() => setAlertVisible(true)}
               >
-                Info-Alert erneut anzeigen
+                {t("alertInfoShowAgain")}
               </Button>
             )}
           </div>
@@ -413,43 +411,43 @@ export default function ComponentLibraryPage() {
           <Card>
             <CardContent className="max-w-md space-y-6 pt-6">
               <FormField
-                label="Name"
-                placeholder="Max Mustermann"
-                helperText="Vor- und Nachname des Athleten"
+                label={t("formName")}
+                placeholder={t("formNamePlaceholder")}
+                helperText={t("formNameHelper")}
                 required
               />
 
               <FormField
-                label="E-Mail"
+                label={t("formEmail")}
                 type="email"
-                placeholder="max@beispiel.de"
+                placeholder={t("formEmailPlaceholder")}
                 iconLeft={<Mail className="h-4 w-4" />}
               />
 
               <FormField
-                label="Suche"
-                placeholder="Athlet suchen..."
+                label={t("formSearch")}
+                placeholder={t("formSearchPlaceholder")}
                 iconLeft={<Search className="h-4 w-4" />}
               />
 
               <FormField
-                label="Gewicht (kg)"
+                label={t("formWeight")}
                 type="number"
-                placeholder="75"
-                error="Bitte gib ein g&uuml;ltiges Gewicht ein"
+                placeholder={t("formWeightPlaceholder")}
+                error={t("formWeightError")}
               />
 
               <FormField
-                label="Notizen"
+                label={t("formNotes")}
                 multiline
                 rows={4}
-                placeholder="Freitext f&uuml;r Notizen..."
-                helperText="Maximal 500 Zeichen"
+                placeholder={t("formNotesPlaceholder")}
+                helperText={t("formNotesHelper")}
               />
 
               <FormField
-                label="Deaktiviertes Feld"
-                placeholder="Nicht editierbar"
+                label={t("formDisabled")}
+                placeholder={t("formDisabledPlaceholder")}
                 disabled
               />
             </CardContent>
@@ -463,18 +461,18 @@ export default function ComponentLibraryPage() {
               {/* Select */}
               <div className="space-y-2">
                 <Label className="text-label text-foreground">
-                  Select - Sportart
+                  {t("selectSport")}
                 </Label>
                 <Select>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sportart w&auml;hlen..." />
+                    <SelectValue placeholder={t("selectSportPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="fussball">Fu&szlig;ball</SelectItem>
-                    <SelectItem value="basketball">Basketball</SelectItem>
-                    <SelectItem value="leichtathletik">Leichtathletik</SelectItem>
-                    <SelectItem value="schwimmen">Schwimmen</SelectItem>
-                    <SelectItem value="tennis">Tennis</SelectItem>
+                    <SelectItem value="fussball">{t("sportFootball")}</SelectItem>
+                    <SelectItem value="basketball">{t("sportBasketball")}</SelectItem>
+                    <SelectItem value="leichtathletik">{t("sportAthletics")}</SelectItem>
+                    <SelectItem value="schwimmen">{t("sportSwimming")}</SelectItem>
+                    <SelectItem value="tennis">{t("sportTennis")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -484,31 +482,31 @@ export default function ComponentLibraryPage() {
               {/* Checkbox */}
               <div className="space-y-3">
                 <Label className="text-label text-foreground">
-                  Checkboxen - Trainingsoptionen
+                  {t("checkboxTrainingOptions")}
                 </Label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Checkbox id="option-kraft" defaultChecked />
                     <Label htmlFor="option-kraft" className="text-body cursor-pointer">
-                      Krafttraining
+                      {t("optStrength")}
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox id="option-ausdauer" />
                     <Label htmlFor="option-ausdauer" className="text-body cursor-pointer">
-                      Ausdauertraining
+                      {t("optEndurance")}
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox id="option-mobility" />
                     <Label htmlFor="option-mobility" className="text-body cursor-pointer">
-                      Mobility & Stretching
+                      {t("optMobility")}
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox id="option-disabled" disabled />
                     <Label htmlFor="option-disabled" className="text-body cursor-pointer opacity-50">
-                      Deaktiviert
+                      {t("optDisabled")}
                     </Label>
                   </div>
                 </div>
@@ -519,25 +517,25 @@ export default function ComponentLibraryPage() {
               {/* RadioGroup */}
               <div className="space-y-3">
                 <Label className="text-label text-foreground">
-                  RadioGroup - Intensit&auml;t
+                  {t("radioIntensity")}
                 </Label>
                 <RadioGroup defaultValue="mittel">
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="niedrig" id="r-niedrig" />
                     <Label htmlFor="r-niedrig" className="text-body cursor-pointer">
-                      Niedrig
+                      {t("intensityLow")}
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="mittel" id="r-mittel" />
                     <Label htmlFor="r-mittel" className="text-body cursor-pointer">
-                      Mittel
+                      {t("intensityMedium")}
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <RadioGroupItem value="hoch" id="r-hoch" />
                     <Label htmlFor="r-hoch" className="text-body cursor-pointer">
-                      Hoch
+                      {t("intensityHigh")}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -548,24 +546,24 @@ export default function ComponentLibraryPage() {
               {/* Switch */}
               <div className="space-y-3">
                 <Label className="text-label text-foreground">
-                  Switch - Einstellungen
+                  {t("switchSettings")}
                 </Label>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="switch-notifications" className="text-body cursor-pointer">
-                      Benachrichtigungen
+                      {t("switchNotifications")}
                     </Label>
                     <Switch id="switch-notifications" defaultChecked />
                   </div>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="switch-darkmode" className="text-body cursor-pointer">
-                      Dark Mode
+                      {t("switchDarkMode")}
                     </Label>
                     <Switch id="switch-darkmode" />
                   </div>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="switch-disabled" className="text-body cursor-pointer opacity-50">
-                      Deaktiviert
+                      {t("switchDisabled")}
                     </Label>
                     <Switch id="switch-disabled" disabled />
                   </div>
@@ -577,7 +575,7 @@ export default function ComponentLibraryPage() {
               {/* Progress */}
               <div className="space-y-3">
                 <Label className="text-label text-foreground">
-                  Progress - Trainingsfortschritt
+                  {t("progressTraining")}
                 </Label>
                 <Progress value={progressValue} />
                 <div className="flex gap-2">
@@ -608,18 +606,18 @@ export default function ComponentLibraryPage() {
         <Section title="Modal & ConfirmDialog">
           <Card>
             <CardContent className="flex flex-wrap gap-3 pt-6">
-              <Button onClick={() => setModalOpen(true)}>Modal &ouml;ffnen</Button>
+              <Button onClick={() => setModalOpen(true)}>{t("modalOpen")}</Button>
               <Button
                 variant="outline"
                 onClick={() => setConfirmOpen(true)}
               >
-                Confirm Dialog (Primary)
+                {t("confirmPrimary")}
               </Button>
               <Button
                 variant="destructive"
                 onClick={() => setConfirmDangerOpen(true)}
               >
-                Confirm Dialog (Danger)
+                {t("confirmDanger")}
               </Button>
             </CardContent>
           </Card>
@@ -628,28 +626,28 @@ export default function ComponentLibraryPage() {
             open={modalOpen}
             onOpenChange={setModalOpen}
             size="md"
-            title="Neuen Athleten anlegen"
-            description="F&uuml;lle die Pflichtfelder aus, um einen Athleten hinzuzuf&uuml;gen."
+            title={t("modalTitle")}
+            description={t("modalDesc")}
             footer={
               <>
                 <Button
                   variant="outline"
                   onClick={() => setModalOpen(false)}
                 >
-                  Abbrechen
+                  {t("modalCancel")}
                 </Button>
                 <Button onClick={() => setModalOpen(false)}>
-                  Speichern
+                  {t("modalSave")}
                 </Button>
               </>
             }
           >
             <div className="space-y-4">
-              <FormField label="Name" placeholder="Vorname Nachname" required />
+              <FormField label={t("modalNameLabel")} placeholder={t("modalNamePlaceholder")} required />
               <FormField
-                label="E-Mail"
+                label={t("modalEmailLabel")}
                 type="email"
-                placeholder="athlet@beispiel.de"
+                placeholder={t("modalEmailPlaceholder")}
               />
             </div>
           </Modal>
@@ -658,10 +656,10 @@ export default function ComponentLibraryPage() {
             open={confirmOpen}
             onOpenChange={setConfirmOpen}
             variant="primary"
-            title="&Auml;nderungen speichern?"
-            message="M&ouml;chtest du die &Auml;nderungen am Trainingsprogramm speichern?"
-            confirmLabel="Speichern"
-            cancelLabel="Abbrechen"
+            title={t("confirmSaveTitle")}
+            message={t("confirmSaveMessage")}
+            confirmLabel={t("confirmSaveBtn")}
+            cancelLabel={t("confirmCancelBtn")}
             onConfirm={() => setConfirmOpen(false)}
             onCancel={() => setConfirmOpen(false)}
           />
@@ -670,10 +668,10 @@ export default function ComponentLibraryPage() {
             open={confirmDangerOpen}
             onOpenChange={setConfirmDangerOpen}
             variant="danger"
-            title="Athleten l&ouml;schen?"
-            message="Diese Aktion kann nicht r&uuml;ckg&auml;ngig gemacht werden. Alle Trainingsdaten dieses Athleten werden gel&ouml;scht."
-            confirmLabel="Endg&uuml;ltig l&ouml;schen"
-            cancelLabel="Abbrechen"
+            title={t("confirmDeleteTitle")}
+            message={t("confirmDeleteMessage")}
+            confirmLabel={t("confirmDeleteBtn")}
+            cancelLabel={t("confirmDeleteCancelBtn")}
             onConfirm={() => setConfirmDangerOpen(false)}
             onCancel={() => setConfirmDangerOpen(false)}
           />
@@ -685,30 +683,29 @@ export default function ComponentLibraryPage() {
             <CardContent className="pt-6">
               <Tabs defaultValue="overview">
                 <TabsList>
-                  <TabsTrigger value="overview">&Uuml;bersicht</TabsTrigger>
-                  <TabsTrigger value="training">Training</TabsTrigger>
-                  <TabsTrigger value="body">Body</TabsTrigger>
-                  <TabsTrigger value="nutrition">Ern&auml;hrung</TabsTrigger>
+                  <TabsTrigger value="overview">{t("tabOverview")}</TabsTrigger>
+                  <TabsTrigger value="training">{t("tabTraining")}</TabsTrigger>
+                  <TabsTrigger value="body">{t("tabBody")}</TabsTrigger>
+                  <TabsTrigger value="nutrition">{t("tabNutrition")}</TabsTrigger>
                 </TabsList>
                 <TabsContent value="overview" className="mt-4">
                   <p className="text-body text-muted-foreground">
-                    &Uuml;bersicht-Tab mit allgemeinen Informationen zum Athleten.
-                    ARIA-Rollen sind durch Radix Tabs automatisch gesetzt.
+                    {t("tabOverviewContent")}
                   </p>
                 </TabsContent>
                 <TabsContent value="training" className="mt-4">
                   <p className="text-body text-muted-foreground">
-                    Trainingsplan und aktuelle Programme.
+                    {t("tabTrainingContent")}
                   </p>
                 </TabsContent>
                 <TabsContent value="body" className="mt-4">
                   <p className="text-body text-muted-foreground">
-                    K&ouml;rperdaten, Gewicht, Anthropometrie.
+                    {t("tabBodyContent")}
                   </p>
                 </TabsContent>
                 <TabsContent value="nutrition" className="mt-4">
                   <p className="text-body text-muted-foreground">
-                    Ern&auml;hrungsdaten und Makro-Tracking.
+                    {t("tabNutritionContent")}
                   </p>
                 </TabsContent>
               </Tabs>
@@ -722,37 +719,37 @@ export default function ComponentLibraryPage() {
             <CardContent className="flex flex-wrap gap-4 pt-6">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline">Oben (default)</Button>
+                  <Button variant="outline">{t("tooltipTop")}</Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  <p>Tooltip oben</p>
+                  <p>{t("tooltipTopContent")}</p>
                 </TooltipContent>
               </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline">Rechts</Button>
+                  <Button variant="outline">{t("tooltipRight")}</Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p>Tooltip rechts</p>
+                  <p>{t("tooltipRightContent")}</p>
                 </TooltipContent>
               </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline">Unten</Button>
+                  <Button variant="outline">{t("tooltipBottom")}</Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <p>Tooltip unten</p>
+                  <p>{t("tooltipBottomContent")}</p>
                 </TooltipContent>
               </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline">Links</Button>
+                  <Button variant="outline">{t("tooltipLeft")}</Button>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  <p>Tooltip links</p>
+                  <p>{t("tooltipLeftContent")}</p>
                 </TooltipContent>
               </Tooltip>
             </CardContent>
@@ -797,13 +794,13 @@ export default function ComponentLibraryPage() {
             <Card>
               <EmptyState
                 icon={<Users className="h-12 w-12" />}
-                title="Keine Athleten"
-                description="Du hast noch keine Athleten hinzugef&uuml;gt. Lade deinen ersten Athleten ein."
+                title={t("emptyNoAthletes")}
+                description={t("emptyNoAthletesDesc")}
                 action={
                   <ButtonExtended
                     iconLeft={<UserPlus className="h-4 w-4" />}
                   >
-                    Athlet einladen
+                    {t("emptyInviteAthlete")}
                   </ButtonExtended>
                 }
               />
@@ -811,14 +808,14 @@ export default function ComponentLibraryPage() {
             <Card>
               <EmptyState
                 icon="🏋️"
-                title="Kein Trainingsplan"
-                description="Erstelle einen Trainingsplan, um mit dem Training zu beginnen."
+                title={t("emptyNoPlan")}
+                description={t("emptyNoPlanDesc")}
                 action={
                   <ButtonExtended
                     variant="secondary"
                     iconLeft={<Plus className="h-4 w-4" />}
                   >
-                    Plan erstellen
+                    {t("emptyCreatePlan")}
                   </ButtonExtended>
                 }
               />
@@ -828,17 +825,17 @@ export default function ComponentLibraryPage() {
             <Card>
               <EmptyState
                 icon={<Search className="h-12 w-12" />}
-                title="Kein Ergebnis"
-                description="Deine Suche hat keine Treffer ergeben. Versuche einen anderen Suchbegriff."
+                title={t("emptyNoResults")}
+                description={t("emptyNoResultsDesc")}
               />
             </Card>
             <Card>
               <EmptyState
                 icon="⚠️"
-                title="Fehler beim Laden"
-                description="Die Daten konnten nicht geladen werden. Bitte versuche es erneut."
+                title={t("emptyLoadError")}
+                description={t("emptyLoadErrorDesc")}
                 action={
-                  <Button variant="outline">Erneut versuchen</Button>
+                  <Button variant="outline">{t("emptyRetry")}</Button>
                 }
               />
             </Card>

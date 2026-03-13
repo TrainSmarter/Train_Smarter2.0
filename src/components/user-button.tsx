@@ -110,11 +110,11 @@ export function UserButton({ user }: UserButtonProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/profile")}>
                 <User className="mr-2 size-4" />
                 {t("profile")}
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/account/settings")}>
                 <Settings className="mr-2 size-4" />
                 {t("settings")}
               </DropdownMenuItem>

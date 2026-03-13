@@ -14,41 +14,189 @@ export type Database = {
   }
   public: {
     Tables: {
+      athlete_profiles: {
+        Row: {
+          created_at: string
+          height_cm: number | null
+          id: string
+          sport_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          height_cm?: number | null
+          id: string
+          sport_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          height_cm?: number | null
+          id?: string
+          sport_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athlete_profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           birth_date: string | null
           created_at: string
+          email: string | null
           first_name: string
           id: string
           last_name: string
           onboarding_completed: boolean
           onboarding_step: number
+          timezone: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           birth_date?: string | null
           created_at?: string
+          email?: string | null
           first_name?: string
           id: string
           last_name?: string
           onboarding_completed?: boolean
           onboarding_step?: number
+          timezone?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           birth_date?: string | null
           created_at?: string
+          email?: string | null
           first_name?: string
           id?: string
           last_name?: string
           onboarding_completed?: boolean
           onboarding_step?: number
+          timezone?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      trainer_athlete_connections: {
+        Row: {
+          athlete_email: string
+          athlete_id: string | null
+          can_see_analysis: boolean
+          can_see_body_data: boolean
+          can_see_calendar: boolean
+          can_see_nutrition: boolean
+          connected_at: string | null
+          created_at: string
+          disconnected_at: string | null
+          id: string
+          invitation_expires_at: string
+          invitation_message: string | null
+          invited_at: string
+          rejected_at: string | null
+          status: Database["public"]["Enums"]["connection_status"]
+          trainer_id: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_email: string
+          athlete_id?: string | null
+          can_see_analysis?: boolean
+          can_see_body_data?: boolean
+          can_see_calendar?: boolean
+          can_see_nutrition?: boolean
+          connected_at?: string | null
+          created_at?: string
+          disconnected_at?: string | null
+          id?: string
+          invitation_expires_at?: string
+          invitation_message?: string | null
+          invited_at?: string
+          rejected_at?: string | null
+          status?: Database["public"]["Enums"]["connection_status"]
+          trainer_id: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_email?: string
+          athlete_id?: string | null
+          can_see_analysis?: boolean
+          can_see_body_data?: boolean
+          can_see_calendar?: boolean
+          can_see_nutrition?: boolean
+          connected_at?: string | null
+          created_at?: string
+          disconnected_at?: string | null
+          id?: string
+          invitation_expires_at?: string
+          invitation_message?: string | null
+          invited_at?: string
+          rejected_at?: string | null
+          status?: Database["public"]["Enums"]["connection_status"]
+          trainer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_athlete_connections_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trainer_athlete_connections_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainer_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          max_athletes: number
+          organization_name: string | null
+          specialization: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          max_athletes?: number
+          organization_name?: string | null
+          specialization?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_athletes?: number
+          organization_name?: string | null
+          specialization?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_consents: {
         Row: {
@@ -85,6 +233,7 @@ export type Database = {
       has_role: { Args: { required_role: string }; Returns: boolean }
     }
     Enums: {
+      connection_status: "pending" | "active" | "rejected" | "disconnected"
       consent_type: "terms_privacy" | "body_wellness_data" | "nutrition_data"
     }
     CompositeTypes: {
@@ -213,6 +362,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      connection_status: ["pending", "active", "rejected", "disconnected"],
       consent_type: ["terms_privacy", "body_wellness_data", "nutrition_data"],
     },
   },

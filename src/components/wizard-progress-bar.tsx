@@ -12,8 +12,8 @@ interface WizardProgressBarProps {
   steps: WizardStep[];
   currentStep: number;
   className?: string;
-  /** Accessible label for the navigation landmark */
-  ariaLabel?: string;
+  /** Accessible label for the navigation landmark (required — must be translated by caller) */
+  ariaLabel: string;
 }
 
 export function WizardProgressBar({
@@ -24,7 +24,7 @@ export function WizardProgressBar({
 }: WizardProgressBarProps) {
   return (
     <nav
-      aria-label={ariaLabel || "Wizard progress"}
+      aria-label={ariaLabel}
       className={cn("w-full", className)}
     >
       <ol className="flex items-center">

@@ -72,10 +72,10 @@ export default async function DesignSystemPage() {
           <Card>
             <CardContent className="space-y-4 pt-6">
               <p className="text-h1">H1 &mdash; 32px / Bold / -0.02em</p>
-              <p className="text-h2">H2 &mdash; 24px / Bold / -0.01em</p>
+              <p className="text-h2">H2 &mdash; 24px / SemiBold / -0.015em</p>
               <p className="text-h3">H3 &mdash; 20px / SemiBold / -0.01em</p>
-              <p className="text-h4">H4 &mdash; 18px / SemiBold</p>
-              <p className="text-h5">H5 &mdash; 16px / SemiBold</p>
+              <p className="text-h4">H4 &mdash; 16px / SemiBold</p>
+              <p className="text-h5">H5 &mdash; 14px / SemiBold</p>
               <hr className="border-border" />
               <p className="text-body-lg">
                 Body Large &mdash; 16px / Regular
@@ -143,7 +143,7 @@ export default async function DesignSystemPage() {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-h5">Success</CardTitle>
+                <CardTitle className="text-h5">{t("colorSuccess")}</CardTitle>
               </CardHeader>
               <CardContent className="flex gap-2">
                 <div className="h-8 w-8 rounded-md bg-success-light" />
@@ -153,7 +153,7 @@ export default async function DesignSystemPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-h5">Warning</CardTitle>
+                <CardTitle className="text-h5">{t("colorWarning")}</CardTitle>
               </CardHeader>
               <CardContent className="flex gap-2">
                 <div className="h-8 w-8 rounded-md bg-warning-light" />
@@ -163,7 +163,7 @@ export default async function DesignSystemPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-h5">Error</CardTitle>
+                <CardTitle className="text-h5">{t("colorError")}</CardTitle>
               </CardHeader>
               <CardContent className="flex gap-2">
                 <div className="h-8 w-8 rounded-md bg-error-light" />
@@ -173,7 +173,7 @@ export default async function DesignSystemPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-h5">Info</CardTitle>
+                <CardTitle className="text-h5">{t("colorInfo")}</CardTitle>
               </CardHeader>
               <CardContent className="flex gap-2">
                 <div className="h-8 w-8 rounded-md bg-info-light" />
@@ -207,14 +207,14 @@ export default async function DesignSystemPage() {
         <Section title={t("sButtons")}>
           <Card>
             <CardContent className="flex flex-wrap items-center gap-3 pt-6">
-              <Button>Primary (Teal)</Button>
-              <Button variant="secondary">Secondary</Button>
-              <Button variant="destructive">Destructive</Button>
-              <Button variant="outline">Outline</Button>
-              <Button variant="ghost">Ghost</Button>
-              <Button variant="link">Link</Button>
+              <Button>{t("btnPrimary")}</Button>
+              <Button variant="secondary">{t("btnSecondary")}</Button>
+              <Button variant="destructive">{t("btnDestructive")}</Button>
+              <Button variant="outline">{t("btnOutline")}</Button>
+              <Button variant="ghost">{t("btnGhost")}</Button>
+              <Button variant="link">{t("btnLink")}</Button>
               <Button className="bg-violet-600 text-white hover:bg-violet-700">
-                Violet Custom
+                {t("btnVioletCustom")}
               </Button>
             </CardContent>
           </Card>
@@ -223,16 +223,16 @@ export default async function DesignSystemPage() {
         {/* -- Badges ---------------------------------------------- */}
         <Section title={t("sBadges")}>
           <div className="flex flex-wrap gap-2">
-            <Badge>Default (Primary)</Badge>
-            <Badge variant="secondary">Secondary</Badge>
-            <Badge variant="destructive">Destructive</Badge>
-            <Badge variant="outline">Outline</Badge>
-            <Badge variant="success">Erfolg</Badge>
-            <Badge variant="warning">Warnung</Badge>
-            <Badge variant="error">Fehler</Badge>
-            <Badge variant="info">Info</Badge>
-            <Badge variant="gray">Inaktiv</Badge>
-            <Badge variant="primary">Premium</Badge>
+            <Badge>{t("badgeDefault")}</Badge>
+            <Badge variant="secondary">{t("badgeSecondary")}</Badge>
+            <Badge variant="destructive">{t("badgeDestructive")}</Badge>
+            <Badge variant="outline">{t("badgeOutline")}</Badge>
+            <Badge variant="success">{t("badgeSuccess")}</Badge>
+            <Badge variant="warning">{t("badgeWarning")}</Badge>
+            <Badge variant="error">{t("badgeError")}</Badge>
+            <Badge variant="info">{t("badgeInfo")}</Badge>
+            <Badge variant="gray">{t("badgeInactive")}</Badge>
+            <Badge variant="primary">{t("badgePremium")}</Badge>
           </div>
         </Section>
 
@@ -242,23 +242,23 @@ export default async function DesignSystemPage() {
             <CardContent className="max-w-sm space-y-4 pt-6">
               <div className="space-y-2">
                 <label htmlFor="demo-input" className="text-label text-foreground">
-                  Input Label
+                  {t("inputLabel")}
                 </label>
                 <Input
                   id="demo-input"
-                  placeholder="Platzhaltertext..."
+                  placeholder={t("inputPlaceholder")}
                 />
               </div>
               <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1">
-                <p className="text-label text-foreground">Focus Ring</p>
+                <p className="text-label text-foreground">{t("focusRingTitle")}</p>
                 <p className="text-body-sm text-muted-foreground">
-                  <span className="inline-block h-3 w-3 rounded-sm bg-primary mr-1 align-middle" /> Teal-600 (--ring Token) auf allen interaktiven Elementen.
+                  <span className="inline-block h-3 w-3 rounded-sm bg-primary mr-1 align-middle" /> {t("focusRingTeal")}
                 </p>
                 <p className="text-body-sm text-muted-foreground">
-                  <span className="inline-block h-3 w-3 rounded-sm bg-error mr-1 align-middle" /> Error-State nutzt ring-error (Rot).
+                  <span className="inline-block h-3 w-3 rounded-sm bg-error mr-1 align-middle" /> {t("focusRingError")}
                 </p>
                 <p className="text-body-sm text-muted-foreground">
-                  <span className="inline-block h-3 w-3 rounded-sm bg-violet-500 mr-1 align-middle" /> Secondary nutzt Violet als Akzent-Farbe.
+                  <span className="inline-block h-3 w-3 rounded-sm bg-violet-500 mr-1 align-middle" /> {t("focusRingViolet")}
                 </p>
               </div>
             </CardContent>
@@ -365,37 +365,37 @@ export default async function DesignSystemPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Card>
               <CardHeader>
-                <CardTitle>Athleten</CardTitle>
-                <CardDescription>Aktive Athleten verwalten</CardDescription>
+                <CardTitle>{t("cardAthletes")}</CardTitle>
+                <CardDescription>{t("cardAthletesDesc")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-h1 text-primary">24</p>
                 <p className="text-body-sm text-muted-foreground">
-                  +3 diese Woche
+                  {t("cardAthletesChange")}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Programme</CardTitle>
-                <CardDescription>Laufende Trainingsprogramme</CardDescription>
+                <CardTitle>{t("cardPrograms")}</CardTitle>
+                <CardDescription>{t("cardProgramsDesc")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-h1 text-violet-600 dark:text-violet-400">8</p>
                 <p className="text-body-sm text-muted-foreground">
-                  2 in Planung
+                  {t("cardProgramsChange")}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Compliance</CardTitle>
-                <CardDescription>Durchschnittliche Einhaltung</CardDescription>
+                <CardTitle>{t("cardCompliance")}</CardTitle>
+                <CardDescription>{t("cardComplianceDesc")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-h1 text-success">87%</p>
                 <p className="text-body-sm text-muted-foreground">
-                  +5% vs. Vormonat
+                  {t("cardComplianceChange")}
                 </p>
               </CardContent>
             </Card>
