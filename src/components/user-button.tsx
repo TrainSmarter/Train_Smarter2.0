@@ -178,7 +178,14 @@ export function UserButton({ user }: UserButtonProps) {
               </div>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={async () => {
+                const { createClient } = await import("@/lib/supabase/client");
+                const supabase = createClient();
+                await supabase.auth.signOut();
+                router.replace("/login");
+              }}
+            >
               <LogOut className="mr-2 size-4" />
               {t("signOut")}
             </DropdownMenuItem>

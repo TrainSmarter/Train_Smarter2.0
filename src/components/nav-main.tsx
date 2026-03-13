@@ -83,7 +83,7 @@ function NavSectionGroup({
 }: {
   section: NavSection;
   pathname: string;
-  role: UserRole;
+  role: UserRole | undefined;
   isPlatformAdmin: boolean;
   t: (key: string) => string;
 }) {

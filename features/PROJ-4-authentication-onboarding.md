@@ -442,6 +442,65 @@ onboarding.wizard.*   — Wizard-Shell (Progress-Bar, Skip, Back, Next, Fertig)
 | 006 | `create_user_consents_table` | Normalized Schema per PROJ-11; UNIQUE Constraint; RLS: user nur eigene Zeilen |
 | 007 | `deploy_set_user_role_function` | Supabase Edge Function mit Authorization-Check + Idempotenz-Guard + Consent-Check |
 
+## Frontend Implementation Notes (2026-03-13)
+
+### Files Created
+**Supabase Client Setup:**
+- `src/lib/supabase/client.ts` — Browser-side Supabase client (createBrowserClient)
+- `src/lib/supabase/server.ts` — Server-side Supabase client (createServerClient + cookies)
+- `src/lib/supabase/middleware.ts` — updateSession() helper for middleware (getUser() for security)
+
+**Middleware:**
+- `src/middleware.ts` — Composed middleware: Supabase updateSession() + next-intl; auth guards per route table
+
+**Validation:**
+- `src/lib/validations/auth.ts` — Zod schemas for login, register, forgot-password, reset-password, profile
+
+**Custom Components:**
+- `src/components/password-field.tsx` — Password input with toggle visibility (Eye/EyeOff icon)
+- `src/components/wizard-progress-bar.tsx` — Step indicator with numbers, labels, completion states
+- `src/components/role-select-card.tsx` — Large clickable cards for TRAINER/ATHLETE selection (radio-group semantics)
+- `src/components/consent-checkbox.tsx` — Checkbox with inline links, required flag
+- `src/components/avatar-upload.tsx` — Circular avatar with file input, instant preview, remove, upload progress
+- `src/components/resend-email-button.tsx` — "Resend" button with 60s client-side countdown
+
+**Auth Pages (route group `(auth)`):**
+- `src/app/[locale]/(auth)/layout.tsx` — Centered card layout, brand logo, no sidebar
+- `src/app/[locale]/(auth)/login/page.tsx` — Login form with Supabase signInWithPassword
+- `src/app/[locale]/(auth)/register/page.tsx` — Registration with name, email, password validation
+- `src/app/[locale]/(auth)/forgot-password/page.tsx` — Email input, success screen (no account enumeration)
+- `src/app/[locale]/(auth)/reset-password/page.tsx` — PKCE code exchange + new password form
+- `src/app/[locale]/(auth)/verify-email/page.tsx` — Info screen with onAuthStateChange listener + resend
+
+**Auth Callback:**
+- `src/app/[locale]/auth/callback/route.ts` — PKCE code exchange + error handling for all auth callbacks
+
+**Onboarding Wizard:**
+- `src/app/[locale]/(protected)/(onboarding)/layout.tsx` — Full-width layout without AppSidebar
+- `src/app/[locale]/(protected)/(onboarding)/onboarding/page.tsx` — 4-step wizard (Consents, Profile, Role, Invite)
+
+**API Route:**
+- `src/app/api/auth/set-role/route.ts` — Session check + admin client sets app_metadata.roles via service-role key
+
+**i18n:**
+- `src/messages/de.json` — Added `auth.*` and `onboarding.*` namespaces (German)
+- `src/messages/en.json` — Added `auth.*` and `onboarding.*` namespaces (English)
+
+### Existing Files Modified
+- `src/middleware.ts` — Replaced simple next-intl middleware with composed Supabase + next-intl middleware
+- `src/components/user-button.tsx` — Added real Supabase signOut to logout menu item
+- `src/components/nav-main.tsx` — Fixed pre-existing type issue (role: UserRole | undefined)
+
+### Deviations from Spec
+- **No Edge Function for set-role:** Used Next.js API Route with admin client (`createClient(url, serviceRoleKey)`) instead of a separate Supabase Edge Function. Same security model — service-role key never leaves server. Can be migrated to Edge Function later if needed.
+- **Onboarding step tracking:** Uses both `profiles.onboarding_step` (DB, for resumption) and `user_metadata.onboarding_completed` (for middleware check without DB query). The middleware reads `user_metadata` to avoid a DB call per request.
+- **BUG-7 (Loading state):** Addressed via middleware redirect pattern — unauthenticated users never reach protected layout. Suspense boundary not needed since middleware handles the check at edge level.
+
+### Backend Still Needed
+- Database migrations (profiles table, user_consents table, triggers, RLS policies)
+- Supabase Storage bucket configuration (avatars)
+- Supabase Dashboard configuration (Auth settings, email templates)
+
 ## QA Test Results
 _To be added by /qa_
 
