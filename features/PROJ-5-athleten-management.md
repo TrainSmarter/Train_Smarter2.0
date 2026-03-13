@@ -1,8 +1,8 @@
 # PROJ-5: Athleten-Management
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-12
+**Last Updated:** 2026-03-13
 
 ## Dependencies
 - Requires: PROJ-1 (Design System Foundation)
@@ -124,7 +124,71 @@ trainer_athlete_connections
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Neue Routen
+- `src/app/[locale]/(protected)/organisation/athletes/page.tsx` — Athleten-Übersicht (Trainer)
+- `src/app/[locale]/(protected)/organisation/athletes/[id]/page.tsx` — Athlet-Profil Detail
+- `src/app/[locale]/(protected)/profile/page.tsx` — Eigenes Profil (Athlet + Trainer)
+
+### Komponenten-Baum
+
+```
+/organisation/athletes
+├── PageHeader (Titel + InviteButton)
+├── SearchBar (clientseitig)
+├── SortDropdown
+├── PendingSection
+│   └── AthleteCard (pending) — Badge + ResendButton
+├── ActiveSection (Grid 3/2/1)
+│   └── AthleteCard (active) — Link → /[id]
+├── EmptyState
+└── InviteModal
+    ├── E-Mail-Feld (Zod-validiert)
+    └── Persönliche Nachricht (Textarea, max. 500 Z.)
+
+/organisation/athletes/[id]
+├── Breadcrumb
+├── ProfileHeader (Avatar, Name, E-Mail, Datum, Status)
+├── BasisdatenCard (Geburtsdatum, Alter)
+└── DisconnectButton → AlertDialog
+
+/profile
+├── ProfileHeader + AvatarUpload (PROJ-4-Komponente)
+├── MeinTrainerCard (nur Athleten)
+│   └── TrennenButton → AlertDialog
+└── MeineAthleten-Kurzliste (nur Trainer, Link → /organisation/athletes)
+
+InvitationBanner (eingebettet im Dashboard)
+├── AcceptButton
+└── RejectButton → AlertDialog
+    + Abgelaufen-Variante (read-only, kein Action)
+```
+
+### Datenbankmodell
+Neue Tabelle `trainer_athlete_connections`:
+- `trainer_id / athlete_id` — wer verbunden ist
+- `status`: `pending → active | rejected | disconnected`
+- `invited_at` — für 7-Tage-TTL-Prüfung
+- `connected_at` — Datum der Annahme
+- Sichtbarkeits-Flags: `can_see_body_data` (true), `can_see_nutrition` (false), `can_see_calendar` (true), `can_see_analysis` (false)
+- UNIQUE(trainer_id, athlete_id) — verhindert Doppel-Einladungen
+
+### Datenfluss
+- **Initiales Laden:** Server Components (SSR) — kein Ladebalken
+- **Mutationen:** Server Actions (Invite, Accept, Reject, Disconnect, Resend)
+- **Live-Updates:** Supabase Realtime — Trainer sieht Annahme ohne Reload
+- **Suche/Sort:** Clientseitig auf geladenen Daten
+
+### API Route
+`POST /api/athletes/invite` — benötigt Service-Role-Key für Supabase Auth Admin Invite; wird nach Bestätigung des Consents und Rolle aufgerufen.
+
+### RLS-Strategie
+- Trainer liest/schreibt nur eigene Verbindungen (`trainer_id = auth.uid()`)
+- Athlet liest/aktualisiert nur eigene Verbindungen (`athlete_id = auth.uid()`)
+- `can_see_*`-Flags: Athlet ändert body/nutrition/calendar; Trainer ändert analysis
+
+### Pakete
+Keine neuen — `@supabase/ssr`, `zod`, `sonner` bereits installiert.
 
 ## QA Test Results
 _To be added by /qa_
