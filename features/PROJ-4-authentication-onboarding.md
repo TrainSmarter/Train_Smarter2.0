@@ -2,7 +2,7 @@
 
 ## Status: In Progress
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-13
+**Last Updated:** 2026-03-13 (Expert Review — Security, Backend, Frontend, QA)
 
 ## Role Architecture Decision (Phase 1 — implemented in PROJ-3)
 > **IMPORTANT:** This spec governs how role data is stored and managed. The following decisions were made before implementation to ensure future-proofness:
@@ -12,9 +12,11 @@
 - There is **no** `"ADMIN"` UserRole. Platform admins are TRAINER (or ATHLETE) accounts with an additional flag.
 
 ### Role Storage: `app_metadata` (server-controlled)
-- `app_metadata.role: UserRole` — set by the server/Supabase function, **not** editable by the client
-- `app_metadata.is_platform_admin: boolean` — grants access to the `/admin` area
-- `user_metadata` contains only display data: `first_name`, `last_name`, `avatar_url`
+- `app_metadata.roles: UserRole[]` — gespeichert als **Array** (z.B. `["TRAINER"]`) für spätere Dual-Role-Unterstützung (PROJ-11+), gesetzt via Supabase Edge Function, **nicht** editierbar vom Client
+- `app_metadata.is_platform_admin: boolean` — gewährt Zugang zum `/admin`-Bereich; wird **ausschließlich manuell** gesetzt via Supabase SQL: `UPDATE auth.users SET raw_app_meta_data = raw_app_meta_data || '{"is_platform_admin": true}' WHERE id = '...'`
+- `user_metadata` enthält nur Display-Daten: `first_name`, `last_name`, `avatar_url`
+
+> **Warum Array statt Scalar?** Ein `role: "TRAINER"` String erfordert bei der Dual-Role-Migration eine Type-Änderung + Update aller RLS-Policies. Ein `roles: ["TRAINER"]` Array macht die spätere Migration zu einem reinen Array-Append ohne Breaking Changes.
 
 ### Why `app_metadata` instead of `user_metadata`?
 - `user_metadata` in Supabase Auth is writable by the authenticated user via `supabase.auth.updateUser()`
@@ -22,13 +24,16 @@
 - Storing roles in `user_metadata` would allow any user to escalate their own privileges — a critical security vulnerability
 
 ### Onboarding Role Selection
-- Step 2 of Onboarding: User selects "Ich bin Trainer" or "Ich bin Athlet"
-- This triggers a server-side Supabase Edge Function that sets `app_metadata.role` via service-role key
-- `is_platform_admin` defaults to `false` and is only set manually by the platform team
+- Step 3 of Onboarding: User wählt "Ich bin Trainer" oder "Ich bin Athlet"
+- Dies triggert einen Next.js Route Handler → Supabase Edge Function, die `app_metadata.roles` via service-role key setzt
+- Der Route Handler **verifiziert**, dass (a) der Caller der eigene User ist, (b) noch kein Role-Eintrag existiert (Idempotenz), (c) ein gültiger `user_consents`-Eintrag in der DB vorhanden ist (Consent als Voraussetzung)
+- `is_platform_admin` defaultet auf `false` und wird **nur manuell** per SQL gesetzt (kein UI-Weg)
 
 ## Dependencies
 - Requires: PROJ-1 (Design System Foundation)
 - Requires: PROJ-2 (UI Component Library) — Button, Input, Alert, Card
+- References: PROJ-11 (DSGVO) — `user_consents`-Tabellenschema; PROJ-4 implementiert den Wizard-Step, PROJ-11 ist Quelle der Wahrheit für das Datenmodell
+- References: PROJ-13 (E-Mail) — Verifikations- und Passwort-Reset-E-Mails werden zunächst mit Supabase-Standard-Templates geliefert; PROJ-13 ersetzt diese mit gebrandeten Templates
 
 ## Übersicht
 Komplettes Authentifizierungssystem mit Supabase Auth: Registrierung, Login, Passwort-Reset und E-Mail-Verifizierung. Nach der ersten Anmeldung durchlaufen neue Benutzer einen einfachen Onboarding-Wizard (Profil-Setup + Rollenauswahl). In Figma werden alle Auth-Screens und der Onboarding-Flow dokumentiert.
@@ -43,75 +48,143 @@ Komplettes Authentifizierungssystem mit Supabase Auth: Registrierung, Login, Pas
 ## Acceptance Criteria
 
 ### Figma Screens
-- [ ] Figma Screen: Login-Seite (Desktop + Mobile)
+- [ ] Figma Screen: Login-Seite (Desktop + Mobile, inkl. Fehlerzustand)
 - [ ] Figma Screen: Registrierungs-Seite (Desktop + Mobile)
 - [ ] Figma Screen: Passwort vergessen (Desktop + Mobile)
-- [ ] Figma Screen: E-Mail-Bestätigung ausstehend (Info-Screen)
-- [ ] Figma Screen: Onboarding Step 1 — Profilbild + Name + Geburtsdatum
-- [ ] Figma Screen: Onboarding Step 2 — Rolle wählen (Trainer / Athlet)
-- [ ] Figma Screen: Onboarding Step 3 — Als Trainer: Ersten Athleten einladen / Als Athlet: Trainer-Code eingeben
+- [ ] Figma Screen: Passwort zurücksetzen — Schritt 2 (neues Passwort, Desktop + Mobile)
+- [ ] Figma Screen: E-Mail-Bestätigung ausstehend (Info-Screen inkl. Ablauf-Fehlerzustand)
+- [ ] Figma Screen: Onboarding Step 1 — DSGVO-Einwilligungen
+- [ ] Figma Screen: Onboarding Step 2 — Profilbild + Name + Geburtsdatum
+- [ ] Figma Screen: Onboarding Step 3 — Rolle wählen (Trainer / Athlet)
+- [ ] Figma Screen: Onboarding Step 4 Trainer — Ersten Athleten einladen
+- [ ] Figma Screen: Onboarding Step 4 Athlet — Trainer-Einladungscode eingeben
+- [ ] Figma Screen: Onboarding — Skeleton/Loading-Zustand während initialer Profil-Ladung
 
 ### Login
-- [ ] Felder: E-Mail, Passwort (toggle Sichtbarkeit)
+- [ ] Felder: E-Mail, Passwort (toggle Sichtbarkeit via `PasswordField`-Komponente)
 - [ ] Supabase `signInWithPassword` Aufruf
 - [ ] Fehler "Invalid credentials" zeigt Alert (keine Unterscheidung ob E-Mail oder Passwort falsch → Sicherheit)
-- [ ] "Eingeloggt bleiben" Checkbox (Session-Dauer: 30 Tage)
+- [ ] Supabase-Fehlercode `email_not_confirmed` → Redirect zu `/verify-email` (E-Mail vorausgefüllt)
+- [ ] "Eingeloggt bleiben" Checkbox (Session-Dauer: 30 Tage — erfordert Supabase Dashboard-Konfiguration)
 - [ ] Link zu "Passwort vergessen"
 - [ ] Link zu "Registrieren"
 - [ ] Nach Login: Redirect zu `/dashboard` (oder `returnUrl` wenn vorhanden)
+- [ ] `returnUrl` Validierung: nur gleich-ursprüngliche relative Pfade erlaubt (Starts with `/`, kein `://`) — Open Redirect Prevention
 - [ ] Bereits eingeloggter User der `/login` aufruft → Redirect zu `/dashboard`
 
 ### Registrierung
-- [ ] Felder: Vorname, Nachname, E-Mail, Passwort, Passwort bestätigen
+- [ ] Felder: Vorname, Nachname, E-Mail, Passwort, Passwort bestätigen (mit `PasswordField`-Komponente)
 - [ ] Passwort-Anforderungen: Min. 8 Zeichen, 1 Großbuchstabe, 1 Zahl
 - [ ] Client-seitige Validierung mit Zod vor dem API-Aufruf
-- [ ] Supabase `signUp` Aufruf
+- [ ] Supabase `signUp` Aufruf mit `emailRedirectTo: NEXT_PUBLIC_SITE_URL + '/auth/callback'`
 - [ ] Nach Registrierung: Weiterleitung zu "E-Mail bestätigen" Screen
-- [ ] Einladungslink: URL-Parameter `inviteToken` wird in Session gespeichert, nach Verifizierung automatisch verknüpft
+- [ ] Einladungslink: `inviteToken` aus URL-Parameter wird in einem **httpOnly Cookie** (via Route Handler) gespeichert — nicht in `sessionStorage`/`localStorage`, damit er die E-Mail-Verifizierungs-Weiterleitung überlebt (auch auf anderem Gerät)
+- [ ] Eingeladener Athlet: Rolle in Step 3 ist auf ATHLETE vorgewählt (TRAINER-Option ausgegraut)
 
 ### Passwort Reset
-- [ ] Schritt 1: E-Mail-Adresse eingeben → Supabase `resetPasswordForEmail`
-- [ ] Bestätigungs-Screen: "Wenn diese E-Mail existiert, erhältst du einen Link"
-- [ ] Schritt 2 (via Link in E-Mail): Neues Passwort + Bestätigen → Supabase `updateUser`
+- [ ] Schritt 1: E-Mail-Adresse eingeben → Supabase `resetPasswordForEmail` mit `redirectTo: NEXT_PUBLIC_SITE_URL + '/auth/callback?type=recovery'`
+- [ ] Bestätigungs-Screen: "Wenn diese E-Mail existiert, erhältst du einen Link" (Account-Enumeration verhindert)
+- [ ] Schritt 2 (`/reset-password`): **Client Component** — liest den PKCE `?code=` URL-Parameter, tauscht ihn via `exchangeCodeForSession()` gegen eine Session, zeigt dann das Formular
+- [ ] Schritt 2: Neues Passwort + Bestätigen → Supabase `updateUser`
+- [ ] Nach Reset: Alle anderen aktiven Sessions werden via `signOut({ scope: 'others' })` invalidiert
 - [ ] Nach Reset: Redirect zu `/login` mit Erfolgs-Alert
+- [ ] Fehlercode `otp_expired` (abgelaufener Link) → klare Fehlermeldung mit "Neuen Link anfordern" CTA
 
 ### E-Mail-Verifizierung
-- [ ] Unbestätigter User: Info-Screen mit Anweisung + "Erneut senden" Button (Rate-limited: 60s Cooldown)
-- [ ] Nach Klick auf Bestätigungs-Link: Automatischer Redirect zur App
-- [ ] Alle geschützten Routen prüfen Verifizierungsstatus
+- [ ] Unbestätigter User: Info-Screen mit Anweisung + "Erneut senden" Button (Rate-limited: 60s Cooldown, serverseitig via Supabase + clientseitiger Countdown-Timer)
+- [ ] `/verify-email` Page: `onAuthStateChange`-Listener erkennt `SIGNED_IN`-Event mit verifizierten E-Mail → automatischer Redirect zu `/onboarding` (kein Page-Reload nötig)
+- [ ] `/auth/callback` Route Handler: verarbeitet den PKCE-Code bei Klick auf Bestätigungs-Link, handled `?error=...` Params (z.B. abgelaufener Token) mit "Neuen Link anfordern" CTA
+- [ ] Alle geschützten Routen prüfen Verifizierungsstatus via `getUser()` in Middleware (nicht `getSession()` — Sicherheitsregel)
 
 ### Onboarding Wizard
 - [ ] Wird nur angezeigt wenn `profile.onboarding_completed = false`
+- [ ] Wizard rendert in **eigenem Layout ohne AppSidebar** (nested Route Group `(protected)/(onboarding)/`)
+- [ ] Bei Wizard-Einstieg: `profiles.onboarding_step` aus DB lesen → Wizard beginnt beim zuletzt gespeicherten Schritt (Resumption)
 - [ ] **Step 1 — DSGVO-Einwilligungen** (Pflicht, nicht überspringbar):
   - Pflicht-Checkbox: „Ich akzeptiere die AGB und Datenschutzerklärung" (Links öffnen in neuem Tab, kein Pre-Check)
-  - Opt-in: „Ich erlaube die Verarbeitung meiner Körperdaten (Gewicht, Maße, Schlaf, Wellness-Score)" — standardmäßig **nicht** angehakt
+  - Opt-in: „Ich erlaube die Verarbeitung meiner Körperdaten" — standardmäßig **nicht** angehakt
   - Opt-in: „Ich erlaube die Verarbeitung meines Ernährungstagebuchs" — standardmäßig **nicht** angehakt
   - Ohne Pflicht-Checkbox: „Weiter"-Button deaktiviert
-  - Einwilligungen werden in `user_consents`-Tabelle gespeichert (Datenmodell → PROJ-11)
-- [ ] Step 2: Name (vorausgefüllt aus Registrierung), Geburtsdatum, Profilbild (optional, Supabase Storage Upload)
-- [ ] Step 3: Rollenauswahl — "Ich bin Trainer" oder "Ich bin Athlet"
+  - Einwilligungen werden per **Upsert** in `user_consents`-Tabelle gespeichert (Schema → PROJ-11, normalized: eine Zeile pro Consent-Typ mit `policy_version`)
+  - Nach Step 1: `profiles.onboarding_step = 2` gesetzt
+- [ ] Step 2: Name (vorausgefüllt aus Registrierung), Geburtsdatum, Profilbild (optional, Upload mit Preview + Fortschrittsanzeige)
+  - Avatar: kreisförmige Vorschau sofort nach Dateiauswahl (via `URL.createObjectURL`)
+  - Upload: Fortschrittsanzeige während Supabase Storage Upload
+  - Nach Step 2: `profiles.onboarding_step = 3` gesetzt
+- [ ] Step 3: Rollenauswahl — "Ich bin Trainer" oder "Ich bin Athlet" (als `RoleSelectCard`-Komponente)
+  - Eingeladene Athleten: ATHLETE vorgewählt, TRAINER-Option nicht wählbar
+  - Nach Step 3: Edge Function setzt `app_metadata.roles`, danach `profiles.onboarding_step = 4`
+  - Bei Edge Function Fehler: Fehlermeldung mit Retry-Button — User bleibt auf Step 3
 - [ ] Step 4 (Trainer): Optionale Einladung eines ersten Athleten per E-Mail
-- [ ] Step 4 (Athlet): Optionaler Trainer-Einladungscode eingeben
-- [ ] „Überspringen" ab Step 2 möglich — setzt `onboarding_completed = true`
-- [ ] Nach Abschluss: Redirect zu `/dashboard`
+- [ ] Step 4 (Athlet): Optionaler Trainer-Einladungscode eingeben; falls `inviteToken`-Cookie vorhanden → automatisch vorausgefüllt
+- [ ] „Überspringen" ab Step 2 möglich — **nur bis Step 3**: Step 3 (Rollenauswahl) ist **nicht** überspringbar (User ohne Rolle = invalider Zustand)
+- [ ] Nach Abschluss: `profiles.onboarding_completed = true` + `profiles.onboarding_step = 4`, Redirect zu `/dashboard`
 
 > **Experten-Entscheidung:** Consent-Step gehört in PROJ-4 (Onboarding-UI), nicht nur in PROJ-11. Begründung: Ein Entwickler der PROJ-4 implementiert, muss alle Wizard-Steps kennen — inkl. Consent. PROJ-11 bleibt die Quelle der Wahrheit für das Datenmodell (`user_consents`-Tabelle) und die Datenschutz-Einstellungsseite. PROJ-4 implementiert den Wizard-Step, referenziert PROJ-11 für die Speicherlogik.
 
 ## Edge Cases
-- E-Mail bereits registriert bei Registrierung → Fehlermeldung ohne zu verraten ob Account existiert
-- Token abgelaufen bei Passwort-Reset → Klarer Fehler mit "Neuen Link anfordern" CTA
-- Benutzer schließt Browser während Onboarding → Beim nächsten Login wieder zum Onboarding
-- Einladungstoken ungültig/abgelaufen → Fehlermeldung + Option sich normal zu registrieren
-- Profilbild Upload > 5MB → Client-seitige Größenprüfung vor Upload
+
+### Auth Flows
+- E-Mail bereits registriert bei Registrierung → Response sieht identisch aus wie Erfolg (kein Hinweis ob Account existiert)
+- Einladungstoken ungültig/abgelaufen → Fehlermeldung + Option sich normal zu registrieren (ohne Trainer-Verknüpfung)
+- Supabase Auth nicht erreichbar (Netzwerkfehler) → `AuthErrorBoundary` zeigt "Service vorübergehend nicht verfügbar" mit Retry
+- Login mit nicht-verifizierten Account → Redirect zu `/verify-email` (nicht "Invalid credentials")
+- `over_email_send_rate_limit`-Fehler bei Resend → Countdown-Timer zeigt Restzeit, kein generischer Fehler
+- E-Mail-Verifikationslink abgelaufen → `/auth/callback?error=...` zeigt "Link abgelaufen" + "Neuen Link anfordern"
+- Password-Reset-Link abgelaufen → Fehlercode `otp_expired` → Fehlermeldung mit Link zu `/forgot-password`
+
+### Onboarding-Zustand
+- Edge Function für Rollen-Setzung schlägt fehl → User bleibt auf Step 3, sieht Fehlermeldung + Retry-Button; kein invalider Limbo-Zustand
+- Wizard-Wiederbetreten nach Browser-Schließen → `profiles.onboarding_step` bestimmt den Einstiegspunkt (Step 1–4)
+- Step 1 Consent bereits gespeichert + Wizard neu geöffnet → Upsert-Operation (kein Duplicate-Key-Fehler)
+- „Überspringen" auf Step 2 oder Step 3 → Step 3 (Rollenauswahl) DARF NICHT übersprungen werden; Skip setzt `onboarding_completed = true` erst NACH Step 3
+- Multi-Device: Onboarding auf Gerät A abgeschlossen → Gerät B mit offener Wizard-Session wird bei nächstem Request-Redirect zu `/dashboard` weitergeleitet
+
+### Profilbild
+- Upload > 5MB → Client-seitige Größenprüfung blockiert Upload mit Fehlermeldung
+- Upload mit ungültigem Dateityp (z.B. `.gif`, `.php`) → Client-seitige Typprüfung + serverseitige Magic-Byte-Validierung
+- Zweites Avatar-Upload überschreibt das erste (gleicher Pfad `avatars/{user_id}/avatar.{ext}`); Datei mit alter Extension wird gelöscht
+- Supabase Storage nicht erreichbar → Wizard setzt Step 2 ohne Avatar fort (Upload ist optional)
+
+### Eingeladener Athlet
+- `inviteToken`-Cookie ist bei E-Mail-Verifizierung auf anderem Gerät nicht vorhanden → Wizard lädt ohne Vorausfüllung; Athlet kann Code manuell in Step 4 eingeben
+- `inviteToken` ist gültig aber der einladende Trainer hat seinen Account gelöscht → Token-Consumption schlägt fehl mit "Einladung nicht mehr gültig"
 
 ## Technical Requirements
-- Security: Passwörter werden ausschließlich über Supabase Auth gehandhabt (kein eigenes Hashing)
-- Security: CSRF-Schutz durch Supabase JWT-Tokens
-- Security: Rate-Limiting auf Auth-Endpunkten (Supabase built-in)
-- Security: Vorname, Nachname und alle Freitext-Felder im Onboarding werden server-seitig HTML-escaped — verhindert XSS falls Daten später in E-Mail-Templates oder anderen Kontexten gerendert werden
-- Security: `user_metadata` (first_name, last_name) darf keine HTML-Tags enthalten — Zod-Schema validiert: nur Buchstaben, Leerzeichen, Bindestriche, max. 100 Zeichen
-- Validation: Zod-Schemas für alle Formulare, serverseitige Validierung via Next.js Route Handlers
-- Performance: Auth-Check per Supabase `getSession()` im Server Component (kein Client-Waterfall)
+
+### Security
+- Passwörter werden ausschließlich über Supabase Auth gehandhabt (kein eigenes Hashing)
+- CSRF-Schutz durch Supabase JWT-Tokens
+- **Middleware: `getUser()` statt `getSession()`** — `getUser()` validiert die Session gegen Supabase Auth server-seitig; `getSession()` liest nur den Cookie ohne Server-Validierung (Sicherheitslücke bei revozierten Sessions)
+- PKCE-Flow (Proof Key for Code Exchange): Supabase `@supabase/ssr` verwendet PKCE by default; Passwort-Reset-Link und E-Mail-Verifikations-Link liefern einen `?code=`-Parameter der via `exchangeCodeForSession()` getauscht werden muss — **nicht** den alten Implicit-Flow (token im URL-Hash)
+- Einladungstoken (`inviteToken`): mind. 128 Bit kryptographische Zufälligkeit (UUID v4), 7-Tage TTL, Single-Use (sofortige Invalidierung nach Verbrauch), identische Fehler-Response bei ungültigem vs. abgelaufenem Token (Account-Enumeration verhindert)
+- Profilbild: Server-seitige Magic-Byte-Validierung vor Storage-Upload (kein reines Client-MIME-Check); `image/svg+xml` explizit auf Bucket-Ebene blockiert (XSS-Vektorschwachstelle); Allowed types: `image/jpeg`, `image/png`, `image/webp` only
+- `/api/auth/set-role` Route Handler: (a) Session-User muss mit Target-User übereinstimmen, (b) Idempotent: 200 wenn Rolle identisch bereits gesetzt, (c) Blockiert Rollen-Wechsel nachträglich (409 wenn bereits eine andere Rolle gesetzt), (d) Verifiziert Consent-Existenz in `user_consents` bevor Rolle gesetzt wird
+- Rate-Limiting auf benutzerdefinierten Route Handlers (`/api/auth/set-role`): via Upstash Rate Limit oder Vercel Edge Rate Limiting
+- Vorname, Nachname und alle Freitext-Felder im Onboarding werden server-seitig HTML-escaped
+- `user_metadata` (first_name, last_name): nur Buchstaben (inkl. Umlaute + internationale Zeichen wie Ó, Ñ, Ü), Leerzeichen, Bindestriche, max. 100 Zeichen — Zod-Regex-Validierung
+- `(auth)/layout.tsx`: `Referrer-Policy: no-referrer` Header gesetzt — verhindert Token-Leak in Referrer-Header an Drittanbieter
+
+### Validation
+- Zod-Schemas für alle Formulare, serverseitige Validierung via Next.js Route Handlers
+- Supabase Error Codes müssen vollständig gemappt sein: `email_not_confirmed`, `over_email_send_rate_limit`, `weak_password`, `user_already_exists` (→ identischer Screen wie normaler Signup), `otp_expired`, `invalid_grant`
+
+### Performance
+- Auth-Check in Middleware via `@supabase/ssr` `updateSession()` (Token-Refresh + Cookie-Write)
+- `onboarding_completed` wird nach Abschluss als Cookie-Claim gesetzt → Middleware liest Claim aus Cookie statt DB-Abfrage bei jedem Request
+
+### Supabase Dashboard-Konfiguration (einmalig, vor Go-Live)
+- Auth > URL Configuration: `Site URL` + `Redirect URLs` auf Production-Domain + `localhost:3000` setzen
+- Auth > Email Templates: Standard-Templates zunächst aktiv; werden durch PROJ-13 ersetzt
+- Auth > JWT expiry: 2592000 Sekunden (30 Tage) für "Eingeloggt bleiben"-Funktion
+- Auth > Refresh Token expiry: ≥ 30 Tage
+- Auth > Security: "Confirm email" aktiviert
+
+### Umgebungsvariablen (vollständig, `.env.local.example`)
+- `NEXT_PUBLIC_SUPABASE_URL` — Supabase Project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase Anon Key (öffentlich, client-safe)
+- `SUPABASE_SERVICE_ROLE_KEY` — **Server-only**, nie im Client-Bundle
+- `NEXT_PUBLIC_SITE_URL` — Basis-URL für E-Mail-Redirect-Links (`http://localhost:3000` in Dev)
 
 ---
 <!-- Sections below are added by subsequent skills -->
@@ -133,27 +206,32 @@ src/app/[locale]/
 │   └── verify-email/page.tsx           — "Check your inbox" info screen
 │
 └── (protected)/
-    └── onboarding/page.tsx             — Multi-step Wizard (client component)
-        ├── OnboardingWizard            ← Orchestrates steps + progress bar
-        │   ├── WizardProgressBar       — Step indicator (1 of 4)
-        │   ├── Step1Consents           — DSGVO checkboxes (required, non-skippable)
-        │   ├── Step2Profile            — Name (prefilled), Geburtsdatum, Avatar upload
-        │   ├── Step3RoleSelect         — "Ich bin Trainer" / "Ich bin Athlet"
-        │   ├── Step4Trainer            — Optional: Ersten Athleten einladen
-        │   └── Step4Athlete            — Optional: Trainer-Einladungscode eingeben
-        └── [Reuses: FormField, Modal, Button, Input, Avatar from PROJ-2]
+    ├── (onboarding)/                   ← Eigenes Layout OHNE AppSidebar (volle Bildschirmbreite, zentriert)
+    │   └── onboarding/page.tsx         — Multi-step Wizard (client component)
+    │       ├── OnboardingWizard        ← Orchestriert Schritte + liest onboarding_step aus DB
+    │       │   ├── WizardProgressBar   — Schritt-Indikator (1 von 4, mit Labels)
+    │       │   ├── Step1Consents       — DSGVO Checkboxen (required, nicht überspringbar)
+    │       │   ├── Step2Profile        — Name (vorausgefüllt), Geburtsdatum, Avatar Upload
+    │       │   ├── Step3RoleSelect     — RoleSelectCard: Trainer / Athlet
+    │       │   ├── Step4Trainer        — Optional: Ersten Athleten einladen
+    │       │   └── Step4Athlete        — Optional: Einladungscode (aus Cookie vorausgefüllt)
+    │       └── [Reuses: FormField, Modal, Button, Input, Avatar aus PROJ-2]
+    └── ... (andere protected routes mit AppSidebar)
 
-src/middleware.ts                       — Edge route guard (runs before every request)
+src/app/[locale]/auth/callback/
+    └── route.ts                        — PKCE Code Exchange + Error Handling für alle Auth-Callbacks
+
+src/middleware.ts                       — Composed: Supabase updateSession() + next-intl (in dieser Reihenfolge)
 src/lib/supabase/
-    ├── client.ts                       — Browser-side Supabase client
-    ├── server.ts                       — Server-side Supabase client (cookies)
-    └── middleware.ts                   — Session refresh helper for middleware
+    ├── client.ts                       — Browser-side Supabase client (createBrowserClient)
+    ├── server.ts                       — Server-side Supabase client (createServerClient + cookies)
+    └── middleware.ts                   — updateSession() Helper für Middleware
 
 src/app/api/auth/
-    └── set-role/route.ts               — Next.js Route Handler: calls Edge Function
+    └── set-role/route.ts               — Route Handler: Session-check + Authorization + Edge Function call
 
 Supabase Edge Function:
-    └── set-user-role                   — Sets app_metadata.role via service-role key
+    └── set-user-role                   — Setzt app_metadata.roles[] via service-role key (idempotent, mit Consent-Check)
 ```
 
 ### B) Data Model
@@ -163,39 +241,53 @@ Supabase Edge Function:
 auth.users
 ├── id: uuid (primary key)
 ├── email: text
-├── email_confirmed_at: timestamp | null   ← email verification state
-├── app_metadata.role: "TRAINER" | "ATHLETE"   ← set by Edge Function only
-└── app_metadata.is_platform_admin: boolean    ← manual flag, default false
+├── email_confirmed_at: timestamp | null    ← E-Mail-Verifikationsstatus
+├── app_metadata.roles: string[]            ← Array! z.B. ["TRAINER"] — nur via Edge Function schreibbar
+│                                              Future-proof für Dual-Role (PROJ-11+): einfaches Array-Append
+└── app_metadata.is_platform_admin: boolean ← Nur via SQL manuell gesetzt, default false
 ```
 
-**profiles table** (created in PROJ-4 backend):
+**profiles table** (in PROJ-4 erstellt; AUTO-CREATE via Datenbank-Trigger bei auth.users INSERT):
 ```
 profiles
-├── id: uuid (FK → auth.users, 1:1, CASCADE DELETE)
-├── first_name: text (max 100 chars, letters/spaces/hyphens only)
-├── last_name: text (max 100 chars, letters/spaces/hyphens only)
-├── avatar_url: text | null              ← path in Supabase Storage
+├── id: uuid (PK, FK → auth.users, 1:1)
+├── first_name: text NOT NULL DEFAULT ''    ← aus raw_user_meta_data bei Trigger-Erstellung
+├── last_name: text NOT NULL DEFAULT ''
+├── avatar_url: text | null                 ← Pfad in Supabase Storage (NICHT die vollständige URL)
 ├── birth_date: date | null
-└── onboarding_completed: boolean (default: false)
+├── onboarding_completed: boolean DEFAULT false
+├── onboarding_step: integer DEFAULT 1      ← Wizard-Resumption: zuletzt gespeicherter Schritt
+├── created_at: timestamptz DEFAULT now()
+└── updated_at: timestamptz                 ← Auto-Update via DB-Trigger
 ```
 
-**user_consents table** (schema defined in PROJ-11, inserted in PROJ-4):
+> **Soft Delete vs. Cascade Delete:** Profiles verwenden `ON DELETE CASCADE` (beim Löschen des auth.users wird das Profil sofort gelöscht). Das konfliktiert mit PROJ-11's 30-Tage-Pseudonymisierungs-Anforderung. Lösung: PROJ-11 implementiert eine Soft-Delete-Funktion die `auth.users` **nicht** direkt löscht, sondern pseudonymisiert. Der Cascade bleibt als Notfall-Mechanismus bestehen.
+
+**user_consents table** (Schema-Definition → PROJ-11; PROJ-4 inseriert die initialen Consent-Zeilen):
 ```
-user_consents
+user_consents (normalized, append-only — eine Zeile pro Consent-Ereignis)
+├── id: uuid (PK)
 ├── user_id: uuid (FK → auth.users)
-├── terms_accepted: boolean              ← required, blocks wizard Step 1
-├── body_data_consent: boolean           ← opt-in, default false
-├── nutrition_consent: boolean           ← opt-in, default false
-└── consented_at: timestamp
+├── consent_type: "terms_privacy" | "body_wellness_data" | "nutrition_data"
+├── granted: boolean
+├── granted_at: timestamptz DEFAULT now()
+├── policy_version: text NOT NULL           ← z.B. "v1.0" — für DSGVO Audit-Trail
+└── UNIQUE (user_id, consent_type, policy_version)   ← Upsert-safe
 ```
 
-**Supabase Storage Bucket: `avatars`**
+> **Schema-Konflikt behoben:** Die frühere Darstellung (flat boolean columns) entsprach NICHT dem PROJ-11-Schema. PROJ-4 muss das normalisierte PROJ-11-Schema verwenden — sonst ist eine destruktive Migration nötig wenn PROJ-11 implementiert wird.
+
+**Supabase Storage Bucket: `avatars`** (privat, kein public access):
 ```
 avatars/{user_id}/avatar.{jpg|png|webp}
-├── Max size: 5 MB (client-side check before upload)
-├── Accepted types: JPG, PNG, WebP
-├── Server-side resize: 400×400px (via Supabase Image Transform)
-└── RLS: authenticated users can only write their own folder
+├── Max size: 5 MB (client-side Prüfung VOR Upload)
+├── Accepted types: JPEG, PNG, WebP — SVG explizit blockiert (XSS-Vektor)
+├── Server-side resize: 400×400px (via Supabase Image Transform URL-Parameter)
+├── Bei neuem Upload: alte Datei (ggf. andere Extension) wird gelöscht
+└── RLS Policies:
+    ├── INSERT/UPDATE/DELETE: storage.foldername(name)[1] = auth.uid() (nur eigener Ordner)
+    ├── SELECT: eigener Ordner ODER verbundener Trainer (TODO: in PROJ-5-Migration ergänzen)
+    └── SVG content-type in Bucket-Konfiguration explizit blockiert
 ```
 
 ### C) Middleware Route Guard Logic
@@ -232,47 +324,98 @@ The browser only knows the call succeeded or failed.
 
 ### E) Tech Decisions
 
-| Decision | Chosen Approach | Why |
-|----------|----------------|-----|
-| Auth provider | Supabase Auth | Password hashing, email verification, rate limiting, and JWT rotation are built-in — no custom implementation needed |
-| Route protection | Next.js `middleware.ts` (edge) | Runs before page render on the server edge — protected pages never flash to unauthenticated users. More reliable than client-side guards |
-| Role storage | `app_metadata` via Edge Function | `user_metadata` is writable by any authenticated user (privilege escalation risk). `app_metadata` requires the service-role key — server-only |
-| Session management | `@supabase/ssr` (cookie-based) | The standard Supabase package for Next.js App Router. Cookie sessions work in middleware + Server Components without a client waterfall |
-| Onboarding state | `profiles.onboarding_completed` in DB | Survives browser closes and device switches. Client-writable `user_metadata` would be a bypass risk |
-| Consent storage | `user_consents` table | Separate table with timestamps — needed for DSGVO audit trail. Cannot be in `profiles` (different legal requirement) |
-| Avatar resize | Supabase Image Transform | Serverless, no custom Lambda needed. Resizes to 400×400px on-the-fly via URL parameter |
+| Decision | Gewählter Ansatz | Warum |
+|----------|-----------------|-------|
+| Auth-Provider | Supabase Auth | Password Hashing, E-Mail-Verifikation, Rate Limiting und JWT Rotation eingebaut |
+| Session-Validierung in Middleware | `getUser()` (nicht `getSession()`) | `getUser()` validiert server-seitig gegen Supabase Auth. `getSession()` liest nur den Cookie — revozierte Sessions würden die Guard-Prüfung bestehen |
+| Route-Schutz | Next.js `middleware.ts` (edge) | Läuft vor dem Page-Render — kein Flash für unauthentifizierte User; zuverlässiger als client-seitige Guards |
+| Rollen-Speicherung | `app_metadata.roles[]` (Array) via Edge Function | `user_metadata` ist vom Client schreibbar (Privilege Escalation). Array statt String für Dual-Role-Zukunftssicherheit |
+| Session-Management | `@supabase/ssr` (Cookie-basiert) | Standard-Package für Next.js App Router; funktioniert in Middleware + Server Components + Route Handlers |
+| Middleware-Komposition | Supabase `updateSession()` → next-intl (in dieser Reihenfolge) | Supabase muss zuerst den Request modifizieren (Token-Refresh + Cookie-Write), dann übergabe an next-intl |
+| PKCE-Flow | Supabase `@supabase/ssr` Default | Alle Auth-Callbacks liefern `?code=` (nicht URL-Hash); Code wird via `exchangeCodeForSession()` getauscht; kein Token im Browser-History |
+| Onboarding-Zustand | `profiles.onboarding_completed` + `profiles.onboarding_step` in DB | Überlebt Browser-Schließen und Gerätewechsel. Client-seitiges `user_metadata` wäre bypassbar |
+| Wizard-Resumption | `onboarding_step` Integer in `profiles` | Einfache Integer-Vergleiche in Wizard; kein separates State-Tracking nötig |
+| Consent-Speicherung | `user_consents` (normalized, append-only) via PROJ-11-Schema | Separates DSGVO Audit-Trail; `policy_version`-Feld ermöglicht Re-Consent wenn AGB/DSE aktualisiert |
+| Avatar-Resize | Supabase Image Transform | Serverless, kein Lambda nötig; 400×400px on-the-fly via URL-Parameter |
+| Avatar-Pfad | `{user_id}/avatar.{ext}` (fixer Pfad pro Extension) | Bei neuem Upload wird alter Extension-Variant gelöscht; Storage-Hygiene |
 
-### F) Dependencies to Install
+### F) Neue Middleware-Regel: Consent-Versionsprüfung
 
-| Package | Purpose | Status |
-|---------|---------|--------|
-| `@supabase/ssr` | Server-side Supabase client for Next.js App Router (cookies-based sessions, middleware helper) | **NOT installed — install before PROJ-4 backend** |
-| `@supabase/supabase-js` | Supabase client | Already installed |
-| `react-hook-form` | Form state management | Already installed |
-| `zod` | Schema validation | Already installed |
+Middleware-Tabelle erweitert um Consent-Version-Check:
 
-### G) Pages That Need to Be Created
+| Bedingung | Redirect zu |
+|-----------|-------------|
+| Keine Session + geschützte Route | `/login` |
+| Session + E-Mail nicht verifiziert | `/verify-email` |
+| Session + `onboarding_completed = false` | `/onboarding` |
+| Session + aktuelle `policy_version` nicht in `user_consents` | `/onboarding` (DSGVO Re-Consent) |
+| Session + `/login` oder `/register` aufgerufen | `/dashboard` |
+| Alles OK | Request weiterleiten |
 
-| Route | Type | Auth State |
-|-------|------|------------|
-| `/[locale]/(auth)/login` | Server + Client Form | Unauthenticated only |
-| `/[locale]/(auth)/register` | Server + Client Form | Unauthenticated only |
-| `/[locale]/(auth)/forgot-password` | Client Form | Unauthenticated only |
-| `/[locale]/(auth)/reset-password` | Client Form | Via email link |
-| `/[locale]/(auth)/verify-email` | Server | Authenticated, unverified |
-| `/[locale]/(protected)/onboarding` | Client Wizard | Authenticated, unverified onboarding |
-| `/api/auth/set-role` | Route Handler | Authenticated |
+### G) Dependencies to Install
 
-### H) New i18n Namespaces Required
+| Package | Zweck | Status |
+|---------|-------|--------|
+| `@supabase/ssr` | Server-side Supabase client für Next.js App Router (Cookie-Sessions, Middleware-Helper) | **NICHT installiert — als erstes installieren** |
+| `@supabase/supabase-js` | Supabase Client | Installiert |
+| `react-hook-form` | Formular-State-Management | Installiert |
+| `zod` | Schema-Validierung | Installiert |
+
+### H) Neue Seiten und Routes
+
+| Route | Typ | Auth-Zustand |
+|-------|-----|-------------|
+| `/[locale]/(auth)/login` | Client Form | Nur unauthentifiziert |
+| `/[locale]/(auth)/register` | Client Form | Nur unauthentifiziert |
+| `/[locale]/(auth)/forgot-password` | Client Form | Nur unauthentifiziert |
+| `/[locale]/(auth)/reset-password` | **Client Component** (liest URL-Code) | Via E-Mail-Link |
+| `/[locale]/(auth)/verify-email` | Client (onAuthStateChange Listener) | Authentifiziert, unverifiziert |
+| `/[locale]/(protected)/(onboarding)/onboarding` | Client Wizard | Authentifiziert, Onboarding offen |
+| `/[locale]/auth/callback` | Route Handler | Auth-Callback (PKCE Exchange) |
+| `/api/auth/set-role` | Route Handler | Authentifiziert |
+
+### I) Neue Komponenten (über PROJ-2 hinaus)
+
+| Komponente | Zweck |
+|-----------|-------|
+| `PasswordField` | Passwort-Input mit klickbarem Eye-Icon Toggle (showPassword); Error-Icon und Toggle koexistieren |
+| `AuthLayout` / `(auth)/layout.tsx` | Zentriertes Card-Layout für alle Auth-Seiten; App-Logo, Locale-Switcher |
+| `OnboardingLayout` / `(onboarding)/layout.tsx` | Vollbild-Layout ohne AppSidebar für den Wizard |
+| `WizardProgressBar` | Schritt-Indikator mit Nummern + Labels; Current/Completed/Upcoming-States |
+| `AvatarUpload` | Kreisförmige Avatar-Auswahl mit Datei-Input, sofortiger Preview, Remove-Option, Upload-Fortschrittsring |
+| `RoleSelectCard` | Große klickbare Card für Trainer/Athlet-Auswahl (Radio-Group-Semantik, Icon, Titel, Beschreibung) |
+| `ConsentCheckbox` | Checkbox mit Inline-Links zu AGB/DSE (öffnet in neuem Tab); `required`-Flag blockiert Wizard-Fortschritt |
+| `ResendEmailButton` | "Erneut senden" mit 60s Countdown (serverseitig rate-limited, clientseitiger Timer für UX) |
+| `InviteCodeInput` | Eingabe für Trainer-Einladungscode (Formatierung, Inline-Validierung) |
+| `AuthErrorBoundary` | Fallback-UI wenn Supabase nicht erreichbar (kein Blank-Screen) |
+
+### J) Neue i18n-Namespaces
 
 ```
-auth.login.*        — Login page strings
-auth.register.*     — Registration page strings
-auth.forgotPassword.*
-auth.resetPassword.*
-auth.verifyEmail.*
-onboarding.*        — All 4 wizard steps
+auth.login.*          — Login-Seite
+auth.register.*       — Registrierungs-Seite
+auth.forgotPassword.* — Passwort-vergessen-Seite
+auth.resetPassword.*  — Passwort-zurücksetzen-Seite
+auth.verifyEmail.*    — E-Mail-Bestätigung-Seite (inkl. Countdown, Fehler-States)
+auth.callback.*       — Callback-Route Fehler-States
+onboarding.step1.*    — DSGVO-Einwilligungen
+onboarding.step2.*    — Profil-Daten
+onboarding.step3.*    — Rollenauswahl
+onboarding.step4.*    — Trainer-Einladung / Athlet-Code
+onboarding.wizard.*   — Wizard-Shell (Progress-Bar, Skip, Back, Next, Fertig)
 ```
+
+### K) Datenbank-Migrations-Checkliste (Supabase)
+
+| # | Migration | Inhalt |
+|---|-----------|--------|
+| 001 | `create_profiles_table` | Tabelle mit allen Spalten inkl. `onboarding_step`, `created_at`, `updated_at` |
+| 002 | `create_profiles_trigger` | `AFTER INSERT ON auth.users` — Auto-Create Profil aus `raw_user_meta_data` |
+| 003 | `profiles_updated_at_trigger` | Auto-Update von `updated_at` bei jedem `UPDATE` |
+| 004 | `profiles_rls` | RLS aktivieren; SELECT/UPDATE eigene Zeile; kein direktes INSERT (nur via Trigger) |
+| 005 | `create_avatars_bucket` | Privater Bucket; RLS für READ/WRITE auf eigenen Ordner; TODO-Kommentar für PROJ-5-Trainer-Read-Policy |
+| 006 | `create_user_consents_table` | Normalized Schema per PROJ-11; UNIQUE Constraint; RLS: user nur eigene Zeilen |
+| 007 | `deploy_set_user_role_function` | Supabase Edge Function mit Authorization-Check + Idempotenz-Guard + Consent-Check |
 
 ## QA Test Results
 _To be added by /qa_
