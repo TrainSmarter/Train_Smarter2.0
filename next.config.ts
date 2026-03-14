@@ -7,6 +7,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://*.supabase.
 const isDev = process.env.NODE_ENV === "development";
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      { source: "/icon-192.png", destination: "/api/icon?size=192" },
+      { source: "/icon-512.png", destination: "/api/icon?size=512" },
+    ];
+  },
   async headers() {
     return [
       {
