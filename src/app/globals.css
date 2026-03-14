@@ -165,6 +165,32 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+
+  /* ── Autofill Override ──────────────────────────────────────────
+     Chrome/Edge force a yellow background on autofilled inputs.
+     We use box-shadow inset to paint over it with our theme colors,
+     and -webkit-text-fill-color to keep text readable.
+  ────────────────────────────────────────────────────────────── */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+    transition: background-color 5000s ease-in-out 0s;
+    caret-color: hsl(var(--foreground));
+  }
+
+  /* Card-level inputs (login, register, etc.) need card bg instead */
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--card)) inset !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+    transition: background-color 5000s ease-in-out 0s;
+    caret-color: hsl(var(--foreground));
+  }
 }
 
 /* ── WCAG AA Color Usage Guidelines ──────────────────────────── */
