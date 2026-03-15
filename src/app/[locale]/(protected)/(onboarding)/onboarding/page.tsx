@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Loader2 } from "lucide-react";
 
 import { useRouter } from "@/i18n/navigation";
@@ -21,6 +21,7 @@ const TOTAL_STEPS = 4;
 
 export default function OnboardingPage() {
   const t = useTranslations("onboarding");
+  const locale = useLocale();
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = React.useState(1);
@@ -149,36 +150,23 @@ export default function OnboardingPage() {
           return;
         }
 
-        // Save consents to DB (best effort — table may not exist yet)
+        // Save consents via server-side API (captures IP for Art. 7)
         try {
+          await fetch("/api/gdpr/consents", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              consents: [
+                { consent_type: "terms_privacy", granted: true, policy_version: "v1.0" },
+                { consent_type: "body_wellness_data", granted: bodyDataConsent, policy_version: "v1.0" },
+                { consent_type: "nutrition_data", granted: nutritionConsent, policy_version: "v1.0" },
+              ],
+            }),
+          });
+
+          // Update onboarding_step
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            const consents = [
-              {
-                user_id: user.id,
-                consent_type: "terms_privacy",
-                granted: true,
-                policy_version: "v1.0",
-              },
-              {
-                user_id: user.id,
-                consent_type: "body_wellness_data",
-                granted: bodyDataConsent,
-                policy_version: "v1.0",
-              },
-              {
-                user_id: user.id,
-                consent_type: "nutrition_data",
-                granted: nutritionConsent,
-                policy_version: "v1.0",
-              },
-            ];
-
-            await supabase.from("user_consents").upsert(consents, {
-              onConflict: "user_id,consent_type,policy_version",
-            });
-
-            // Update onboarding_step
             await supabase
               .from("profiles")
               .update({ onboarding_step: 2 })
@@ -200,6 +188,22 @@ export default function OnboardingPage() {
           setError(t("step2.invalidName"));
           setIsSubmitting(false);
           return;
+        }
+
+        // Age check: block minors under 16 (DSGVO Art. 8)
+        if (birthDate) {
+          const birth = new Date(birthDate);
+          const today = new Date();
+          let age = today.getFullYear() - birth.getFullYear();
+          const monthDiff = today.getMonth() - birth.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+            age--;
+          }
+          if (age < 16) {
+            setError(t("step2.minorBlocked"));
+            setIsSubmitting(false);
+            return;
+          }
         }
 
         // Save profile data
@@ -419,7 +423,7 @@ export default function OnboardingPage() {
                 {t.rich("step1.termsRequired", {
                   terms: (chunks) => (
                     <a
-                      href="/terms"
+                      href={`/${locale}/agb`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline font-medium"
@@ -430,7 +434,7 @@ export default function OnboardingPage() {
                   ),
                   privacy: (chunks) => (
                     <a
-                      href="/privacy"
+                      href={`/${locale}/datenschutz`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline font-medium"

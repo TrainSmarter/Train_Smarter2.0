@@ -6,6 +6,7 @@ import {
   Settings,
   User,
   Shield,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/mock-session";
@@ -104,6 +105,14 @@ export const navConfig: NavEntry[] = [
       labelKey: "settings",
       icon: Settings,
       path: "/account/settings",
+    },
+  },
+  {
+    type: "item",
+    item: {
+      labelKey: "privacy",
+      icon: ShieldCheck,
+      path: "/account/datenschutz",
     },
   },
 ];

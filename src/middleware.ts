@@ -8,6 +8,9 @@ const intlMiddleware = createIntlMiddleware(routing);
 // Routes that don't require authentication
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"];
 
+// Public legal pages (accessible without login — DSGVO requirement)
+const PUBLIC_ROUTES = ["/datenschutz", "/impressum", "/agb"];
+
 // Routes that authenticated users should not access (redirect to dashboard)
 const GUEST_ONLY_ROUTES = ["/login", "/register"];
 
@@ -44,8 +47,12 @@ function isVerifyEmailRoute(pathname: string): boolean {
   return VERIFY_EMAIL_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
 function isProtectedRoute(pathname: string): boolean {
-  return !isAuthRoute(pathname) && !pathname.startsWith("/auth/callback") && pathname !== "/";
+  return !isAuthRoute(pathname) && !isPublicRoute(pathname) && !pathname.startsWith("/auth/callback") && pathname !== "/";
 }
 
 /**

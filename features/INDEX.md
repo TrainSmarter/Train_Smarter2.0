@@ -22,7 +22,7 @@
 | PROJ-8 | Trainingskalender | Planned | [PROJ-8-trainingskalender.md](PROJ-8-trainingskalender.md) | 2026-03-12 |
 | PROJ-9 | Team-Verwaltung (+ Unified View) | Deployed | [PROJ-9-club-verwaltung.md](PROJ-9-club-verwaltung.md) | 2026-03-12 |
 | PROJ-10 | Admin-Bereich | Planned | [PROJ-10-admin-bereich.md](PROJ-10-admin-bereich.md) | 2026-03-12 |
-| PROJ-11 | DSGVO-Compliance & Datenschutz | Planned | [PROJ-11-dsgvo-datenschutz.md](PROJ-11-dsgvo-datenschutz.md) | 2026-03-12 |
+| PROJ-11 | DSGVO-Compliance & Datenschutz | In Review | [PROJ-11-dsgvo-datenschutz.md](PROJ-11-dsgvo-datenschutz.md) | 2026-03-12 |
 | PROJ-12 | Übungsbibliothek | Planned | [PROJ-12-uebungsbibliothek.md](PROJ-12-uebungsbibliothek.md) | 2026-03-12 |
 | PROJ-13 | E-Mail & Transaktions-Benachrichtigungen | In Review | [PROJ-13-email-benachrichtigungen.md](PROJ-13-email-benachrichtigungen.md) | 2026-03-12 |
 | PROJ-14 | In-App Notifications & Einstellungen | Planned | [PROJ-14-notifications.md](PROJ-14-notifications.md) | 2026-03-12 |
