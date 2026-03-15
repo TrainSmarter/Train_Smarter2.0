@@ -139,6 +139,12 @@ notification_preferences
 ---
 <!-- Sections below are added by subsequent skills -->
 
+## Offene Punkte aus PROJ-11 (DSGVO)
+
+- [ ] **Event `connection_disconnected` bei Account-Löschung:** Wenn ein Trainer seinen Account löscht, werden alle Verbindungen auf `disconnected` gesetzt (bereits implementiert in `/api/gdpr/delete-account`). Die In-App Notification „Dein Trainer hat die Plattform verlassen — die Verbindung wurde automatisch getrennt" muss hier ausgelöst werden. (PROJ-11 BUG-12)
+- [ ] **Event `account_deletion_confirmed`:** In-App Bestätigung der Account-Löschung (bereits in Benachrichtigungs-Typen-Tabelle oben definiert)
+- [ ] **Event `data_export_ready`:** In-App Benachrichtigung wenn Export fertig — aktuell nicht nötig (sync Download), aber bei Umstellung auf async relevant
+
 ## Tech Design (Solution Architect)
 _To be added by /architecture_
 

@@ -308,6 +308,10 @@ Mehrjahresplan (1–4 Jahre)
 ---
 <!-- Sections below are added by subsequent skills -->
 
+## Offene Punkte aus PROJ-11 (DSGVO)
+
+- [ ] **Daten-Export erweitern:** Wenn Trainingspläne, Makrozyklen, Trainingseinheiten und Übungen implementiert sind, müssen diese in den DSGVO-Export (`/api/gdpr/export`) aufgenommen werden: `trainingsplaene.json` + `trainingsplaene.csv`. (PROJ-11 BUG-5)
+
 ## Tech Design (Solution Architect)
 _To be added by /architecture_
 

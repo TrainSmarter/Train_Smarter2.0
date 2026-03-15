@@ -101,6 +101,11 @@ Trainer können Athleten auch direkt (1:1) coachen, ohne dass diese einer Mannsc
 ---
 <!-- Sections below are added by subsequent skills -->
 
+## Offene Punkte aus PROJ-11 (DSGVO)
+
+- [ ] **Daten-Export erweitern:** Wenn Check-ins, Körperdaten und Wellness-Daten implementiert sind, müssen diese in den DSGVO-Export (`/api/gdpr/export`) aufgenommen werden: `koerperdaten.json`, `check-ins.json` (nur wenn `body_wellness_data` Consent erteilt). (PROJ-11 BUG-5)
+- [ ] **Consent-Prüfung:** Check-in Formular muss die Körperdaten-Felder ausblenden wenn `body_wellness_data` Consent widerrufen wurde (bereits im PROJ-11 Spec als AC definiert)
+
 ## Tech Design (Solution Architect)
 _To be added by /architecture_
 

@@ -556,6 +556,24 @@ Since these are primarily server-rendered legal pages and a standard form-based 
 - Security: append-only RLS on user_consents (BUG-15 fixed)
 - Onboarding: locale-aware consent links, age check for minors
 
+### Offene Punkte (PROJ-11)
+
+Die folgenden Punkte sind nicht deployment-blockierend, müssen aber nachgearbeitet werden:
+
+#### Eigene Aufgaben (PROJ-11 Scope)
+- [ ] **BUG-11 (High):** 30-Tage Cleanup-Cron für `pending_deletions` — Supabase pg_cron oder Edge Function Cron, der nach `delete_after < now()` die verbleibenden Daten endgültig löscht
+- [ ] **BUG-14 (Low):** Policy-Version Re-Consent — Mechanismus der bei Policy-Update (v1.0 → v2.0) beim nächsten Login zur erneuten Zustimmung auffordert
+- [ ] **BUG-1 (Low):** Footer mit Legal-Links auch im geschützten App-Shell (Sidebar oder Footer) — nicht nur in Auth/Legal Layouts
+- [ ] **BUG-6 (Low):** README.txt im Export ergänzen, die die Datenstruktur erklärt
+- [ ] **BUG-10 (Low):** Aktive JWT-Sessions explizit invalidieren bei Account-Löschung (aktuell nur Ban → Token läuft natürlich ab)
+- [ ] **BUG-16/17 (Low):** Rate-Limiting auf `/api/gdpr/consents` und `/api/gdpr/delete-account` (Vercel KV oder Supabase-basiert)
+- [ ] **Rechtsanwalt-Review:** Texte in /datenschutz, /impressum, /agb müssen von einem für österreichisches Recht qualifizierten Rechtsanwalt geprüft werden
+
+#### Abhängig von anderen Features
+- [ ] **BUG-5 → PROJ-6 + PROJ-7:** Daten-Export um Trainingspläne, Körperdaten, Check-ins und Ernährungsdaten erweitern (sobald diese Features gebaut sind)
+- [ ] **BUG-9 → PROJ-13:** Bestätigungs-E-Mail nach Account-Löschung (E-Mail #10 + #11 in PROJ-13)
+- [ ] **BUG-12 → PROJ-14:** In-App Benachrichtigung an Athleten wenn Trainer Account löscht (Event `connection_disconnected` in PROJ-14), + E-Mail #12 in PROJ-13
+
 ### Deferred items (not blocking deployment)
 - BUG-5: Training/body/nutrition data in export (features not built yet)
 - BUG-9/BUG-12: Confirmation emails + notifications (depends on PROJ-13/PROJ-14)
