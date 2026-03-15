@@ -75,8 +75,10 @@ function Modal({
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          {description && (
+          {description ? (
             <DialogDescription>{description}</DialogDescription>
+          ) : (
+            <DialogDescription className="sr-only">{title}</DialogDescription>
           )}
         </DialogHeader>
         <div className="py-2">{children}</div>

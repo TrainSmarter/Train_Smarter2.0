@@ -641,6 +641,8 @@
     "back": "Back",
     "next": "Next",
     "noResults": "No results found",
-    "togglePassword": "Toggle password visibility"
+    "togglePassword": "Toggle password visibility",
+    "comingSoon": "Coming soon",
+    "comingSoonDescription": "This feature is currently being developed and will be available soon."
   }
 }

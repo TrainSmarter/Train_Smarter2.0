@@ -641,6 +641,8 @@
     "back": "Zurück",
     "next": "Weiter",
     "noResults": "Keine Ergebnisse gefunden",
-    "togglePassword": "Passwort ein-/ausblenden"
+    "togglePassword": "Passwort ein-/ausblenden",
+    "comingSoon": "Demnächst verfügbar",
+    "comingSoonDescription": "Dieses Feature wird gerade entwickelt und ist bald verfügbar."
   }
 }
