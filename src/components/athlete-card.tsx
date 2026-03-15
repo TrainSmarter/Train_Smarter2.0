@@ -119,7 +119,7 @@ export function AthleteCard({
 
   return (
     <Link
-      href={`/organisation/athletes/${athlete.id}`}
+      href={{ pathname: "/organisation/athletes/[id]", params: { id: athlete.id } }}
       className="block focus:outline-none"
       aria-label={`${athlete.firstName} ${athlete.lastName} — ${t("viewProfile")}`}
     >

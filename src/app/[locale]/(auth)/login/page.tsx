@@ -58,7 +58,7 @@ export default function LoginPage() {
 
       if (authError) {
         if (authError.message === "Email not confirmed" || authError.code === "email_not_confirmed") {
-          const verifyUrl = `/verify-email?email=${encodeURIComponent(data.email)}${returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ""}`;
+          const verifyUrl = `/verify-email?email=${encodeURIComponent(data.email)}${returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : ""}` as "/verify-email";
           router.push(verifyUrl);
           return;
         }
@@ -85,7 +85,7 @@ export default function LoginPage() {
       const destination = returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//") && !returnUrl.includes("://")
         ? returnUrl
         : "/dashboard";
-      router.push(destination);
+      router.push(destination as "/dashboard");
     } catch {
       setError(t("networkError"));
       setIsSubmitting(false);

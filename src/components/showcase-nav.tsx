@@ -28,7 +28,7 @@ export function ShowcaseNav() {
           {navItems.map((item) => (
             <Link
               key={item.href}
-              href={item.href}
+              href={item.href as "/"}
               className={cn(
                 "rounded-md px-3 py-1.5 text-button transition-colors",
                 pathname === item.href

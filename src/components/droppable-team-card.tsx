@@ -76,7 +76,7 @@ export function DroppableTeamCard({
                     {team.name}
                   </h3>
                   <Link
-                    href={`/organisation/teams/${team.id}`}
+                    href={{ pathname: "/organisation/teams/[id]", params: { id: team.id } }}
                     className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                     aria-label={`${team.name} — Details`}
                     onClick={(e) => e.stopPropagation()}
@@ -139,7 +139,7 @@ export function DroppableTeamCard({
           )}
           <div className="mt-2 ml-6 pl-4">
             <Link
-              href={`/organisation/teams/${team.id}`}
+              href={{ pathname: "/organisation/teams/[id]", params: { id: team.id } }}
               onClick={(e) => e.stopPropagation()}
             >
               <Button

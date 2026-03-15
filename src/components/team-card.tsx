@@ -27,7 +27,7 @@ export function TeamCard({ team }: TeamCardProps) {
 
   return (
     <Link
-      href={`/organisation/teams/${team.id}`}
+      href={{ pathname: "/organisation/teams/[id]", params: { id: team.id } }}
       className="block focus:outline-none"
       aria-label={`${team.name} — ${t("trainerCount", { count: team.trainerCount })} · ${t("athleteCount", { count: team.athleteCount })}`}
     >

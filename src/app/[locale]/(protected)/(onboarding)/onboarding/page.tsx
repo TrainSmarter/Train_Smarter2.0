@@ -4,7 +4,7 @@ import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Loader2 } from "lucide-react";
 
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -422,26 +422,26 @@ export default function OnboardingPage() {
               >
                 {t.rich("step1.termsRequired", {
                   terms: (chunks) => (
-                    <a
-                      href={`/${locale}/agb`}
+                    <Link
+                      href="/agb"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline font-medium"
                       aria-label={`${chunks} ${t("step1.opensInNewTab")}`}
                     >
                       {chunks}
-                    </a>
+                    </Link>
                   ),
                   privacy: (chunks) => (
-                    <a
-                      href={`/${locale}/datenschutz`}
+                    <Link
+                      href="/datenschutz"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline font-medium"
                       aria-label={`${chunks} ${t("step1.opensInNewTab")}`}
                     >
                       {chunks}
-                    </a>
+                    </Link>
                   ),
                 })}
               </ConsentCheckbox>

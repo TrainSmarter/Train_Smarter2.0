@@ -12,7 +12,7 @@ export function LocaleSwitcher() {
 
   function switchLocale(newLocale: "de" | "en") {
     if (newLocale === locale) return;
-    router.replace(pathname, { locale: newLocale });
+    router.replace(pathname as "/", { locale: newLocale });
   }
 
   return (

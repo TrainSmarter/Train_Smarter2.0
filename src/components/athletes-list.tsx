@@ -232,7 +232,7 @@ export function AthletesList({ athletes, currentPage, totalCount, hasMore }: Ath
         <nav className="mt-6 flex items-center justify-center gap-4" aria-label={t("pagination")}>
           {currentPage > 1 ? (
             <Link
-              href={`/organisation/athletes?page=${currentPage - 1}`}
+              href={`/organisation/athletes?page=${currentPage - 1}` as "/organisation/athletes"}
               className="inline-flex items-center gap-1 text-body-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -254,7 +254,7 @@ export function AthletesList({ athletes, currentPage, totalCount, hasMore }: Ath
 
           {hasMore ? (
             <Link
-              href={`/organisation/athletes?page=${currentPage + 1}`}
+              href={`/organisation/athletes?page=${currentPage + 1}` as "/organisation/athletes"}
               className="inline-flex items-center gap-1 text-body-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               {t("nextPage")}

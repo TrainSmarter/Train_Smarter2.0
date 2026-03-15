@@ -65,7 +65,7 @@ function NavItemLink({
             "data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
         )}
       >
-        <Link href={item.path} aria-current={isActive ? "page" : undefined}>
+        <Link href={item.path as "/"} aria-current={isActive ? "page" : undefined}>
           <Icon className="size-4 shrink-0" />
           <span>{label}</span>
         </Link>
@@ -121,7 +121,7 @@ function NavSectionGroup({
                         "data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
                     )}
                   >
-                    <Link href={subItem.path} aria-current={isActive ? "page" : undefined}>
+                    <Link href={subItem.path as "/"} aria-current={isActive ? "page" : undefined}>
                       <span>{t(subItem.labelKey)}</span>
                     </Link>
                   </SidebarMenuSubButton>

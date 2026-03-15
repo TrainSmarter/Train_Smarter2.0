@@ -163,7 +163,7 @@ function DroppableTeamRow({
             </AvatarFallback>
           </Avatar>
           <Link
-            href={`/organisation/teams/${team.id}`}
+            href={{ pathname: "/organisation/teams/[id]", params: { id: team.id } }}
             className="hover:underline"
             onClick={(e) => e.stopPropagation()}
           >
@@ -323,7 +323,7 @@ export function TableView({
                     <TableCell />
                     <TableCell colSpan={3} className="py-2">
                       <Link
-                        href={`/organisation/teams/${team.id}`}
+                        href={{ pathname: "/organisation/teams/[id]", params: { id: team.id } }}
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Button

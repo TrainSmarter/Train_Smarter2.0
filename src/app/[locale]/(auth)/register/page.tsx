@@ -89,7 +89,7 @@ export default function RegisterPage() {
       // Success: Redirect to verify email page
       // Note: Supabase signUp returns identical response for both new and
       // existing accounts to prevent account enumeration
-      router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+      router.push(`/verify-email?email=${encodeURIComponent(data.email)}` as "/verify-email");
     } catch {
       setError(t("genericError"));
       setIsSubmitting(false);

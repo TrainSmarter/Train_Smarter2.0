@@ -9,7 +9,8 @@ const intlMiddleware = createIntlMiddleware(routing);
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"];
 
 // Public legal pages (accessible without login — DSGVO requirement)
-const PUBLIC_ROUTES = ["/datenschutz", "/impressum", "/agb"];
+// Both DE and EN variants needed because auth checks run before intl rewriting
+const PUBLIC_ROUTES = ["/datenschutz", "/impressum", "/agb", "/privacy", "/imprint", "/terms"];
 
 // Routes that authenticated users should not access (redirect to dashboard)
 const GUEST_ONLY_ROUTES = ["/login", "/register"];

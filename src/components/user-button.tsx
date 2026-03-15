@@ -61,7 +61,7 @@ export function UserButton({ user }: UserButtonProps) {
   const displayName = `${first_name} ${last_name}`.trim() || user.email;
 
   function switchLocale(locale: "de" | "en") {
-    router.replace(pathname, { locale });
+    router.replace(pathname as "/", { locale });
   }
 
   return (
