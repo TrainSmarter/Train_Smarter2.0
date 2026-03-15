@@ -399,6 +399,47 @@ export async function fetchAthleteTeams(): Promise<AthleteTeamInfo[]> {
   });
 }
 
+// ── Fetch All Team Athletes (Unified View) ─────────────────────
+
+/**
+ * Returns a flat map of athleteId -> teamId for all teams the trainer is a member of.
+ * Used by the Unified View to know which athlete is in which team.
+ */
+export async function fetchAllTeamAthletes(): Promise<
+  Record<string, string | null>
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return {};
+
+  // Get team IDs where user is a member
+  const { data: memberships } = await supabase
+    .from("team_members")
+    .select("team_id")
+    .eq("user_id", user.id);
+
+  if (!memberships?.length) return {};
+
+  const teamIds = memberships.map((m) => m.team_id);
+
+  // Get all athlete-team assignments for those teams
+  const { data: assignments, error } = await supabase
+    .from("team_athletes")
+    .select("athlete_id, team_id")
+    .in("team_id", teamIds);
+
+  if (error || !assignments) return {};
+
+  const map: Record<string, string | null> = {};
+  for (const a of assignments) {
+    map[a.athlete_id] = a.team_id;
+  }
+  return map;
+}
+
 // ── Fetch Invitation by Token ───────────────────────────────────
 
 export async function fetchTeamInvitationByToken(token: string): Promise<{

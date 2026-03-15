@@ -83,3 +83,25 @@ export interface AssignableAthlete {
   avatarUrl: string | null;
   alreadyAssigned: boolean;
 }
+
+// ── Unified View Types (PROJ-9 v2) ─────────────────────────────
+
+/** Map of athleteId -> teamId (or null if unassigned) */
+export type TeamAthleteMap = Record<string, string | null>;
+
+/** View mode for the unified organisation page */
+export type OrganisationViewMode = "grid" | "table" | "kanban";
+
+/** Sort options for the unified view */
+export type OrganisationSortOption =
+  | "teams-first"
+  | "athletes-first"
+  | "name-asc"
+  | "name-desc"
+  | "status";
+
+/** Persisted preferences for the organisation view */
+export interface OrganisationPreferences {
+  viewMode: OrganisationViewMode;
+  sortOption: OrganisationSortOption;
+}

@@ -20,7 +20,7 @@
 | PROJ-6 | Feedback & Monitoring | Planned | [PROJ-6-feedback-monitoring.md](PROJ-6-feedback-monitoring.md) | 2026-03-12 |
 | PROJ-7 | Training Workspace & Periodisierung | Planned | [PROJ-7-trainingsplaene-programme.md](PROJ-7-trainingsplaene-programme.md) | 2026-03-12 |
 | PROJ-8 | Trainingskalender | Planned | [PROJ-8-trainingskalender.md](PROJ-8-trainingskalender.md) | 2026-03-12 |
-| PROJ-9 | Team-Verwaltung | Deployed | [PROJ-9-club-verwaltung.md](PROJ-9-club-verwaltung.md) | 2026-03-12 |
+| PROJ-9 | Team-Verwaltung (+ Unified View) | In Progress | [PROJ-9-club-verwaltung.md](PROJ-9-club-verwaltung.md) | 2026-03-12 |
 | PROJ-10 | Admin-Bereich | Planned | [PROJ-10-admin-bereich.md](PROJ-10-admin-bereich.md) | 2026-03-12 |
 | PROJ-11 | DSGVO-Compliance & Datenschutz | Planned | [PROJ-11-dsgvo-datenschutz.md](PROJ-11-dsgvo-datenschutz.md) | 2026-03-12 |
 | PROJ-12 | Übungsbibliothek | Planned | [PROJ-12-uebungsbibliothek.md](PROJ-12-uebungsbibliothek.md) | 2026-03-12 |

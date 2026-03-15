@@ -1,8 +1,47 @@
 # PROJ-9: Team-Verwaltung
 
-## Status: Deployed
+## Status: In Progress
 **Created:** 2026-03-12
 **Last Updated:** 2026-03-15
+
+### Implementation Notes (Unified View Frontend — 2026-03-15)
+
+**Completed:**
+- Installed `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
+- Created `useOrganisationPreferences` hook (localStorage persistence for view mode + sort)
+- Created new types: `TeamAthleteMap`, `OrganisationViewMode`, `OrganisationSortOption`, `OrganisationPreferences`
+- Created new backend query: `fetchAllTeamAthletes()` in `queries.ts`
+- Created new server action: `moveAthleteToTeam()` in `actions.ts` with optimistic UI support
+- Created 10 new components: `UnifiedOrganisationView`, `CardGridView`, `TableView`, `KanbanView`, `ViewSwitcher`, `SortDropdown`, `DragConfirmDialog`, `DraggableAthleteCard`/`AthleteCardOverlay`, `DroppableTeamCard`, `KanbanColumn`
+- Replaced tab-based `OrganisationTabs` with unified `UnifiedOrganisationView` in page.tsx
+- Updated loading.tsx skeleton to match new toolbar layout
+- Added i18n keys for DE/EN (view switcher, sort options, drag confirm, empty states)
+- DnD: PointerSensor (8px activation), TouchSensor (300ms long-press), KeyboardSensor
+- Confirmation dialog when moving athlete between teams (not for initial assignment or unassignment)
+- Optimistic UI with rollback on error
+
+**Dead code removed:**
+- `organisation-tabs.tsx` — deleted (no longer imported after Unified View)
+- `teams-list.tsx` — deleted (no longer imported after Unified View)
+
+**Still in use:**
+- `athletes-list.tsx` — still used by `/organisation/athletes` sub-page
+- `athlete-card.tsx` — still used by `athletes-list.tsx` and athlete detail pages
+- `team-card.tsx` — still used by other contexts (kept as reference)
+
+### Implementation Notes (Schema Migration: Ein Athlet = Ein Team — 2026-03-15)
+
+**Completed:**
+- Created migration `20260315100000_proj9_one_athlete_one_team.sql`:
+  - Cleans up duplicate assignments (keeps newest per `athlete_id` based on `assigned_at`)
+  - Drops old `uq_team_athlete` UNIQUE constraint on `(team_id, athlete_id)`
+  - Adds new `uq_athlete_one_team` UNIQUE constraint on `athlete_id` only
+  - Drops redundant `idx_team_athletes_athlete` index (UNIQUE constraint creates its own)
+- Updated `assignAthletes()` in `actions.ts`: now deletes any existing team assignment for each athlete before inserting the new one (delete-then-insert pattern, matching `moveAthleteToTeam()`)
+- Changed from `.upsert()` with `onConflict: "team_id,athlete_id"` to `.delete()` + `.insert()` to work with the new single-column UNIQUE constraint
+- RLS policies verified: all policies use `is_team_member(team_id)` which is unaffected by the constraint change
+- `moveAthleteToTeam()` already implemented correct delete-then-insert pattern (no changes needed)
+- Build passes cleanly after dead code removal
 
 ## Dependencies
 - Requires: PROJ-1–PROJ-5 (Fundament + Athleten-Management)
@@ -13,12 +52,14 @@
 "Athleten & Teams" ist ein flacher Nav-Item in der Sidebar (kein Collapsible/Unterkategorien).
 
 ```
-/organisation                    ← "Athleten & Teams" (Tabs: Athleten | Teams)
-/organisation/teams/[id]         ← Team-Detail (Dashboard mit Stats + Mitglieder)
+/organisation                    ← "Athleten & Teams" (Unified View — keine Tabs mehr)
+/organisation/teams/[id]         ← Team-Detail (erweiterte Ansicht mit Stats + Mitglieder)
 ```
 
 ## Übersicht
 Ein "Team" ist eine Gruppierung von Athleten, in der mehrere Trainer gleichberechtigt zusammenarbeiten können. Trainer erstellen Teams, weisen ihre bestehenden Athleten (aus PROJ-5) zu und laden andere Trainer per E-Mail ein. Alle Trainer im Team haben gleiche Rechte — es gibt keine Rollen-Hierarchie.
+
+**Unified View (v2):** Teams und Athleten werden gleichwertig auf einer einzigen Seite dargestellt (keine getrennten Tabs). Drei umschaltbare Ansichten (Card-Grid, Tabelle, Kanban). Drag & Drop zum Zuweisen von Athleten zu Teams. Ein Athlet kann nur einem Team zugeordnet sein.
 
 ## User Stories
 - Als Trainer möchte ich ein Team erstellen (z.B. "SC Kitzberger U19"), damit ich meine Athleten gruppieren kann
@@ -28,20 +69,90 @@ Ein "Team" ist eine Gruppierung von Athleten, in der mehrere Trainer gleichberec
 - Als Trainer möchte ich einen Athleten aus dem Team entfernen und dabei entscheiden ob ich ihn weiter individuell betreue oder komplett trenne
 - Als Trainer möchte ich ein Team archivieren können wenn es nicht mehr benötigt wird
 - Als Athlet möchte ich im Dashboard sehen in welchen Teams ich bin, damit ich weiß wo meine Daten geteilt werden (DSGVO-Transparenz)
+- Als Trainer möchte ich alle Athleten und Teams auf einer Seite sehen, ohne zwischen Tabs wechseln zu müssen
+- Als Trainer möchte ich einen Athleten per Drag & Drop in ein Team ziehen, damit die Zuordnung schnell und intuitiv ist
+- Als Trainer möchte ich zwischen Card-Grid, Tabelle und Kanban-Board umschalten können
+- Als Trainer möchte ich nach Name, Status und Team sortieren können
+- Als Trainer möchte ich auf ein Team klicken und die Athleten inline sehen (Accordion), ohne die Seite zu verlassen
 
 ## Acceptance Criteria
 
 ### Figma Screens
-- [ ] Figma Screen: "Athleten & Teams"-Seite mit Tabs (Athleten-Tab + Teams-Tab)
+- [ ] Figma Screen: "Athleten & Teams" Unified View (Card-Grid Ansicht)
+- [ ] Figma Screen: "Athleten & Teams" Unified View (Tabellen-Ansicht)
+- [ ] Figma Screen: "Athleten & Teams" Unified View (Kanban-Ansicht)
 - [ ] Figma Screen: Team erstellen/bearbeiten (Modal)
 - [ ] Figma Screen: Team-Detail (Stats + Trainer-Liste + Athleten-Liste)
 - [ ] Figma Screen: Trainer einladen (Modal)
-- [ ] Figma Screen: Athleten zuweisen (Modal mit Checkbox-Liste)
+- [ ] Figma Screen: Drag & Drop Bestätigungsdialog (Team-Verschiebung)
 
 ### Navigation
 - [ ] Sidebar: "Athleten & Teams" als flacher Nav-Item (kein Collapsible) → `/organisation`
-- [ ] Seite `/organisation` hat 2 Tabs: "Athleten" (bestehende PROJ-5 Übersicht) und "Teams" (PROJ-9)
+- [ ] Seite `/organisation` zeigt Teams und Athleten gleichwertig auf einer Seite (keine Tabs)
 - [ ] Sichtbar nur für TRAINER-Rolle
+
+### Unified View — Ansichts-Umschalter
+- [ ] Toggle/Segmented Control oben rechts mit 3 Optionen: Grid, Tabelle, Kanban
+- [ ] Gewählte Ansicht wird im `localStorage` gespeichert und beim nächsten Besuch wiederhergestellt
+- [ ] Alle drei Ansichten zeigen dieselben Daten, nur unterschiedlich dargestellt
+
+### Unified View — Card-Grid Ansicht
+- [ ] Teams und Athleten als Cards im gleichen Grid nebeneinander
+- [ ] Team-Cards visuell unterscheidbar (anderes Icon, Akzent-Farbe, Stats: Athleten-Anzahl + Trainer-Anzahl)
+- [ ] Athleten-Cards zeigen: Avatar/Initiale, Name, E-Mail, Status-Badge, Team-Zugehörigkeit (falls vorhanden)
+- [ ] Responsive Grid: 3 Spalten Desktop, 2 Spalten Tablet, 1 Spalte Mobile
+- [ ] Drag & Drop: Athleten-Card auf Team-Card ziehen weist den Athleten zu
+- [ ] Klick auf Team-Card klappt inline auf (Accordion) und zeigt zugehörige Athleten
+
+### Unified View — Tabellen-Ansicht
+- [ ] Kompakte Tabelle mit Spalten: Name, Typ (Team/Athlet), Team-Zugehörigkeit, Status
+- [ ] Team-Zeilen visuell abgesetzt (fetter Text, Hintergrundfarbe)
+- [ ] Klick auf Team-Zeile klappt darunter die zugehörigen Athleten auf (Accordion-Rows)
+- [ ] Drag & Drop: Athleten-Zeile auf Team-Zeile ziehen weist zu
+- [ ] Spalten sortierbar per Klick auf Spaltenheader
+
+### Unified View — Kanban-Ansicht
+- [ ] Spalten = Teams + eine Spalte "Ohne Team" (für nicht zugeordnete Athleten)
+- [ ] Athleten als Cards in den Team-Spalten
+- [ ] Drag & Drop zwischen Spalten verschiebt den Athleten ins Ziel-Team
+- [ ] Team-Header zeigt Team-Name, Athleten-Anzahl, Trainer-Anzahl
+- [ ] "Athlet einladen"-Button in der "Ohne Team"-Spalte
+- [ ] Horizontales Scrollen wenn viele Teams vorhanden
+
+### Sortierung
+- [ ] Dropdown oder Segmented Control für Sortierung
+- [ ] Sortieroptionen: Teams zuerst / Athleten zuerst, Name A–Z / Z–A, Vorname / Nachname (Sortierfeld umschaltbar), Status (Aktiv → Einladung ausstehend), Team-Zugehörigkeit (gruppiert nach Team)
+- [ ] Sortierung wird im `localStorage` gespeichert
+- [ ] In Kanban: Sortierung bezieht sich auf Reihenfolge innerhalb der Spalten
+
+### Drag & Drop
+- [ ] Athleten-Card/Zeile ist draggable (visueller Hinweis: Cursor ändert sich, leichte Anhebung)
+- [ ] Team-Card/Zeile/Spalte ist Drop-Target (visueller Hinweis: Hervorhebung bei Hover)
+- [ ] Drop auf Team: Athlet wird diesem Team zugewiesen
+- [ ] Drop auf "Ohne Team" (Kanban) oder außerhalb: Athlet wird aus aktuellem Team entfernt
+- [ ] Wenn Athlet bereits einem anderen Team zugeordnet: Bestätigungsdialog ("X ist bereits in Y. In Z verschieben?")
+- [ ] Drop auf eigenes Team: Toast "Athlet ist bereits in diesem Team" — kein API-Call
+- [ ] Teams selbst sind NICHT draggable
+- [ ] Touch-Support für Mobile (long-press zum Starten des Drags)
+- [ ] Keyboard-accessible (Space zum Aufnehmen, Pfeiltasten, Enter zum Ablegen)
+- [ ] Library: `@dnd-kit/core` + `@dnd-kit/sortable`
+
+### Team Inline-Aufklappen (Accordion)
+- [ ] Klick auf Team-Card/Zeile toggelt die Expansion
+- [ ] Aufgeklappt zeigt: Athleten-Liste mit Avatar, Name, Status + "Athleten zuweisen"-Button
+- [ ] Nur ein Team gleichzeitig aufgeklappt (Single-Accordion)
+- [ ] Team-Detail-Seite `/organisation/teams/[id]` bleibt für erweiterte Aktionen erreichbar ("Details"-Link)
+
+### Ein Athlet = Ein Team (Schema-Änderung)
+- [ ] DB-Migration: UNIQUE constraint auf `team_athletes.athlete_id` (statt `team_id + athlete_id`)
+- [ ] Bestehende Daten bereinigen: Falls ein Athlet in mehreren Teams ist, nur die neueste Zuordnung behalten
+- [ ] Server Actions anpassen: `assignAthletes` entfernt alte Zuordnung automatisch
+- [ ] UI zeigt Team-Zugehörigkeit als einzelnes Badge (nicht als Liste)
+
+### Suche / Filter
+- [ ] Suchfeld oben: Live-Suche nach Name oder E-Mail
+- [ ] Filter: Nach Team (Dropdown), nach Status (Aktiv / Einladung ausstehend)
+- [ ] Filter und Suche funktionieren in allen drei Ansichten
 
 ### Team erstellen
 - [ ] Button "Team erstellen" öffnet Modal (kein Seitenwechsel)
@@ -49,12 +160,6 @@ Ein "Team" ist eine Gruppierung von Athleten, in der mehrere Trainer gleichberec
 - [ ] Ersteller wird automatisch als erstes Team-Mitglied eingetragen
 - [ ] Trainer kann Mitglied in mehreren Teams sein (Multi-Team)
 - [ ] Team-Name braucht keinen Unique-Constraint (mehrere Teams dürfen gleich heißen)
-
-### Team-Übersicht (Tab "Teams")
-- [ ] Grid-Layout: 3 Spalten Desktop, 2 Tablet, 1 Mobile
-- [ ] TeamCard zeigt: Logo/Initialen-Avatar, Name, Beschreibung (truncated), Stats (X Trainer · Y Athleten)
-- [ ] Klick auf TeamCard → `/organisation/teams/[id]`
-- [ ] EmptyState wenn keine Teams vorhanden
 
 ### Team-Detail
 - [ ] StatsCards: Trainer-Anzahl, Athleten-Anzahl, Aktive Programme (Platzhalter für PROJ-7)
@@ -102,6 +207,8 @@ Ein "Team" ist eine Gruppierung von Athleten, in der mehrere Trainer gleichberec
 - [ ] Keine Einsicht in individuelle Körperdaten (Datenschutz)
 
 ## Edge Cases
+
+### Bestehende Edge Cases
 - Trainer verlässt Team → Athleten-Trainer-Verbindungen (PROJ-5) bleiben bestehen, nur Team-Mitgliedschaft endet
 - Letzter Trainer verlässt Team + Athleten noch zugewiesen → Bestätigungs-Dialog: "Team wird archiviert und Athleten-Zuweisungen aufgelöst"
 - Letzter Trainer verlässt leeres Team → Team wird automatisch archiviert
@@ -111,11 +218,27 @@ Ein "Team" ist eine Gruppierung von Athleten, in der mehrere Trainer gleichberec
 - Eingeladener Trainer hat keinen Account → E-Mail enthält Link zur Registrierung, nach Registrierung als Trainer automatisch Team beitreten
 - Team hat 0 Trainer (alle verlassen) → Team wird automatisch archiviert
 
+### Unified View Edge Cases
+- **Drag & Drop auf Mobile:** Long-press (300ms) startet Drag. Visuelles Feedback: Card hebt sich leicht an, Schatten wird dunkler. Scrolling während Drag muss funktionieren.
+- **Drag & Drop — Athlet bereits im Ziel-Team:** Toast "Athlet ist bereits in diesem Team" — kein API-Call, kein Bestätigungsdialog.
+- **Drag & Drop — Athlet in anderem Team:** Bestätigungsdialog: "[Name] ist bereits in [Team A]. In [Team B] verschieben?" mit Optionen "Verschieben" / "Abbrechen".
+- **Leeres Team in Kanban:** Spalte zeigt EmptyState "Keine Athleten zugeordnet" + Drop-Zone bleibt aktiv.
+- **Viele Teams in Kanban:** Horizontales Scrollen mit visuellen Indikatoren (Schatten/Fade an den Rändern).
+- **Viele Athleten (50+):** Virtualisierung oder Pagination pro Ansicht. Card-Grid: Infinite Scroll. Tabelle: Pagination. Kanban: Virtualisierte Spalten.
+- **Gleichzeitige Bearbeitung:** Optimistic UI — Drag & Drop zeigt Änderung sofort, bei Server-Fehler wird Rollback angezeigt mit Toast.
+- **Ansichtswechsel während Drag:** Drag wird abgebrochen, kein API-Call.
+- **Suche/Filter + Drag & Drop:** Gefilterte Athleten bleiben draggable. Drop-Targets zeigen nur sichtbare Teams.
+- **Accordion + Sortierung:** Aufgeklapptes Team bleibt offen wenn Sortierung wechselt. Accordion schließt bei Ansichtswechsel.
+- **Schema-Migration — Athlet in mehreren Teams:** Migration behält nur die neueste Zuordnung (basierend auf `assigned_at`). Betroffene Trainer werden per Toast informiert beim nächsten Login.
+
 ## Technical Requirements
 - Security: RLS — nur Team-Mitglieder sehen Team-Daten
 - Soft-Delete: `archived_at` auf `teams`-Tabelle statt Hard-Delete
 - Audit: `created_by` auf `teams`, `assigned_by` auf `team_athletes` für DSGVO-Transparenz
-- Multi-Team: Trainer und Athleten können in mehreren Teams gleichzeitig sein
+- Multi-Team Trainer: Trainer können in mehreren Teams gleichzeitig sein
+- **Ein Athlet = Ein Team:** Athleten können nur einem Team zugeordnet sein (UNIQUE auf `team_athletes.athlete_id`)
+- Drag & Drop: `@dnd-kit/core` + `@dnd-kit/sortable` für alle drei Ansichten
+- Ansichtspersistenz: Gewählte Ansicht + Sortierung in `localStorage`
 
 ---
 <!-- Sections below are added by subsequent skills -->
@@ -127,7 +250,8 @@ Ein "Team" ist eine Gruppierung von Athleten, in der mehrere Trainer gleichberec
 | Entscheidung | Gewählt | Warum |
 |---|---|---|
 | Bezeichnung | **Team** (DE: Team, EN: Team) | Neutral, sportlich passend, nicht mit Nav-Bereich "Organisation" verwechselbar |
-| Multi-Team | Ja, Trainer UND Athleten können in mehreren Teams sein | Flexibilität: z.B. Verein + Privattraining gleichzeitig |
+| Multi-Team Trainer | Ja, Trainer können in mehreren Teams sein | Flexibilität: z.B. Verein + Privattraining gleichzeitig |
+| Ein Athlet = Ein Team | Nein, Athleten können nur in einem Team sein | Einfachere UX: kein Konflikt bei Drag & Drop, klare Zuordnung |
 | Trainer-Rechte | Gleichberechtigt | Alle Trainer im Team sehen alle Athleten und bearbeiten alle Pläne |
 | Team-Verwaltung | Jeder Trainer im Team | Alle Trainer können gleichberechtigt das Team verwalten (Trainer einladen/entfernen, Team bearbeiten/löschen) |
 | Athleten-Zuordnung | Zuweisung (kein neuer Einladungs-Flow) | Trainer weist seine bestehenden Athleten (PROJ-5) einem Team zu — kein separater Invite nötig |
@@ -137,26 +261,38 @@ Ein "Team" ist eine Gruppierung von Athleten, in der mehrere Trainer gleichberec
 ### Seitenstruktur (Routes)
 
 ```
-/organisation                    ← "Athleten & Teams" (Tabs: Athleten | Teams)
-/organisation/teams/[id]         ← Team-Detail (Dashboard mit Stats + Mitglieder)
+/organisation                    ← "Athleten & Teams" (Unified View — keine Tabs)
+/organisation/teams/[id]         ← Team-Detail (erweiterte Ansicht mit Stats + Mitglieder)
 ```
 
-Nur 2 Seiten — "Team erstellen" und "Team bearbeiten" sind Modals (nur 3 Felder, braucht keine eigene Seite). Die Athleten-Übersicht (PROJ-5) und Team-Übersicht teilen sich eine Seite mit Tabs.
+Nur 2 Seiten — "Team erstellen" und "Team bearbeiten" sind Modals (nur 3 Felder, braucht keine eigene Seite). Athleten und Teams werden gleichwertig auf einer Seite dargestellt (keine Tabs mehr). Drei umschaltbare Ansichten: Card-Grid, Tabelle, Kanban.
 
 ### Komponenten-Struktur
 
 ```
-Team-Übersicht (/teams)
-├── PageHeader ("Meine Teams" + Button "Team erstellen")
-├── TeamCard[] (Grid: 3 Desktop, 2 Tablet, 1 Mobile)
-│   ├── Team-Logo oder Initialen-Avatar
-│   ├── Team-Name + Beschreibung (truncated)
-│   ├── Stats: X Trainer · Y Athleten
-│   └── Click → /teams/[id]
-├── EmptyState ("Noch kein Team — Erstelle dein erstes Team")
-└── TeamFormModal (erstellen: Name, Beschreibung, Logo-Upload)
+Unified View (/organisation)
+├── PageHeader ("Athleten & Teams" + Buttons: "Athlet einladen", "Team erstellen")
+├── Toolbar
+│   ├── Suchfeld (Live-Suche nach Name/E-Mail)
+│   ├── Filter (Team-Dropdown, Status-Dropdown)
+│   ├── Sortierung (Dropdown: Teams/Athleten zuerst, Name A-Z/Z-A, Vorname/Nachname)
+│   └── Ansichts-Umschalter (Grid | Tabelle | Kanban)
+├── DndContext (@dnd-kit)
+│   ├── CardGridView (Teams + Athleten als Cards im Grid)
+│   │   ├── TeamCard (draggable=false, droppable=true, accordion)
+│   │   └── AthleteCard (draggable=true)
+│   ├── TableView (kompakte Tabelle, sortierbare Spalten)
+│   │   ├── TeamRow (expandable accordion)
+│   │   └── AthleteRow (draggable)
+│   └── KanbanView (Spalten = Teams + "Ohne Team")
+│       ├── KanbanColumn (Team-Header + Athleten-Cards)
+│       └── UnassignedColumn ("Ohne Team")
+├── EmptyState (keine Athleten UND keine Teams)
+├── TeamFormModal (erstellen/bearbeiten)
+├── DragConfirmDialog (Team-Wechsel bestätigen)
+└── AthleteInviteModal (aus PROJ-5, wiederverwendet)
 
-Team-Detail (/teams/[id])
+Team-Detail (/organisation/teams/[id])
 ├── PageHeader (Team-Name + Logo + "Bearbeiten" Button)
 ├── StatsCards (Grid: 3 Spalten)
 │   ├── StatsCard: Trainer-Anzahl
@@ -189,15 +325,41 @@ Team-Detail (/teams/[id])
 | `AthleteCard` | PROJ-5 | Athleten-Anzeige im Team |
 | `Badge` | shadcn/ui | Mitglieder-Badge |
 
-### Neue Komponenten (zu bauen)
+### Neue Komponenten (zu bauen für Unified View)
 
 | Komponente | Beschreibung |
 |---|---|
-| `TeamCard` | Card für Team-Übersicht: Logo, Name, Mitglieder-Badge, Stats |
-| `TeamFormModal` | Modal für Team erstellen + bearbeiten: Name, Beschreibung, Logo |
-| `TeamTrainerList` | Liste der Trainer im Team mit Avatar, Name, Athleten-Anzahl |
-| `TeamAthleteAssignModal` | Modal mit Checkbox-Liste zum Zuweisen bestehender Athleten |
+| `UnifiedView` | Hauptcontainer mit DndContext, Ansichts-Umschalter, Toolbar |
+| `CardGridView` | Grid-Ansicht mit Team- und Athleten-Cards |
+| `TableView` | Tabellen-Ansicht mit sortierbaren Spalten und Accordion-Rows |
+| `KanbanView` | Kanban-Board mit Team-Spalten + "Ohne Team"-Spalte |
+| `ViewSwitcher` | Segmented Control für Grid/Tabelle/Kanban |
+| `SortDropdown` | Sortieroptionen-Dropdown mit localStorage-Persistenz |
+| `DragConfirmDialog` | Bestätigungsdialog bei Team-Wechsel eines Athleten |
+| `DraggableAthleteCard` | Athleten-Card mit @dnd-kit Drag-Funktionalität |
+| `DroppableTeamCard` | Team-Card als Drop-Target mit Accordion |
+| `KanbanColumn` | Kanban-Spalte (Team oder "Ohne Team") als Drop-Target |
+
+### Betroffene bestehende Komponenten (Unified View Umbau)
+
+| Komponente | Aktion | Details |
+|---|---|---|
+| `OrganisationTabs` | **Entfernen** | Tabs werden durch Unified View ersetzt |
+| `TeamsList` | **Entfernen** | Wird durch CardGridView/TableView/KanbanView ersetzt |
+| `AthletesList` (PROJ-5) | **Entfernen** aus Organisation | Athlet-Darstellung wandert in die Unified View |
+| `TeamCard` | **Umbauen** | Wird zu DroppableTeamCard mit Accordion + Drop-Target |
+| `AthleteCard` (PROJ-5) | **Umbauen** | Wird zu DraggableAthleteCard mit Drag-Funktionalität |
+| `/organisation/page.tsx` | **Umbauen** | Von Tabs zu UnifiedView-Container |
+
+### Bestehende Komponenten (bleiben unverändert)
+
+| Komponente | Beschreibung |
+|---|---|
+| `TeamFormModal` | Modal für Team erstellen + bearbeiten |
+| `TeamTrainerList` | Liste der Trainer im Team |
+| `TeamAthleteAssignModal` | Modal mit Checkbox-Liste zum Zuweisen |
 | `TeamInviteTrainerModal` | Modal zum Einladen neuer Trainer per E-Mail |
+| `TeamDetailView` | Team-Detail-Seite (bleibt als erweiterte Ansicht) |
 
 ### Datenmodell (Klarsprache)
 
@@ -218,7 +380,8 @@ Team-Detail (/teams/[id])
 **Tabelle: `team_athletes`**
 - Verbindet Athleten ↔ Team
 - Felder: Team-ID, Athlete-ID (FK → profiles), zugewiesen von (Trainer-ID), Zuweisungsdatum
-- UNIQUE auf team_id + athlete_id
+- **UNIQUE auf athlete_id** (Ein Athlet = Ein Team — ersetzt altes `team_id + athlete_id` Constraint)
+- Migration: Bestehende Mehrfach-Zuordnungen bereinigen (nur neueste behalten)
 - Athlet muss bereits eine Trainer-Athleten-Verbindung haben (PROJ-5)
 
 **Tabelle: `team_invitations`**
@@ -259,10 +422,10 @@ Nachher: Athleten & Teams (einzelner Link → /organisation)
 ```
 
 - Kein Collapsible/Section mehr, sondern ein flacher `NavItem` in `nav-config.ts`
-- Route `/organisation` zeigt eine Seite mit **Tabs**: "Athleten" (PROJ-5) | "Teams" (PROJ-9)
+- Route `/organisation` zeigt eine Unified View (keine Tabs) mit Teams und Athleten gleichwertig
 - Sichtbar für: TRAINER-Rolle
-- Die bestehende Athleten-Übersicht (`/organisation/athletes`) wird zum Tab "Athleten" in der kombinierten Seite
 - Team-Detail bleibt als eigene Seite: `/organisation/teams/[id]`
+- `/organisation/athletes` wird zu Redirect auf `/organisation` (Backward Compatibility)
 
 ### Sicherheit (RLS-Regeln, Kurzfassung)
 
@@ -327,11 +490,156 @@ Athleten sehen im bestehenden Dashboard (`/dashboard`) eine neue Card-Sektion "D
 
 ### Dependencies (Packages)
 
-Keine neuen Packages nötig. Alles bereits vorhanden:
+**Neue Packages für Unified View:**
+- `@dnd-kit/core` → Drag & Drop Framework
+- `@dnd-kit/sortable` → Sortable Preset für Kanban
+- `@dnd-kit/utilities` → CSS-Transform Utilities
+
+**Bereits vorhanden:**
 - `zod` + `react-hook-form` → Formular-Validierung
 - `@supabase/supabase-js` + `@supabase/ssr` → Datenbank + Auth
 - `lucide-react` → Icons (Users für Teams)
 - Bestehende shadcn/ui-Komponenten
+
+### Unified View — Architektur (Neu)
+
+> Dieses Kapitel beschreibt die Architektur-Ergänzungen für den Umbau von Tabs → Unified View.
+
+#### Warum dieser Umbau?
+
+Die Tab-basierte Darstellung (Athleten | Teams) zwingt Trainer zum Tab-Wechsel, um Athleten Teams zuzuweisen. Die Unified View zeigt beides auf einer Seite und ermöglicht Drag & Drop — schnellere, intuitivere Zuordnung.
+
+#### Datenfluss
+
+```
+Server (page.tsx)
+├── fetchAthletes() → alle Athleten des Trainers (PROJ-5)
+├── fetchTeams() → alle Teams des Trainers (PROJ-9)
+└── fetchAllTeamAthletes() → NEU: welcher Athlet in welchem Team ist
+    ↓
+UnifiedOrganisationView (Client Component)
+├── Empfängt: athletes[], teams[], teamAthletes Map<athleteId, teamId>
+├── Hält lokalen State: Ansicht, Sortierung, Suche, Filter, expandedTeamId
+├── DndContext umschließt alle drei Ansichten
+└── Bei Drop: Server Action "moveAthleteToTeam" → Optimistic UI + Revalidation
+```
+
+**Wichtig:** Die Seite bleibt ein Server Component, das Daten fetcht. Die Unified View selbst ist ein einzelnes Client Component, das alle Daten als Props bekommt. Kein Client-Side Fetching — alles wird serverseitig geladen und bei Mutationen per `revalidatePath` aktualisiert.
+
+#### Neue Query: `fetchAllTeamAthletes()`
+
+Liefert eine flache Liste aller Team-Athleten-Zuordnungen für die Teams des Trainers. Wird vom Client genutzt, um in Card-Grid/Tabelle/Kanban zu wissen, welcher Athlet wo zugeordnet ist.
+
+Rückgabe-Format: Eine Map-Struktur — Athleten-ID → Team-ID (oder null wenn ohne Team).
+
+#### Neue Server Action: `moveAthleteToTeam()`
+
+Kombinierte Action für Drag & Drop:
+1. Prüft ob Athlet bereits in einem Team ist
+2. Falls ja: Altes Assignment löschen
+3. Neues Assignment erstellen (oder keines wenn "Ohne Team")
+4. `revalidatePath("/organisation")` für Server-Side Refresh
+
+Diese Action ersetzt für Drag & Drop den bisherigen Weg über TeamAthleteAssignModal → `assignAthletes()`.
+
+#### State-Management (Client-Side)
+
+| State | Speicherort | Begründung |
+|---|---|---|
+| Ansichtsmodus (Grid/Tabelle/Kanban) | `localStorage` + React State | Persistiert über Sessions |
+| Sortierung (Feld + Richtung) | `localStorage` + React State | Persistiert über Sessions |
+| Suchbegriff | React State (flüchtig) | Verschwindet bei Navigation — gewollt |
+| Filter (Team, Status) | React State (flüchtig) | Verschwindet bei Navigation — gewollt |
+| Aufgeklapptes Team (Accordion) | React State (flüchtig) | Nur ein Team gleichzeitig offen |
+| Drag-in-Progress | @dnd-kit interner State | Verwaltet von DndContext |
+
+Custom Hook: `useOrganisationPreferences()` — liest/schreibt `localStorage` Key `organisation-view-prefs` mit Ansicht + Sortierung. Fallback auf Grid + "Teams zuerst" wenn kein Eintrag vorhanden.
+
+#### Drag & Drop — Technischer Ablauf
+
+```
+1. Trainer greift Athleten-Card (DragStartEvent)
+   → Visueller Feedback: Card hebt sich, Cursor ändert sich
+   → Alle Team-Cards/Spalten bekommen Drop-Target-Styling
+
+2. Trainer zieht über Team-Card (DragOverEvent)
+   → Ziel-Team wird hervorgehoben (Teal-Rahmen)
+   → "Ohne Team"-Zone ebenfalls als Target verfügbar
+
+3. Trainer lässt los (DragEndEvent)
+   → Prüfung: Ist Athlet schon in diesem Team? → Toast, kein Call
+   → Prüfung: Athlet in anderem Team? → Bestätigungs-Dialog
+   → Prüfung: Neues Team oder "Ohne Team"? → Direkt ausführen
+   → Optimistic UI: Lokaler State sofort aktualisieren
+   → Server Action: moveAthleteToTeam() im Hintergrund
+   → Bei Fehler: Rollback + Error-Toast
+```
+
+**Touch-Support:** `@dnd-kit` unterstützt Touch nativ über `TouchSensor` mit `activationConstraint: { delay: 300, tolerance: 5 }` für Long-Press.
+
+**Keyboard:** `KeyboardSensor` mit `sortableKeyboardCoordinates` für Tab + Space + Pfeiltasten.
+
+#### Rendering-Strategie pro Ansicht
+
+**Card-Grid:**
+- Einziges CSS-Grid mit gemischten Items (Teams + Athleten)
+- Sortierung bestimmt Reihenfolge (z.B. Teams zuerst → alle TeamCards oben, dann AthleteCards)
+- TeamCard wird bei Klick zum Accordion: unterm Card erscheint die Athleten-Liste
+- AthleteCard zeigt Team-Badge wenn zugeordnet
+- Drop auf TeamCard → Assignment
+
+**Tabelle:**
+- HTML-Table mit sortierbaren Spalten-Headern
+- Team-Zeilen sind visuell abgesetzt (fetter Text, leichter Hintergrund)
+- Klick auf Team-Zeile → Accordion-Rows mit Athleten erscheinen darunter
+- Drag & Drop auf Zeilen-Ebene (AthleteRow draggable → TeamRow droppable)
+
+**Kanban:**
+- Horizontale Spalten-Container: eine Spalte pro Team + "Ohne Team"
+- Jede Spalte ist ein DroppableContainer mit Team-Header (Name, Counts)
+- Athleten als Cards vertikal gestapelt innerhalb der Spalte
+- Drag zwischen Spalten verschiebt den Athleten
+- Horizontales Scrollen bei vielen Teams (6+ Spalten)
+
+#### Schema-Migration: Ein Athlet = Ein Team
+
+**Was ändert sich:**
+- Bisheriges Constraint: `UNIQUE(team_id, athlete_id)` → erlaubt einen Athleten in mehreren Teams
+- Neues Constraint: `UNIQUE(athlete_id)` → ein Athlet kann nur in einem Team sein
+
+**Migrationsstrategie:**
+1. Bestehende Daten bereinigen: Falls Mehrfach-Zuordnungen existieren, nur die neueste behalten (höchstes `assigned_at`)
+2. Altes Constraint droppen
+3. Neues UNIQUE Constraint auf `athlete_id` erstellen
+4. `assignAthletes()` Action anpassen: Automatisch alte Zuordnung entfernen vor Neuzuweisung
+
+**Risiko:** Gering — die aktuelle Produktionsinstanz hat wahrscheinlich keine Mehrfach-Zuordnungen, da die UI bisher nur Zuweisung innerhalb eines Teams ermöglichte.
+
+#### Betroffene Dateien (Zusammenfassung)
+
+| Datei | Änderung |
+|---|---|
+| `/organisation/page.tsx` | Server Component: Tabs-Import entfernen, UnifiedView rendern |
+| `organisation-tabs.tsx` | **Löschen** |
+| `teams-list.tsx` | **Löschen** |
+| `athletes-list.tsx` | **Entfernen aus Organisation** (bleibt ggf. für andere Kontexte) |
+| `team-card.tsx` | Umbauen: Droppable + Accordion hinzufügen |
+| `athlete-card.tsx` | Umbauen: Draggable + Team-Badge hinzufügen |
+| `src/lib/teams/queries.ts` | Neue Query: `fetchAllTeamAthletes()` |
+| `src/lib/teams/actions.ts` | Neue Action: `moveAthleteToTeam()` |
+| `src/lib/teams/types.ts` | Neuer Type: `UnifiedOrganisationItem` |
+| `src/messages/de.json` | Neue Keys für Unified View (Ansichten, Sortierung, D&D) |
+| `src/messages/en.json` | Gleiche neue Keys |
+| Supabase Migration | UNIQUE Constraint ändern auf `athlete_id` |
+
+#### Nicht betroffen (bleibt wie deployt)
+
+- `/organisation/teams/[id]/page.tsx` — Team-Detail-Seite unverändert
+- `TeamDetailView`, `TeamFormModal`, `TeamInviteTrainerModal`, `TeamAthleteAssignModal` — bleiben
+- `TeamTrainerList`, `TeamAthleteList`, `TeamArchiveDialog` — bleiben
+- `TeamOverviewCard` (Athleten-Dashboard) — bleibt
+- Alle RLS-Policies — bleiben (außer UNIQUE Constraint Migration)
+- `/organisation/athletes/[id]/page.tsx` — Athleten-Detail-Seite bleibt
 
 ## QA Test Results (Round 2)
 
@@ -620,9 +928,9 @@ Keine neuen Packages nötig. Alles bereits vorhanden:
 
 ## Frontend Implementation Notes
 
-**Implemented:** 2026-03-15
+### Phase 1: Tab-Based View (Deployed 2026-03-15)
 
-### Components Created
+**Components Created:**
 - `TeamCard` — Card for team grid overview with logo/initials, name, description, stats
 - `TeamFormModal` — Modal for creating + editing teams (name, description fields)
 - `TeamInviteTrainerModal` — Modal for inviting trainers via email
@@ -636,13 +944,19 @@ Keine neuen Packages nötig. Alles bereits vorhanden:
 - `TeamDetailView` — Full team detail page with stats, trainers, athletes sections
 - `OrganisationTabs` — Tabs wrapper for Athletes | Teams
 
-### Pages Created
-- `/organisation` — Combined page with Tabs (Athletes | Teams), replaces direct `/organisation/athletes`
+**Pages Created:**
+- `/organisation` — Combined page with Tabs (Athletes | Teams)
 - `/organisation/teams/[id]` — Team detail page with loading + not-found states
+
+### Phase 2: Unified View (Planned)
+
+**Zu entfernen:** `OrganisationTabs`, `TeamsList`, `AthletesList` (aus Organisation-Kontext)
+**Umzubauen:** `TeamCard` → DroppableTeamCard, `AthleteCard` → DraggableAthleteCard, `/organisation/page.tsx`
+**Neu zu bauen:** UnifiedView, CardGridView, TableView, KanbanView, ViewSwitcher, SortDropdown, DragConfirmDialog, KanbanColumn
+**Schema-Migration:** UNIQUE Constraint von `team_id + athlete_id` auf `athlete_id` ändern
 
 ### Navigation Changes
 - Sidebar "Athleten & Teams" now highlights on all `/organisation/*` subpaths (was exact match only)
-- `/organisation/athletes` still works as a standalone page (for deep links)
 
 ### Dashboard Integration
 - Athlete dashboard shows "Deine Teams" card with team names and trainer counts
@@ -651,8 +965,7 @@ Keine neuen Packages nötig. Alles bereits vorhanden:
 - `Modal`, `ConfirmDialog` (PROJ-2)
 - `EmptyState` (PROJ-2)
 - `StatsCard` (PROJ-2)
-- `AthletesList` (PROJ-5, embedded in Athletes tab)
-- shadcn/ui: Avatar, Badge, Button, Card, Checkbox, Dialog, DropdownMenu, Input, Label, Tabs, Textarea
+- shadcn/ui: Avatar, Badge, Button, Card, Checkbox, Dialog, DropdownMenu, Input, Label, Textarea
 
 ### Backend Already Present
 - Types, queries, actions, and validations were already implemented in `src/lib/teams/`
@@ -665,3 +978,287 @@ Keine neuen Packages nötig. Alles bereits vorhanden:
 - **Vercel Deployment:** `dpl_23TjFYNkXS9erZrCUoAMjwvay2kW`
 - **Commit:** `3db3f97` (feat(PROJ-9): Add Team-Verwaltung)
 - **Supabase Migration:** `proj9_team_verwaltung` (4 tables, 15 RLS policies, 1 trigger, 1 storage bucket)
+
+---
+
+## QA Test Results (Unified View Redesign)
+
+**Tested:** 2026-03-15
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+**Scope:** Unified View redesign (Card-Grid, Table, Kanban, DnD, Sort, Search, Schema change)
+
+### Acceptance Criteria Status
+
+#### AC: Navigation
+- [x] Sidebar: "Athleten & Teams" als flacher Nav-Item (kein Collapsible) -- confirmed in `nav-config.ts`
+- [x] Seite `/organisation` zeigt Teams und Athleten gleichwertig auf einer Seite (keine Tabs) -- `OrganisationTabs` deleted, `UnifiedOrganisationView` used in `page.tsx`
+- [ ] BUG: Sichtbar nur fuer TRAINER-Rolle -- middleware only checks auth, no role check on `/organisation` (see BUG-1)
+
+#### AC: Unified View -- Ansichts-Umschalter
+- [x] Toggle/Segmented Control oben rechts mit 3 Optionen: Grid, Tabelle, Kanban -- implemented in `ViewSwitcher` with `role="radiogroup"` and `aria-checked`
+- [x] Gewaehlte Ansicht wird im localStorage gespeichert und beim naechsten Besuch wiederhergestellt -- `useOrganisationPreferences` hook with `useSyncExternalStore`
+- [x] Alle drei Ansichten zeigen dieselben Daten, nur unterschiedlich dargestellt -- all three views receive same `sortedTeams`, `sortedAthletes`, `teamAthleteMap`
+
+#### AC: Unified View -- Card-Grid Ansicht
+- [x] Teams und Athleten als Cards im gleichen Grid nebeneinander
+- [x] Team-Cards visuell unterscheidbar (anderes Icon, Akzent-Farbe, Stats: Athleten-Anzahl + Trainer-Anzahl)
+- [x] Athleten-Cards zeigen: Avatar/Initiale, Name, E-Mail, Status-Badge, Team-Zugehoerigkeit
+- [x] Responsive Grid: 3 Spalten Desktop, 2 Spalten Tablet, 1 Spalte Mobile -- `grid gap-3 sm:grid-cols-2 lg:grid-cols-3`
+- [x] Drag & Drop: Athleten-Card auf Team-Card ziehen weist den Athleten zu
+- [x] Klick auf Team-Card klappt inline auf (Accordion) und zeigt zugehoerige Athleten
+
+#### AC: Unified View -- Tabellen-Ansicht
+- [x] Kompakte Tabelle mit Spalten: Name, Typ (Team/Athlet), Team-Zugehoerigkeit, Status
+- [x] Team-Zeilen visuell abgesetzt (fetter Text, Hintergrundfarbe) -- `bg-muted/30 font-medium`
+- [x] Klick auf Team-Zeile klappt darunter die zugehoerigen Athleten auf (Accordion-Rows)
+- [x] Drag & Drop: Athleten-Zeile auf Team-Zeile ziehen weist zu
+- [ ] BUG: Spalten NICHT sortierbar per Klick auf Spaltenheader (see BUG-4)
+- [ ] BUG: Hardcoded "Status" string in table header -- not i18n compliant (see BUG-5)
+
+#### AC: Unified View -- Kanban-Ansicht
+- [x] Spalten = Teams + eine Spalte "Ohne Team" (fuer nicht zugeordnete Athleten)
+- [x] Athleten als Cards in den Team-Spalten
+- [x] Drag & Drop zwischen Spalten verschiebt den Athleten ins Ziel-Team
+- [ ] BUG: Team-Header zeigt Team-Name und Athleten-Anzahl, but NOT Trainer-Anzahl (see BUG-6)
+- [ ] BUG: "Athlet einladen"-Button in der "Ohne Team"-Spalte is missing (see BUG-7)
+- [x] Horizontales Scrollen wenn viele Teams vorhanden -- `ScrollArea` with `ScrollBar orientation="horizontal"`
+
+#### AC: Sortierung
+- [x] Dropdown for Sortierung -- `SortDropdown` component
+- [ ] BUG: "Teams zuerst" and "Athleten zuerst" sort options are in the dropdown but NOT implemented in sort logic (see BUG-3)
+- [x] Name A-Z / Z-A sort implemented correctly
+- [ ] BUG: Missing sort options from spec: Vorname/Nachname toggle, Status sort, Team-Zugehoerigkeit grouping (see BUG-3)
+- [x] Sortierung wird im localStorage gespeichert
+- [ ] In Kanban: Sortierung bezieht sich auf Reihenfolge innerhalb der Spalten -- not explicitly handled
+
+#### AC: Drag & Drop
+- [x] Athleten-Card/Zeile ist draggable (visueller Hinweis: Cursor aendert sich `cursor-grab active:cursor-grabbing`, leichte Anhebung via `opacity-40`)
+- [x] Team-Card/Zeile/Spalte ist Drop-Target (visueller Hinweis: Hervorhebung bei Hover `ring-2 ring-primary bg-primary/5`)
+- [x] Drop auf Team: Athlet wird diesem Team zugewiesen
+- [x] Drop auf "Ohne Team" (Kanban): Athlet wird aus aktuellem Team entfernt
+- [x] Wenn Athlet bereits einem anderen Team zugeordnet: Bestaetigungsdialog ("X ist bereits in Y. In Z verschieben?")
+- [x] Drop auf eigenes Team: Toast "Athlet ist bereits in diesem Team" -- kein API-Call
+- [x] Teams selbst sind NICHT draggable
+- [x] Touch-Support fuer Mobile (long-press 300ms zum Starten des Drags)
+- [x] Keyboard-accessible (KeyboardSensor with `sortableKeyboardCoordinates`)
+- [x] Library: `@dnd-kit/core` + `@dnd-kit/sortable`
+
+#### AC: Team Inline-Aufklappen (Accordion)
+- [x] Klick auf Team-Card/Zeile toggelt die Expansion -- `Collapsible` from shadcn/ui
+- [x] Aufgeklappt zeigt: Athleten-Liste mit Avatar, Name, Status
+- [ ] BUG: "Athleten zuweisen"-Button NOT shown in accordion expanded state (see BUG-8)
+- [x] Nur ein Team gleichzeitig aufgeklappt (Single-Accordion) -- `expandedTeamId` state
+- [x] Team-Detail-Seite `/organisation/teams/[id]` bleibt erreichbar ("Details"-Link via ExternalLink icon)
+
+#### AC: Ein Athlet = Ein Team (Schema-Aenderung)
+- [x] DB-Migration: UNIQUE constraint auf `team_athletes.athlete_id` -- confirmed in `20260315100000_proj9_one_athlete_one_team.sql`
+- [x] Bestehende Daten bereinigen: newest assignment kept via `DISTINCT ON (athlete_id) ORDER BY assigned_at DESC`
+- [x] Server Actions anpassen: `assignAthletes` deletes old assignment before insert
+- [x] UI zeigt Team-Zugehoerigkeit als einzelnes Badge (not list)
+
+#### AC: Suche / Filter
+- [x] Suchfeld oben: Live-Suche nach Name oder E-Mail
+- [ ] BUG: Filter (nach Team dropdown, nach Status dropdown) NOT implemented -- only search exists (see BUG-9)
+- [x] Search works in all three views (search filters `filteredAthletes` and `filteredTeams` used by all)
+
+#### AC: Team erstellen (existing feature -- regression)
+- [x] Button "Team erstellen" oeffnet Modal (kein Seitenwechsel)
+- [x] Felder: Team-Name (Pflichtfeld, max 100 Zeichen), Beschreibung (optional, max 500 Zeichen)
+- [x] Ersteller wird automatisch als erstes Team-Mitglied eingetragen
+- [x] Zod validation in `createTeamSchema`
+
+#### AC: Team-Detail (existing feature -- regression)
+- [x] Team-Detail-Seite `/organisation/teams/[id]` still works
+- [x] StatsCards, Trainer-Bereich, Athleten-Bereich still rendered
+
+#### AC: Trainer einladen (existing feature -- regression)
+- [x] Server action with rate limiting (20/day), duplicate check, self-invite prevention
+
+#### AC: Athleten zuweisen (existing feature -- regression)
+- [x] Modal with checkbox list, PROJ-5 connection verification
+
+#### AC: Team archivieren (existing feature -- regression)
+- [x] Soft-delete with `archived_at`, confirmation dialog with team-name matching
+
+#### AC: Dead Code Removal
+- [x] `organisation-tabs.tsx` deleted -- confirmed file does not exist
+- [x] `teams-list.tsx` deleted -- confirmed file does not exist
+- [x] No remaining imports reference either file (grep confirmed)
+
+#### AC: TypeScript Build
+- [x] `npx tsc --noEmit` passes with zero errors
+- [x] `npm run build` succeeds (production build clean)
+
+### Edge Cases Status
+
+#### EC: Drag & Drop auf Mobile
+- [x] Long-press (300ms) via TouchSensor -- configured correctly
+
+#### EC: Drag & Drop -- Athlet bereits im Ziel-Team
+- [x] Toast "Athlet ist bereits in diesem Team" -- `currentTeamId === targetTeamId` check
+
+#### EC: Drag & Drop -- Athlet in anderem Team
+- [x] Bestaetigungsdialog shown when `currentTeamId && targetTeamId`
+
+#### EC: Leeres Team in Kanban
+- [x] EmptyState "Keine Athleten" + drop zone remains active
+
+#### EC: Viele Athleten (50+)
+- [ ] BUG: Only first 50 athletes fetched due to `fetchAthletes(1)` pagination (see BUG-10)
+
+#### EC: Gleichzeitige Bearbeitung
+- [x] Optimistic UI with rollback on error implemented correctly in `executeMove`
+
+#### EC: Ansichtswechsel waehrend Drag
+- [x] View switcher is outside DndContext rendering, switching view would unmount active view
+
+#### EC: Schema-Migration
+- [x] Migration correctly keeps newest assignment per `athlete_id`
+
+### Security Audit Results
+
+- [x] Authentication: Server actions check `auth.getUser()` before processing
+- [x] Authorization (team operations): All mutation actions verify team membership via `assertTeamMember`
+- [x] Input validation: Zod schemas validate all server action inputs, UUID regex in `moveAthleteToTeam`
+- [x] Rate limiting: Trainer invitations limited to 20/day per user
+- [x] RLS policies: Comprehensive policies on all 4 tables + storage bucket
+- [x] SQL injection: Supabase client uses parameterized queries
+- [x] XSS: React auto-escapes output, no `dangerouslySetInnerHTML`
+- [ ] BUG: `moveAthleteToTeam` does not verify PROJ-5 connection -- trainer can assign ANY profile UUID to their team (see BUG-2)
+- [ ] BUG: No TRAINER role check on `/organisation` page or `moveAthleteToTeam` action -- athletes could access page (see BUG-1)
+- [x] Open redirect: Middleware validates `returnUrl` (same-origin only)
+- [x] CSRF: Server actions use Next.js built-in CSRF protection
+
+### i18n Compliance
+
+- [x] All Unified View strings use `useTranslations("teams")` -- DE and EN keys present and matching
+- [x] German umlauts correct in all DE translations
+- [ ] BUG: Hardcoded English string `aria-label="Drag to reorder"` in `draggable-athlete-card.tsx` line 71 (see BUG-5)
+- [ ] BUG: Hardcoded "Status" in `table-view.tsx` line 226 `<TableHead>Status</TableHead>` (see BUG-5)
+- [x] Navigation uses `Link` from `@/i18n/navigation` (verified in `droppable-team-card.tsx` and `table-view.tsx`)
+
+### Accessibility
+
+- [x] ViewSwitcher uses `role="radiogroup"` with `aria-checked`
+- [x] Search input has `aria-label`
+- [x] Sort dropdown has `aria-label`
+- [x] Loading state uses `aria-busy="true"` and `aria-label="Loading"`
+- [x] DnD: KeyboardSensor configured for Space/Arrow/Enter interaction
+- [x] CollapsibleTrigger buttons have `aria-label` for expand/collapse
+- [x] Team detail links have `aria-label`
+
+### Responsive Design
+
+- [x] 375px (Mobile): Grid collapses to 1 column, toolbar stacks vertically, view switcher labels hidden (`hidden sm:inline`)
+- [x] 768px (Tablet): Grid shows 2 columns, toolbar in single row
+- [x] 1440px (Desktop): Grid shows 3 columns, full toolbar layout
+- [x] Kanban: Fixed width columns (280px) with horizontal scroll
+- [x] Table: `overflow-x-auto` for horizontal scroll on small screens
+
+### Bugs Found
+
+#### BUG-1: No TRAINER Role Check on Organisation Page
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Log in as an ATHLETE role user
+  2. Navigate to `/organisation`
+  3. Expected: Page should not be visible or redirect away
+  4. Actual: Page renders (though with empty data due to query filters). Server actions also lack role checks.
+- **Priority:** Fix before deployment
+- **Note:** Partially mitigated because athletes have no `trainer_athlete_connections` so data would be empty, and DnD actions would fail at RLS level. But the page should not be accessible at all.
+
+#### BUG-2: moveAthleteToTeam Does Not Verify PROJ-5 Connection
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Trainer is a member of Team A
+  2. Call `moveAthleteToTeam({ athleteId: "<any-profile-uuid>", targetTeamId: "<team-a-id>" })`
+  3. Expected: Should fail if athlete is not connected via PROJ-5
+  4. Actual: Insert succeeds (RLS only checks `is_team_member` + `assigned_by`, not PROJ-5 connection)
+- **Priority:** Fix before deployment
+- **Note:** Unlike `assignAthletes` which verifies PROJ-5 connections (line 549-564), `moveAthleteToTeam` skips this check entirely. An attacker knowing a profile UUID could assign arbitrary users to their team.
+
+#### BUG-3: "Teams First" / "Athletes First" Sort Options Not Implemented
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Go to `/organisation`
+  2. Select "Teams zuerst" or "Athleten zuerst" from sort dropdown
+  3. Expected: Items reorder (teams displayed before athletes, or vice versa)
+  4. Actual: No visible change -- `sortedTeams` and `sortedAthletes` useMemo only handles `name-asc`/`name-desc`
+- **Priority:** Fix before deployment
+- **Additional:** Spec also calls for sort by Status, Vorname/Nachname toggle, and Team-Zugehoerigkeit grouping -- none implemented.
+
+#### BUG-4: Table Column Headers Not Sortable by Click
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Switch to Table view
+  2. Click on any column header (Name, Status, Teams)
+  3. Expected: Column sorts ascending/descending on click
+  4. Actual: Nothing happens -- no `onClick` on `<TableHead>` elements
+- **Priority:** Nice to have (global sort dropdown exists as alternative)
+
+#### BUG-5: Hardcoded Strings (i18n Violation)
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. In `draggable-athlete-card.tsx` line 71: `aria-label="Drag to reorder"` -- hardcoded English
+  2. In `table-view.tsx` line 226: `<TableHead>Status</TableHead>` -- hardcoded English
+  3. Expected: All user-facing strings use `t()` translation function
+  4. Actual: Two hardcoded strings remain
+- **Priority:** Fix before deployment (mandatory per project i18n rules)
+
+#### BUG-6: Kanban Column Missing Trainer Count
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Switch to Kanban view
+  2. Look at team column headers
+  3. Expected: Header shows "Team-Name, Athleten-Anzahl, Trainer-Anzahl" per spec
+  4. Actual: Header shows Team-Name and athlete count badge only -- no trainer count. `KanbanColumn` does not receive or display `trainerCount`.
+- **Priority:** Fix in next sprint
+
+#### BUG-7: Missing "Athlet einladen" Button in Kanban Unassigned Column
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Switch to Kanban view
+  2. Look at the "Ohne Team" column
+  3. Expected: "Athlet einladen" button visible in the column per spec
+  4. Actual: Only the empty state icon and text shown, no invite button
+- **Priority:** Fix in next sprint
+
+#### BUG-8: Missing "Athleten zuweisen" Button in Accordion
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. In Card-Grid view, expand a team via accordion
+  2. Expected: Expanded section shows athletes + "Athleten zuweisen" button per spec
+  3. Actual: Only athlete cards (or empty state message) shown, no assign button
+- **Priority:** Fix in next sprint
+
+#### BUG-9: Filter Dropdowns Not Implemented
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Go to `/organisation`
+  2. Look for Filter: Team dropdown, Status dropdown
+  3. Expected: Two filter dropdowns in toolbar per spec
+  4. Actual: Only search field and sort dropdown exist -- no team filter, no status filter
+- **Priority:** Fix before deployment
+
+#### BUG-10: Unified View Only Shows First 50 Athletes
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Trainer with >50 athletes navigates to `/organisation`
+  2. Expected: All athletes visible in unified view
+  3. Actual: `fetchAthletes(1)` only returns first page (50 items) due to `ATHLETES_PAGE_SIZE = 50`
+  4. Athletes beyond page 1 are invisible in all three views
+- **Priority:** Fix before deployment
+- **Note:** The unified view should either fetch all athletes or implement infinite scroll/pagination within the views.
+
+### Summary
+
+- **Acceptance Criteria:** 37/48 passed (11 failed)
+- **Bugs Found:** 10 total (0 critical, 5 medium, 5 low)
+- **Security:** 2 findings (BUG-1: no role check, BUG-2: missing PROJ-5 verification in moveAthleteToTeam)
+- **i18n:** 2 hardcoded strings (BUG-5)
+- **TypeScript Build:** PASS (tsc and production build clean)
+- **Dead Code Removal:** PASS (confirmed deleted, no orphan imports)
+- **Responsive Design:** PASS (375px, 768px, 1440px verified via Tailwind classes)
+- **Production Ready:** NO
+- **Recommendation:** Fix the 5 medium-severity bugs before deployment. The 5 low-severity bugs can be addressed in a follow-up sprint.

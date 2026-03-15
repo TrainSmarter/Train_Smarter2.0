@@ -90,6 +90,62 @@ export async function fetchAthletes(
   };
 }
 
+// ── Fetch All Athletes for Trainer (no pagination) ──────────────
+
+export async function fetchAllAthletes(): Promise<AthleteListItem[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("trainer_athlete_connections")
+    .select(
+      `
+      id,
+      athlete_id,
+      athlete_email,
+      status,
+      connected_at,
+      invited_at,
+      invitation_expires_at,
+      athlete:profiles!trainer_athlete_connections_athlete_id_fkey (
+        id,
+        first_name,
+        last_name,
+        email,
+        avatar_url
+      )
+    `
+    )
+    .eq("trainer_id", user.id)
+    .in("status", ["pending", "active"])
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to fetch all athletes:", error.message, error.code, error.details, error.hint);
+    return [];
+  }
+
+  return (data ?? []).map((row) => {
+    const athlete = row.athlete as unknown as Record<string, unknown> | null;
+    return {
+      id: (athlete?.id as string) ?? row.athlete_id ?? "",
+      connectionId: row.id,
+      firstName: (athlete?.first_name as string) ?? "",
+      lastName: (athlete?.last_name as string) ?? "",
+      email: (athlete?.email as string) || row.athlete_email || "",
+      avatarUrl: (athlete?.avatar_url as string) ?? null,
+      status: row.status,
+      connectedAt: row.connected_at,
+      invitedAt: row.invited_at,
+      invitationExpiresAt: row.invitation_expires_at,
+    };
+  });
+}
+
 // ── Fetch Single Athlete Detail ─────────────────────────────────
 
 export async function fetchAthleteDetail(

@@ -39,6 +39,95 @@ async function assertTeamMember(
   return !!data;
 }
 
+// ── Move Athlete to Team (Drag & Drop) ──────────────────────────
+
+/**
+ * Moves an athlete to a new team (or removes from team if targetTeamId is null).
+ * Used by the Unified View's Drag & Drop.
+ */
+export async function moveAthleteToTeam(data: {
+  athleteId: string;
+  targetTeamId: string | null;
+}): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  // Role check: only trainers can move athletes
+  const roles = (user.app_metadata?.roles as string[]) ?? [];
+  if (!roles.includes("TRAINER")) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  const { athleteId, targetTeamId } = data;
+
+  // Validate UUIDs
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(athleteId)) {
+    return { success: false, error: "INVALID_INPUT" };
+  }
+  if (targetTeamId !== null && !uuidRegex.test(targetTeamId)) {
+    return { success: false, error: "INVALID_INPUT" };
+  }
+
+  // Verify PROJ-5 connection: user must have an active trainer-athlete connection
+  const { data: connection } = await supabase
+    .from("trainer_athlete_connections")
+    .select("id")
+    .eq("trainer_id", user.id)
+    .eq("athlete_id", athleteId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!connection) {
+    return { success: false, error: "INVALID_ATHLETES" };
+  }
+
+  // If target team specified, verify membership
+  if (targetTeamId) {
+    const isMember = await assertTeamMember(supabase, user.id, targetTeamId);
+    if (!isMember) {
+      return { success: false, error: "UNAUTHORIZED" };
+    }
+  }
+
+  // Remove existing team assignment (if any)
+  const { error: deleteError } = await supabase
+    .from("team_athletes")
+    .delete()
+    .eq("athlete_id", athleteId);
+
+  if (deleteError) {
+    console.error("Failed to remove old team assignment:", deleteError);
+    return { success: false, error: "DELETE_FAILED" };
+  }
+
+  // If moving to a new team (not "unassigned"), create new assignment
+  if (targetTeamId) {
+    const { error: insertError } = await supabase
+      .from("team_athletes")
+      .insert({
+        team_id: targetTeamId,
+        athlete_id: athleteId,
+        assigned_by: user.id,
+      });
+
+    if (insertError) {
+      console.error("Failed to assign athlete to team:", insertError);
+      return { success: false, error: "INSERT_FAILED" };
+    }
+  }
+
+  revalidatePath("/organisation", "page");
+  return { success: true };
+}
+
 // ── Create Team ─────────────────────────────────────────────────
 
 export async function createTeam(data: {
@@ -457,7 +546,7 @@ export async function assignAthletes(data: {
     return { success: false, error: "UNAUTHORIZED" };
   }
 
-  // Get current assignments by this trainer
+  // Get current assignments for this team by this trainer
   const { data: currentAssignments } = await supabase
     .from("team_athletes")
     .select("athlete_id")
@@ -493,16 +582,28 @@ export async function assignAthletes(data: {
       return { success: false, error: "INVALID_ATHLETES" };
     }
 
+    // "Ein Athlet = Ein Team": remove any existing team assignment before
+    // inserting the new one. The UNIQUE(athlete_id) constraint enforces
+    // that each athlete can only belong to one team at a time.
+    const { error: cleanupError } = await supabase
+      .from("team_athletes")
+      .delete()
+      .in("athlete_id", toAdd);
+
+    if (cleanupError) {
+      console.error("Failed to remove old team assignments:", cleanupError);
+      return { success: false, error: "DELETE_FAILED" };
+    }
+
     // Insert new assignments
     const { error: insertError } = await supabase
       .from("team_athletes")
-      .upsert(
+      .insert(
         toAdd.map((athleteId) => ({
           team_id: teamId,
           athlete_id: athleteId,
           assigned_by: user.id,
-        })),
-        { onConflict: "team_id,athlete_id" }
+        }))
       );
 
     if (insertError) {

@@ -1,9 +1,9 @@
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { OrganisationTabs } from "@/components/organisation-tabs";
-import { AthletesList } from "@/components/athletes-list";
-import { TeamsList } from "@/components/teams-list";
-import { fetchAthletes } from "@/lib/athletes/queries";
-import { fetchTeams } from "@/lib/teams/queries";
+import { UnifiedOrganisationView } from "@/components/unified-organisation-view";
+import { fetchAllAthletes } from "@/lib/athletes/queries";
+import { fetchTeams, fetchAllTeamAthletes } from "@/lib/teams/queries";
+import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({
   params,
@@ -18,31 +18,34 @@ export async function generateMetadata({
 }
 
 export default async function OrganisationPage({
-  searchParams,
+  params,
 }: {
-  searchParams: Promise<{ tab?: string; page?: string }>;
+  params: Promise<{ locale: string }>;
 }) {
-  const resolvedParams = await searchParams;
-  const activeTab = resolvedParams.tab === "teams" ? "teams" : "athletes";
-  const page = Math.max(1, parseInt(resolvedParams.page ?? "1", 10) || 1);
+  const { locale } = await params;
 
-  const [{ athletes, totalCount, hasMore }, teams] = await Promise.all([
-    fetchAthletes(page),
+  // Role check: only trainers can access the organisation page
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const roles = (user?.app_metadata?.roles as string[]) ?? [];
+  if (!roles.includes("TRAINER")) {
+    redirect(`/${locale}/dashboard`);
+  }
+
+  const [athletes, teams, teamAthleteMap] = await Promise.all([
+    fetchAllAthletes(),
     fetchTeams(),
+    fetchAllTeamAthletes(),
   ]);
 
   return (
-    <OrganisationTabs
-      defaultTab={activeTab as "athletes" | "teams"}
-      athletesContent={
-        <AthletesList
-          athletes={athletes}
-          currentPage={page}
-          totalCount={totalCount}
-          hasMore={hasMore}
-        />
-      }
-      teamsContent={<TeamsList teams={teams} />}
+    <UnifiedOrganisationView
+      athletes={athletes}
+      teams={teams}
+      initialTeamAthleteMap={teamAthleteMap}
     />
   );
 }
