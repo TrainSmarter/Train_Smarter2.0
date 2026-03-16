@@ -1761,14 +1761,12 @@ register-form.tsx / forgot-password-form.tsx
 - **Status:** FIXED (commit 98aa18d)
 - **Verification:** DB zeigt `onboarding_completed: true` und `roles: ["TRAINER"]` — die Daten wurden korrekt gespeichert, nur der Redirect fehlte
 
-#### PROD-BUG-5: Locale-Switcher im Onboarding funktioniert nicht (MEDIUM — INVESTIGATING)
+#### PROD-BUG-5: Locale-Switcher im Onboarding funktioniert nicht — FIXED (2026-03-16)
 - **Severity:** Medium
 - **Steps to Reproduce:** On onboarding page, click "EN" in locale switcher
 - **Expected:** Page switches to English
 - **Actual:** Nothing happens
-- **Possible Root Cause:** JavaScript runtime error blocking all event handlers, OR `router.replace(pathname, { locale: "en" })` failing silently
-- **Status:** INVESTIGATING — User asked to check browser console (F12) for errors
-- **Note:** Could be related to PROD-BUG-4 (same page, same JS context)
+- **Status:** FIXED (2026-03-16) — Fallback to `window.location` for untyped paths (onboarding path not in next-intl pathnames config, so `router.replace` failed silently).
 
 ### Confirmation email deliverability
 - E-Mail landed im Spam-Ordner bei GMX (lukas.kitzberger@gmx.at)

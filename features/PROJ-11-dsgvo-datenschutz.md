@@ -272,7 +272,7 @@ Append-only: keine UPDATE-Operationen auf bestehende Zeilen
 - [x] Pseudonymizes profile: name -> "[Geloeschter Benutzer]", birth_date -> null
 - [x] Creates pending_deletions record with 30-day grace period
 - [x] Signs out user and redirects to login after deletion
-- [ ] BUG-8: Email is NOT pseudonymized/anonymized in profiles table (spec says "E-Mail -> anonymisierter Hash"). The profiles table does not have an email field (email is in auth.users), but auth.users email is NOT anonymized either -- only banned
+- [x] ~~BUG-8:~~ **FIXED (2026-03-16):** delete-account route.ts now anonymizes email in auth.users + clears user_metadata on account deletion.
 - [ ] BUG-9: No confirmation email sent after initiating deletion (spec requires it with 30-day hint and support contact)
 - [ ] BUG-10: All active sessions are NOT explicitly invalidated (only ban prevents future login -- existing sessions may persist until JWT expires)
 - [x] Removes from all teams (team_athletes deletion)
@@ -282,7 +282,7 @@ Append-only: keine UPDATE-Operationen auf bestehende Zeilen
 - [x] Audit log: 12 months (documented in privacy policy text)
 - [x] Invitation tokens: 7 days (already in PROJ-5)
 - [x] Session data: 30 days (Supabase Auth standard)
-- [ ] BUG-11: No automated cron/scheduled function to actually execute the 30-day cleanup of pending_deletions. The table tracks it but nothing processes it.
+- [x] ~~BUG-11:~~ **FIXED (2026-03-16):** cleanup_pending_deletions() PostgreSQL function + pg_cron job created to process pending_deletions where delete_after < now().
 
 #### AC-7: Auskunftsrecht -- Art. 15 DSGVO
 - [x] /konto/datenschutz shows overview of stored data categories with purpose and since-date
@@ -317,7 +317,7 @@ Append-only: keine UPDATE-Operationen auf bestehende Zeilen
 - [x] Correctly documented in UI text (kontakt@train-smarter.at), no self-service
 
 #### EC-6: Minor (< 16 years) at birth date entry
-- [ ] BUG-13: No age check on birth date entry during onboarding or profile editing. DSGVO requires blocking registration for users under 16.
+- [x] ~~BUG-13:~~ **ALREADY FIXED (2026-03-16 — was falsely reported as open):** Age verification was already implemented in onboarding (line 194-206 checks age < 16 and blocks registration).
 
 #### EC-7: Policy update -- re-consent required
 - [ ] BUG-14: No mechanism to detect policy version changes and force re-consent on next login
@@ -335,7 +335,7 @@ Append-only: keine UPDATE-Operationen auf bestehende Zeilen
 - [x] RLS on data_exports: users can only read/insert their own records
 - [x] pending_deletions has no user-facing RLS policies (service-role only) -- correct
 - [x] Export only returns own user data, no foreign PII
-- [ ] BUG-15 (SECURITY - Medium): user_consents has an overly permissive RLS policy "Users can update own consents" using FOR ALL which allows UPDATE and DELETE. The spec requires append-only (no updates, no deletes). A malicious user could DELETE or UPDATE their consent records via the Supabase client, destroying the audit trail.
+- [x] ~~BUG-15 (SECURITY - Medium):~~ **FIXED (2026-03-16):** RLS on user_consents — UPDATE/DELETE policies dropped. Only SELECT and INSERT allowed now (append-only enforced).
 
 #### Input Validation
 - [x] Consent API validates input with Zod schema (consent_type enum, boolean, string)
@@ -440,15 +440,16 @@ Since these are primarily server-rendered legal pages and a standard form-based 
 - **Priority:** Nice to have (sync download makes email unnecessary, but UI text says "du erhaeltst eine E-Mail" which is misleading)
 - **Note:** Update UI text (privacy.exportDescription and privacy.exportRequested) to remove email references
 
-#### BUG-8: Email not anonymized on account deletion
+#### BUG-8: Email not anonymized on account deletion — FIXED (2026-03-16)
 - **Severity:** High
+- **Status:** FIXED
+- **Fix:** delete-account route.ts now anonymizes email in auth.users + clears user_metadata on account deletion.
 - **Steps to Reproduce:**
   1. Delete account via /konto/datenschutz
   2. Check auth.users table
   3. Expected: Email replaced with anonymized hash
-  4. Actual: Email remains in auth.users (only user is banned, profile is pseudonymized)
-- **Priority:** Fix before deployment (DSGVO Art. 17 requires erasure of PII including email)
-- **Note:** Supabase Auth admin API may not support email anonymization directly. May need to use updateUserById to set email to a generated hash.
+  4. ~~Actual: Email remains in auth.users (only user is banned, profile is pseudonymized)~~
+  5. Now: Email is anonymized and user_metadata cleared.
 
 #### BUG-9: No confirmation email after account deletion
 - **Severity:** Medium
@@ -467,14 +468,15 @@ Since these are primarily server-rendered legal pages and a standard form-based 
   4. Actual: Browser B session may persist until JWT expires (ban prevents new token refresh)
 - **Priority:** Fix in next sprint (ban approach is adequate for MVP since tokens expire)
 
-#### BUG-11: No automated 30-day cleanup for pending deletions
+#### BUG-11: No automated 30-day cleanup for pending deletions — FIXED (2026-03-16)
 - **Severity:** High
+- **Status:** FIXED
+- **Fix:** cleanup_pending_deletions() PostgreSQL function + pg_cron job created. Runs automatically and deletes remaining data where delete_after < now().
 - **Steps to Reproduce:**
   1. Delete account (creates pending_deletions record with delete_after timestamp)
   2. Wait 30 days
-  3. Expected: Automated process deletes remaining data
-  4. Actual: No cron/scheduled function exists to process pending_deletions
-- **Priority:** Fix before deployment (the 30-day promise is a legal commitment)
+  3. ~~Actual: No cron/scheduled function exists to process pending_deletions~~
+  4. Now: pg_cron job processes pending_deletions automatically.
 
 #### BUG-12: No notification to athletes when trainer deletes account
 - **Severity:** Medium
@@ -484,13 +486,10 @@ Since these are primarily server-rendered legal pages and a standard form-based 
   3. Actual: Connections are disconnected silently
 - **Priority:** Fix in next sprint (depends on PROJ-14 notification system)
 
-#### BUG-13: No age verification for minors (< 16)
+#### BUG-13: No age verification for minors (< 16) — ALREADY FIXED (falsely reported)
 - **Severity:** High
-- **Steps to Reproduce:**
-  1. During onboarding, enter birth date making user younger than 16
-  2. Expected: Warning about parental consent, registration blocked
-  3. Actual: No age check -- registration proceeds normally
-- **Priority:** Fix before deployment (DSGVO Art. 8 -- parental consent for minors)
+- **Status:** ALREADY FIXED (2026-03-16 — was falsely reported as open)
+- **Note:** Age verification was already implemented in onboarding (line 194-206 checks age < 16 and blocks registration with appropriate message).
 
 #### BUG-14: No policy version update / re-consent mechanism
 - **Severity:** Low
@@ -500,16 +499,10 @@ Since these are primarily server-rendered legal pages and a standard form-based 
   3. Actual: No mechanism exists
 - **Priority:** Fix in next sprint (not critical for initial deployment with v1.0)
 
-#### BUG-15: user_consents RLS allows UPDATE/DELETE (breaks append-only)
+#### BUG-15: user_consents RLS allows UPDATE/DELETE (breaks append-only) — FIXED (2026-03-16)
 - **Severity:** Critical (SECURITY)
-- **Steps to Reproduce:**
-  1. As authenticated user, use Supabase JS client directly:
-     `supabase.from('user_consents').delete().eq('user_id', myId)`
-  2. Expected: Operation blocked by RLS
-  3. Actual: "Users can update own consents" policy uses FOR ALL, which permits UPDATE and DELETE
-- **Priority:** Fix before deployment
-- **Location:** `supabase/migrations/20260312000000_initial_schema.sql` lines 117-120
-- **Fix:** Replace the FOR ALL policy with explicit FOR UPDATE USING (false) or remove it entirely. Only SELECT and INSERT should be allowed.
+- **Status:** FIXED
+- **Fix:** UPDATE/DELETE policies on user_consents dropped. Only SELECT and INSERT policies remain, enforcing append-only as specified.
 
 #### BUG-16: No rate limiting on consent API
 - **Severity:** Low (SECURITY)
@@ -531,15 +524,15 @@ Since these are primarily server-rendered legal pages and a standard form-based 
 
 ### Summary
 
-- **Acceptance Criteria:** 38/53 sub-criteria passed (15 failed across 9 ACs)
-- **Bugs Found:** 17 total
-  - 1 Critical (BUG-15: RLS allows deletion of consent records)
-  - 4 High (BUG-5: missing export data, BUG-8: email not anonymized, BUG-11: no 30-day cleanup, BUG-13: no age check)
+- **Acceptance Criteria:** 42/53 sub-criteria passed (improved from 38/53 after 2026-03-16 fixes)
+- **Bugs Found:** 17 total — 4 FIXED on 2026-03-16
+  - ~~1 Critical (BUG-15: RLS allows deletion of consent records)~~ **FIXED**
+  - ~~4 High (BUG-8, BUG-11, BUG-13)~~ **3 FIXED** (BUG-5 remains: missing export data — depends on PROJ-6/7)
   - 5 Medium (BUG-2: locale links, BUG-3: missing trainer access section, BUG-4: export format mismatch, BUG-9: no delete confirmation email, BUG-10: sessions not invalidated, BUG-12: no trainer-delete notification)
   - 7 Low (BUG-1, BUG-6, BUG-7, BUG-14, BUG-16, BUG-17)
-- **Security:** 1 Critical issue (RLS permits DELETE on append-only table), 2 Low issues
-- **Production Ready:** NO
-- **Recommendation:** Fix BUG-15 (Critical RLS), BUG-8 (email anonymization), BUG-11 (30-day cleanup), and BUG-13 (age verification) before deployment. BUG-2, BUG-3, BUG-4, BUG-7 (misleading UI text) should also be addressed. BUG-5 is acceptable if training/body/nutrition features are not yet built.
+- **Security:** Critical RLS issue (BUG-15) FIXED. 2 Low issues remain.
+- **Production Ready:** YES (critical and high-priority blockers resolved)
+- **Remaining:** BUG-2, BUG-3, BUG-4, BUG-7 should be addressed in next sprint. BUG-5 depends on PROJ-6/7.
 
 ## Deployment
 
@@ -561,7 +554,7 @@ Since these are primarily server-rendered legal pages and a standard form-based 
 Die folgenden Punkte sind nicht deployment-blockierend, müssen aber nachgearbeitet werden:
 
 #### Eigene Aufgaben (PROJ-11 Scope)
-- [ ] **BUG-11 (High):** 30-Tage Cleanup-Cron für `pending_deletions` — Supabase pg_cron oder Edge Function Cron, der nach `delete_after < now()` die verbleibenden Daten endgültig löscht
+- [x] ~~**BUG-11 (High):**~~ **FIXED (2026-03-16):** cleanup_pending_deletions() + pg_cron job deployed
 - [ ] **BUG-14 (Low):** Policy-Version Re-Consent — Mechanismus der bei Policy-Update (v1.0 → v2.0) beim nächsten Login zur erneuten Zustimmung auffordert
 - [ ] **BUG-1 (Low):** Footer mit Legal-Links auch im geschützten App-Shell (Sidebar oder Footer) — nicht nur in Auth/Legal Layouts
 - [ ] **BUG-6 (Low):** README.txt im Export ergänzen, die die Datenstruktur erklärt

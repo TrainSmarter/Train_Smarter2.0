@@ -859,9 +859,9 @@ src/
 - [x] Check-in history table (paginated)
 - [x] Toggle: "Charts fur Athlet sichtbar" (can_see_analysis switch)
 - [x] Backfill limit dropdown (1-14 days)
-- [ ] BUG-5: No "Kategorien verwalten" button in detail view (see below)
+- [x] ~~BUG-5:~~ **FIXED (2026-03-16):** "Kategorien verwalten" button + dialog added to detail view.
 - [ ] BUG-6: History table hardcodes weight/calories/note columns instead of dynamic columns (see below)
-- [ ] BUG-7: No "Load More" / pagination button despite `hasMoreHistory` prop (see below)
+- [x] ~~BUG-7:~~ **FIXED (2026-03-16):** "Load More" button + server action for pagination implemented.
 
 #### AC-7: Sichtbarkeits-Steuerung
 - [x] Trainer can toggle `can_see_analysis` per athlete
@@ -944,7 +944,7 @@ src/
 - [x] Category creation with scope="trainer" validated via DB trigger (trainer must be connected)
 - [x] Athlete detail page: redirect if not connected trainer
 - [ ] SECURITY-1: `getActiveCategories` does not filter by user context (see below)
-- [ ] SECURITY-2: `getAthleteTrendData` missing authorization check (see below)
+- [x] ~~SECURITY-2:~~ **FIXED (2026-03-16):** Unused `_trainerId` parameter removed from `getAthleteTrendData`.
 - [ ] SECURITY-3: `getCheckinHistory` missing trainer authorization check (see below)
 
 #### Input Validation
@@ -1004,14 +1004,10 @@ src/
 - **Location:** `src/components/feedback/monitoring-trend-view.tsx` lines 33-57
 - **Priority:** Fix before deployment
 
-#### BUG-5: No "Kategorien verwalten" button in Trainer Athlete Detail View
+#### BUG-5: No "Kategorien verwalten" button in Trainer Athlete Detail View — FIXED (2026-03-16)
 - **Severity:** Medium
-- **Steps to Reproduce:**
-  1. As trainer, navigate to `/feedback/[athleteId]`
-  2. Expected: "Kategorien verwalten" button per spec ("Erreichbar aus Einzelathlet-Detailansicht")
-  3. Actual: No category management button present
-- **Location:** `src/components/feedback/athlete-detail-view.tsx` -- Settings2 icon imported but not used for category management
-- **Priority:** Fix in next sprint
+- **Status:** FIXED
+- **Fix:** "Kategorien verwalten" button + category management dialog added to athlete detail view.
 
 #### BUG-6: History table uses hardcoded columns instead of dynamic categories
 - **Severity:** Medium
@@ -1025,14 +1021,10 @@ src/
 - **Note:** Also accesses `entry.values.weight` by slug name but values are keyed by UUID category ID -- this will show "---" for all entries
 - **Priority:** Fix before deployment
 
-#### BUG-7: No pagination button for check-in history
+#### BUG-7: No pagination button for check-in history — FIXED (2026-03-16)
 - **Severity:** Medium
-- **Steps to Reproduce:**
-  1. As trainer, view athlete with 20+ check-ins
-  2. Expected: "Load More" or pagination controls (spec says "paginiert, 20 pro Seite")
-  3. Actual: `hasMoreHistory` prop is passed but never used in `AthleteDetailView`
-- **Location:** `src/components/feedback/athlete-detail-view.tsx` -- `hasMoreHistory` prop accepted but unused
-- **Priority:** Fix in next sprint
+- **Status:** FIXED
+- **Fix:** "Load More" button implemented using `hasMoreHistory` prop + server action for paginated loading.
 
 #### BUG-8: Athlete cannot see which data their trainer sees
 - **Severity:** Low
@@ -1072,16 +1064,10 @@ src/
 - **Impact:** The RLS policy "Trainers can read connected athlete categories" uses `is_connected_athlete(created_by)` which correctly allows trainers to see their athletes' categories. This is actually correct but the code path is confusing. LOW RISK.
 - **Priority:** Nice to have (add comment clarifying RLS dependency)
 
-#### SECURITY-2: `getAthleteTrendData` missing authorization check
+#### SECURITY-2: `getAthleteTrendData` missing authorization check — FIXED (2026-03-16)
 - **Severity:** High
-- **Steps to Reproduce:**
-  1. The function accepts `_trainerId` (unused, prefixed with underscore) and `athleteId`
-  2. It fetches `feedback_checkin_values` filtered by `athlete_id`
-  3. RLS on `feedback_checkin_values` allows SELECT if `auth.uid() = athlete_id` OR `is_connected_athlete(athlete_id)`
-  4. RLS provides protection, BUT the `_trainerId` parameter being ignored is suspicious
-  5. On the athlete check-in page (line 52), it's called with `getAthleteTrendData("", authUser.id, "30")` -- empty string trainerId
-- **Impact:** RLS protects the data, but the unused trainerId parameter suggests incomplete authorization logic. If RLS policies were ever relaxed, this would be a direct IDOR vulnerability.
-- **Priority:** Fix in next sprint (add explicit authorization check or remove misleading parameter)
+- **Status:** FIXED
+- **Fix:** Unused `_trainerId` parameter removed from `getAthleteTrendData`. RLS provides authorization; misleading parameter eliminated.
 
 #### SECURITY-3: `getCheckinHistory` missing trainer authorization check
 - **Severity:** Medium
@@ -1183,8 +1169,8 @@ Code review analysis (CSS classes):
 | Severity | Count | IDs |
 |----------|-------|-----|
 | Critical | 0 | -- |
-| High | 4 | BUG-1, BUG-4, BUG-6, SECURITY-2 |
-| Medium | 5 | BUG-5, BUG-7, BUG-10, SECURITY-1, SECURITY-3 |
+| High | 3 | BUG-1, BUG-4, BUG-6 (~~SECURITY-2~~ FIXED) |
+| Medium | 2 | BUG-10, SECURITY-1, SECURITY-3 (~~BUG-5, BUG-7~~ FIXED) |
 | Low | 6 | BUG-2, BUG-3, BUG-8, BUG-9, SECURITY-4, SECURITY-5 |
 
 ### Must Fix Before Deployment (High Priority)
@@ -1197,9 +1183,9 @@ Code review analysis (CSS classes):
 
 ### Should Fix in Next Sprint
 
-6. **BUG-5:** Add category management button to athlete detail view
-7. **BUG-7:** Implement pagination controls for check-in history
-8. **SECURITY-2:** Add explicit authorization in getAthleteTrendData or remove unused parameter
+6. ~~**BUG-5:**~~ FIXED (2026-03-16)
+7. ~~**BUG-7:**~~ FIXED (2026-03-16)
+8. ~~**SECURITY-2:**~~ FIXED (2026-03-16)
 9. **BUG-8:** Add read-only data visibility info for athletes
 
 ### Recommendation
