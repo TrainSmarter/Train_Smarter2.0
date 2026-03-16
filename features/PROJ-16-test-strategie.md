@@ -1,8 +1,9 @@
 # PROJ-16: Test-Strategie & Qualitätssicherung
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-12
+**Last Updated:** 2026-03-17
+**Deployed:** 2026-03-17 — https://www.train-smarter.at
 
 ## Dependencies
 - Gilt für: alle PROJ-Features (PROJ-1 bis PROJ-15+)
