@@ -82,11 +82,12 @@ export default function LoginPage() {
         sessionStorage.removeItem("ts_session_only");
       }
 
-      // Redirect to returnUrl or dashboard
+      // Full page reload to ensure middleware picks up fresh session cookie
+      // router.push() uses client-side navigation which may read stale cookies
       const destination = returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//") && !returnUrl.includes("://")
         ? returnUrl
         : "/dashboard";
-      router.push(destination as "/dashboard");
+      window.location.href = destination;
     } catch {
       setError(t("networkError"));
       setIsSubmitting(false);
