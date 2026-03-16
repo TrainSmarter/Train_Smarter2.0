@@ -53,7 +53,7 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 function isProtectedRoute(pathname: string): boolean {
-  return !isAuthRoute(pathname) && !isPublicRoute(pathname) && !pathname.startsWith("/auth/callback") && pathname !== "/";
+  return !isAuthRoute(pathname) && !isPublicRoute(pathname) && !pathname.startsWith("/auth/callback") && !pathname.startsWith("/auth/confirm") && pathname !== "/";
 }
 
 /**
