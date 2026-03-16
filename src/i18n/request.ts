@@ -14,5 +14,6 @@ export default getRequestConfig(async ({ requestLocale }) => {
   return {
     locale,
     messages: (await messageImports[locale as "de" | "en"]()).default,
+    timeZone: "Europe/Vienna",
   };
 });
