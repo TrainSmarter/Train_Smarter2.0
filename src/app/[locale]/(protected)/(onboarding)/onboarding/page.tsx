@@ -309,12 +309,19 @@ export default function OnboardingPage() {
           }
 
           // Refresh session so middleware reads updated JWT before redirect
-          await supabase.auth.refreshSession();
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error("Session refresh failed:", refreshError);
+          }
+
+          // Small delay to ensure cookie is written before navigation
+          await new Promise((resolve) => setTimeout(resolve, 300));
         } catch {
           // Continue to dashboard even if DB write fails
         }
 
-        router.push("/dashboard");
+        // Use window.location for a full page reload to ensure middleware picks up new JWT
+        window.location.href = `/${locale}/dashboard`;
         return;
       }
     } catch {
