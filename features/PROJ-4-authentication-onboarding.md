@@ -1717,5 +1717,72 @@ register-form.tsx / forgot-password-form.tsx
 - 500ms debounce prevents spam during typing
 - Fail-open on DNS timeout — submit remains enabled
 
+## QA Test Results (Round 4 — Production Testing — 2026-03-16)
+
+**Tested:** 2026-03-16
+**Tester:** User (manual) + QA Engineer (AI)
+**Environment:** Production (www.train-smarter.at)
+**Context:** Full registration flow tested end-to-end by user on production.
+
+### Bugs Found
+
+#### PROD-BUG-1: Signup returned HTTP 500 (CRITICAL — FIXED)
+- **Severity:** Critical
+- **Steps to Reproduce:** Register new account on www.train-smarter.at/de/register
+- **Root Cause:** `send-auth-email` Edge Function v10 used `Deno.readTextFile()` to load templates — does NOT work in deployed Edge Functions (no filesystem access)
+- **Fix:** Inlined all 10 email templates as string constants (v11). Deployed.
+- **Status:** FIXED (send-auth-email v11)
+
+#### PROD-BUG-2: Confirmation link pointed to Supabase URL (HIGH — FIXED)
+- **Severity:** High
+- **Steps to Reproduce:** Click "E-Mail bestätigen" button in confirmation email
+- **Expected:** Link to `https://www.train-smarter.at/auth/confirm?token_hash=...`
+- **Actual:** Link to `https://djnardhjdfdqpxbskahe.supabase.co/auth/v1/auth/confirm?token_hash=...`
+- **Root Cause:** `{{ .SiteURL }}` was replaced by `email_data.site_url` which Supabase sets to the project URL, not the app URL
+- **Fix:** Hardcoded `APP_URL = "https://www.train-smarter.at"` in renderTemplate instead of using `email_data.site_url`
+- **Status:** FIXED (send-auth-email v12)
+- **REGEL:** In Edge Functions NIEMALS `email_data.site_url` für Links verwenden — immer die App-URL hardcoden!
+
+#### PROD-BUG-3: Confirmation email rate-limited after multiple failed sends (MEDIUM — BY DESIGN)
+- **Severity:** Medium
+- **Steps to Reproduce:** Register → v10 fails (500) → v11 succeeds (200) → Click "Erneut senden" → HTTP 429 `over_email_send_rate_limit`
+- **Root Cause:** Supabase Auth hat ein striktes Rate Limit für E-Mail-Resends. Die vorherigen fehlgeschlagenen Versuche (v10) haben das Limit ausgeschöpft.
+- **Impact:** User konnte neue Bestätigungs-E-Mail nicht anfordern
+- **Workaround:** E-Mail manuell in DB bestätigt: `UPDATE auth.users SET email_confirmed_at = now() WHERE email = '...'`
+- **Status:** BY DESIGN (Supabase Rate Limit). Langfristig: Rate Limit Feedback im UI verbessern
+
+#### PROD-BUG-4: Onboarding Step 4 "Fertig"/"Überspringen" — kein Redirect zum Dashboard (HIGH — FIXED)
+- **Severity:** High
+- **Steps to Reproduce:** Complete onboarding step 4 → Click "Fertig" or "Überspringen"
+- **Expected:** Redirect to `/dashboard`
+- **Actual:** Page bleibt auf `/onboarding`, Buttons scheinen nicht zu funktionieren
+- **Root Cause:** `router.push("/dashboard")` funktionierte nicht, weil die Middleware den alten JWT las (ohne `onboarding_completed: true`). `supabase.auth.refreshSession()` hatte die Cookies noch nicht aktualisiert bevor der Redirect startete.
+- **Fix:** Replaced `router.push` with `window.location.href = /${locale}/dashboard` (full page reload) + 300ms delay nach refreshSession
+- **Status:** FIXED (commit 98aa18d)
+- **Verification:** DB zeigt `onboarding_completed: true` und `roles: ["TRAINER"]` — die Daten wurden korrekt gespeichert, nur der Redirect fehlte
+
+#### PROD-BUG-5: Locale-Switcher im Onboarding funktioniert nicht (MEDIUM — INVESTIGATING)
+- **Severity:** Medium
+- **Steps to Reproduce:** On onboarding page, click "EN" in locale switcher
+- **Expected:** Page switches to English
+- **Actual:** Nothing happens
+- **Possible Root Cause:** JavaScript runtime error blocking all event handlers, OR `router.replace(pathname, { locale: "en" })` failing silently
+- **Status:** INVESTIGATING — User asked to check browser console (F12) for errors
+- **Note:** Could be related to PROD-BUG-4 (same page, same JS context)
+
+### Confirmation email deliverability
+- E-Mail landed im Spam-Ordner bei GMX (lukas.kitzberger@gmx.at)
+- DKIM/SPF/DMARC sind konfiguriert (dkim._domainkey, p=quarantine)
+- Domain train-smarter.at erst seit 30.12.2025 aktiv — Reputation baut sich über Wochen auf
+- Footer zeigte Supabase-URL statt App-URL (PROD-BUG-2, gefixt in v12)
+
+### Summary
+- **Critical Bugs:** 1 (FIXED — signup 500)
+- **High Bugs:** 2 (FIXED — wrong link, no redirect)
+- **Medium Bugs:** 2 (1 BY DESIGN, 1 INVESTIGATING)
+- **Production Status:** Funktional nach Fixes. Signup → Email-Bestätigung → Login → Onboarding → Dashboard Flow funktioniert.
+
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://www.train-smarter.at
+- **Deployed:** 2026-03-13 (initial), 2026-03-16 (hotfixes)
+- **Edge Functions:** send-auth-email v12, send-invitation-email v5
