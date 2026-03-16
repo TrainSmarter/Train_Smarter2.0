@@ -42,7 +42,7 @@ export default function VerifyEmailPage() {
 
     if (error) {
       if (error.message?.includes("rate") || error.code === "over_email_send_rate_limit") {
-        setFeedback({ type: "error", message: t("rateLimited") });
+        setFeedback({ type: "error", message: t("rateLimitedCheckSpam") });
       } else {
         setFeedback({ type: "error", message: t("resendError") });
       }

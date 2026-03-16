@@ -755,10 +755,22 @@ function htmlToPlainText(html: string): string {
     .replace(/&#8212;/g, "—")
     .replace(/&copy;/g, "(c)")
     .replace(/&nbsp;/g, " ")
-    // Normalize whitespace
-    .replace(/[ \t]+/g, " ")
+    // Normalize whitespace: trim each line, then collapse blank lines
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/**
+ * Generates a unique Message-ID for the email.
+ * Format: <timestamp.random@train-smarter.at>
+ */
+function generateMessageId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  return `<${timestamp}.${random}@train-smarter.at>`;
 }
 
 // ── SMTP Sending ───────────────────────────────────────────────────────
@@ -800,7 +812,10 @@ async function sendEmail(
       content: plainText,
       html,
       headers: {
+        "Message-ID": generateMessageId(),
         "Reply-To": "office@train-smarter.at",
+        "List-Unsubscribe": "<mailto:office@train-smarter.at?subject=unsubscribe>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
     });
   } finally {

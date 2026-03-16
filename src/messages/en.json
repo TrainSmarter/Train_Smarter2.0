@@ -370,6 +370,7 @@
       "resendSuccess": "Email has been resent.",
       "resendError": "Could not resend email. Please try again later.",
       "rateLimited": "Please wait a moment before requesting another email.",
+      "rateLimitedCheckSpam": "The confirmation email has already been sent. Please also check your spam folder.",
       "backToLogin": "Back to login"
     },
     "errorBoundary": {

@@ -370,6 +370,7 @@
       "resendSuccess": "E-Mail wurde erneut gesendet.",
       "resendError": "Konnte E-Mail nicht erneut senden. Bitte versuche es später.",
       "rateLimited": "Bitte warte einen Moment, bevor du eine neue E-Mail anforderst.",
+      "rateLimitedCheckSpam": "Die Bestätigungs-E-Mail wurde bereits gesendet. Bitte prüfe auch deinen Spam-Ordner.",
       "backToLogin": "Zurück zum Login"
     },
     "errorBoundary": {

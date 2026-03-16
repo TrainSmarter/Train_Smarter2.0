@@ -84,7 +84,10 @@ export default function RegisterPage() {
 
       if (authError) {
         if (authError.code === "over_email_send_rate_limit" || authError.message?.includes("rate")) {
-          setError(t("rateLimited"));
+          // The confirmation email was already sent — redirect to verify-email
+          // so the user can check their inbox or resend from there
+          window.location.href = `/${currentLocale}/verify-email?email=${encodeURIComponent(data.email)}`;
+          return;
         } else {
           setError(t("genericError"));
         }
