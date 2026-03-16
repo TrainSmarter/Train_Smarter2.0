@@ -58,8 +58,11 @@ export async function GET(request: Request) {
       );
     case "signup":
     case "email":
+      // After email confirmation: redirect to login with success message
+      // NOT to onboarding/dashboard — the user should consciously log in first.
+      // This avoids the confusing flash of dashboard → kicked to login.
       return NextResponse.redirect(
-        new URL(`/${locale}/onboarding`, origin)
+        new URL(`/${locale}/login?confirmed=true`, origin)
       );
     default:
       return NextResponse.redirect(

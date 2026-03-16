@@ -26,6 +26,7 @@ export default function LoginPage() {
 
   const [error, setError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const isConfirmed = searchParams.get("confirmed") === "true";
 
   const {
     register,
@@ -100,6 +101,15 @@ export default function LoginPage() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          {/* Email confirmed success message */}
+          {isConfirmed && !error && (
+            <Alert role="status" className="border-success/50 bg-success/10">
+              <AlertDescription className="text-success-foreground">
+                {t("emailConfirmed")}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Form-level error alert */}
           {error && (
             <Alert variant="destructive" role="alert">

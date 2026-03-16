@@ -298,7 +298,8 @@
       "emailNotConfirmed": "Please confirm your email address first.",
       "genericError": "An error occurred. Please try again.",
       "networkError": "Connection failed. Please check your internet connection.",
-      "rateLimited": "Too many sign-in attempts. Please wait a minute."
+      "rateLimited": "Too many sign-in attempts. Please wait a minute.",
+      "emailConfirmed": "Your email address has been confirmed successfully. You can now sign in."
     },
     "register": {
       "title": "Create account",

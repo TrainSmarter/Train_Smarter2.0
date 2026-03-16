@@ -298,7 +298,8 @@
       "emailNotConfirmed": "Bitte bestätige zuerst deine E-Mail-Adresse.",
       "genericError": "Ein Fehler ist aufgetreten. Bitte versuche es erneut.",
       "networkError": "Verbindung fehlgeschlagen. Bitte prüfe deine Internetverbindung.",
-      "rateLimited": "Zu viele Anmeldeversuche. Bitte warte eine Minute."
+      "rateLimited": "Zu viele Anmeldeversuche. Bitte warte eine Minute.",
+      "emailConfirmed": "Deine E-Mail-Adresse wurde erfolgreich bestätigt. Du kannst dich jetzt anmelden."
     },
     "register": {
       "title": "Konto erstellen",
