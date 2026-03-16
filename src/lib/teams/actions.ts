@@ -439,42 +439,30 @@ export async function acceptTeamInvitation(
     return { success: false, error: "EXPIRED" };
   }
 
-  // Check if already a member
-  const { data: existingMember } = await supabase
-    .from("team_members")
-    .select("id")
-    .eq("team_id", invitation.team_id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (existingMember) {
-    // Already a member — just mark invitation as accepted
-    await supabase
-      .from("team_invitations")
-      .update({ status: "accepted" })
-      .eq("id", invitationId);
-
-    return { success: true, teamId: invitation.team_id };
-  }
-
-  // Add as team member
+  // Upsert team member — handles race condition where two concurrent requests
+  // could both pass the existence check. ON CONFLICT DO NOTHING is safe.
   const { error: memberError } = await supabase
     .from("team_members")
-    .insert({
-      team_id: invitation.team_id,
-      user_id: user.id,
-    });
+    .upsert(
+      { team_id: invitation.team_id, user_id: user.id },
+      { onConflict: "team_id,user_id", ignoreDuplicates: true }
+    );
 
   if (memberError) {
     console.error("Failed to add team member:", memberError);
     return { success: false, error: "INSERT_FAILED" };
   }
 
-  // Mark invitation as accepted
-  await supabase
+  // Only mark invitation as accepted AFTER membership is confirmed
+  const { error: acceptError } = await supabase
     .from("team_invitations")
     .update({ status: "accepted" })
     .eq("id", invitationId);
+
+  if (acceptError) {
+    console.error("Failed to mark invitation as accepted:", acceptError);
+    // Non-fatal: membership was already added
+  }
 
   revalidatePath("/", "layout");
   return { success: true, teamId: invitation.team_id };

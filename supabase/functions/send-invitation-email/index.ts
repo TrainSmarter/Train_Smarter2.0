@@ -1,4 +1,5 @@
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -263,7 +264,15 @@ function validatePayload(
   if (typeof b.trainerName !== "string" || b.trainerName.length === 0) {
     return { valid: false, error: "Invalid trainerName" };
   }
-  if (typeof b.inviteLink !== "string" || !b.inviteLink.startsWith("http")) {
+  if (typeof b.inviteLink !== "string") {
+    return { valid: false, error: "Invalid inviteLink" };
+  }
+  try {
+    const url = new URL(b.inviteLink);
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return { valid: false, error: "Invalid inviteLink protocol" };
+    }
+  } catch {
     return { valid: false, error: "Invalid inviteLink" };
   }
   if (typeof b.expiresAt !== "string") {
@@ -304,6 +313,38 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Verify caller is an authenticated user with TRAINER role
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Only trainers can send invitation emails
+    const roles = (user.app_metadata?.roles as string[]) ?? [];
+    if (!roles.includes("TRAINER")) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden: trainer role required" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const body = await req.json();
 
     // Validate payload

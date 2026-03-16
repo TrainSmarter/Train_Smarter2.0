@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     }
 
     // 6. Disconnect all trainer-athlete connections
-    await adminClient
+    const { error: disconnectError } = await adminClient
       .from("trainer_athlete_connections")
       .update({
         status: "disconnected",
@@ -106,17 +106,32 @@ export async function POST(request: Request) {
       .or(`trainer_id.eq.${userId},athlete_id.eq.${userId}`)
       .neq("status", "disconnected");
 
+    if (disconnectError) {
+      console.error("Failed to disconnect connections:", disconnectError);
+      // Non-fatal: continue with deletion process
+    }
+
     // 7. Remove from teams
-    await adminClient
+    const { error: teamRemoveError } = await adminClient
       .from("team_athletes")
       .delete()
       .eq("athlete_id", userId);
 
+    if (teamRemoveError) {
+      console.error("Failed to remove team assignments:", teamRemoveError);
+      // Non-fatal: continue with deletion process
+    }
+
     // 8. Record pending deletion (30-day grace period)
-    await adminClient.from("pending_deletions").insert({
+    const { error: pendingError } = await adminClient.from("pending_deletions").insert({
       user_id: userId,
       status: "pending",
     });
+
+    if (pendingError) {
+      console.error("Failed to create pending deletion:", pendingError);
+      // Non-fatal: account is already pseudonymized
+    }
 
     // 9. Anonymize email + clear user_metadata in auth.users + deactivate account
     //    Art. 17 DSGVO requires full data erasure — email, name, avatar must go.

@@ -43,12 +43,17 @@ export async function updateProfile(data: {
   }
 
   // Also update user_metadata for display in sidebar/header
-  await supabase.auth.updateUser({
+  const { error: metaError } = await supabase.auth.updateUser({
     data: {
       first_name: data.firstName,
       last_name: data.lastName,
     },
   });
+
+  if (metaError) {
+    console.error("Failed to update user metadata:", metaError);
+    // Non-fatal: profile data was already updated
+  }
 
   revalidatePath("/", "layout");
   return { success: true };
