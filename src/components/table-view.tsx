@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { useTranslations, useFormatter } from "next-intl";
+import { useTranslations, useFormatter, useNow } from "next-intl";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Clock, GripVertical, Hourglass, RefreshCw, Undo2, Users, UserPlus } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 
@@ -41,6 +41,7 @@ function DraggableAthleteRow({
 }) {
   const tAthletes = useTranslations("athletes");
   const format = useFormatter();
+  const now = useNow({ updateInterval: 60_000 });
   const isPending = athlete.status === "pending";
   const isExpired =
     isPending && new Date(athlete.invitationExpiresAt) < new Date();
@@ -103,14 +104,14 @@ function DraggableAthleteRow({
                 <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                   <Clock className="h-3 w-3 shrink-0" />
                   {tAthletes("invitedAgo", {
-                    time: format.relativeTime(new Date(athlete.invitedAt)),
+                    time: format.relativeTime(new Date(athlete.invitedAt), now),
                   })}
                 </span>
                 {!isExpired && (
                   <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                     <Hourglass className="h-3 w-3 shrink-0" />
                     {tAthletes("expiresIn", {
-                      time: format.relativeTime(new Date(athlete.invitationExpiresAt)),
+                      time: format.relativeTime(new Date(athlete.invitationExpiresAt), now),
                     })}
                   </span>
                 )}

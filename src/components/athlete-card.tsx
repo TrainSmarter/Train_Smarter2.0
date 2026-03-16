@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations, useFormatter } from "next-intl";
+import { useTranslations, useFormatter, useNow } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Clock, Hourglass, MailCheck, RefreshCw, Undo2 } from "lucide-react";
 
@@ -32,6 +32,7 @@ export function AthleteCard({
 }: AthleteCardProps) {
   const t = useTranslations("athletes");
   const format = useFormatter();
+  const now = useNow({ updateInterval: 60_000 });
   const isPending = athlete.status === "pending";
   const isExpired =
     isPending && new Date(athlete.invitationExpiresAt) < new Date();
@@ -124,14 +125,14 @@ export function AthleteCard({
                 <p className="flex items-center gap-1 text-caption text-muted-foreground">
                   <Clock className="h-3 w-3 shrink-0" />
                   {t("invitedAgo", {
-                    time: format.relativeTime(new Date(athlete.invitedAt)),
+                    time: format.relativeTime(new Date(athlete.invitedAt), now),
                   })}
                 </p>
                 {!isExpired && (
                   <p className="flex items-center gap-1 text-caption text-muted-foreground">
                     <Hourglass className="h-3 w-3 shrink-0" />
                     {t("expiresIn", {
-                      time: format.relativeTime(new Date(athlete.invitationExpiresAt)),
+                      time: format.relativeTime(new Date(athlete.invitationExpiresAt), now),
                     })}
                   </p>
                 )}

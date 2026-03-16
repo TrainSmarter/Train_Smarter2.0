@@ -2,7 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { useTranslations, useFormatter } from "next-intl";
+import { useTranslations, useFormatter, useNow } from "next-intl";
 import { Clock, GripVertical, Hourglass, RefreshCw, Undo2 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -38,6 +38,7 @@ export function DraggableAthleteCard({
   const t = useTranslations("teams");
   const tAthletes = useTranslations("athletes");
   const format = useFormatter();
+  const now = useNow({ updateInterval: 60_000 });
   const isPending = athlete.status === "pending";
   const isExpired =
     isPending && new Date(athlete.invitationExpiresAt) < new Date();
@@ -118,14 +119,14 @@ export function DraggableAthleteCard({
                   <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
                     <Clock className="h-3 w-3 shrink-0" />
                     {tAthletes("invitedAgo", {
-                      time: format.relativeTime(new Date(athlete.invitedAt)),
+                      time: format.relativeTime(new Date(athlete.invitedAt), now),
                     })}
                   </p>
                   {!isExpired && (
                     <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <Hourglass className="h-3 w-3 shrink-0" />
                       {tAthletes("expiresIn", {
-                        time: format.relativeTime(new Date(athlete.invitationExpiresAt)),
+                        time: format.relativeTime(new Date(athlete.invitationExpiresAt), now),
                       })}
                     </p>
                   )}
