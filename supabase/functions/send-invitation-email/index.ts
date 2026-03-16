@@ -77,33 +77,81 @@ async function hashEmail(email: string): Promise<string> {
     .slice(0, 12);
 }
 
+// ── Inline Templates ──────────────────────────────────────────────────
+// Templates are inlined because deployed Edge Functions cannot read files
+// from the filesystem (no access to ../../templates/).
+
+const TEMPLATE_DE = `<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Einladung von {{trainerName}}</title></head>
+<body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
+  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">{{trainerName}} hat dich zu Train Smarter eingeladen &#8212; erstelle jetzt dein Konto.</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;"><tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.08);">
+      <tr><td style="background:linear-gradient(135deg,#0D9488,#0F766E);padding:32px 40px;text-align:center;">
+        <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">Train Smarter</h1>
+        <p style="margin:4px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Professionelles Trainingsmanagement</p>
+      </td></tr>
+      <tr><td style="padding:40px;">
+        <h2 style="margin:0 0 16px;color:#0f172a;font-size:20px;font-weight:600;">Du wurdest eingeladen</h2>
+        <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+          <strong>{{trainerName}}</strong> hat dich eingeladen, Train Smarter als Athlet beizutreten. Erstelle jetzt dein Konto, um die Einladung anzunehmen.
+        </p>
+        {{personalMessageBlock}}
+        <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr>
+          <td style="background-color:#0D9488;border-radius:8px;">
+            <a href="{{inviteLink}}" target="_blank" style="display:inline-block;padding:12px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Einladung annehmen</a>
+          </td>
+        </tr></table>
+        <p style="margin:0 0 12px;color:#94a3b8;font-size:13px;line-height:1.5;">Diese Einladung ist 7 Tage g&uuml;ltig (bis {{expiresAt}}).</p>
+        <p style="margin:0;color:#94a3b8;font-size:13px;line-height:1.5;">Falls du diese Einladung nicht erwartet hast, kannst du diese E-Mail ignorieren.</p>
+      </td></tr>
+      <tr><td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
+        <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+const TEMPLATE_EN = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Invitation from {{trainerName}}</title></head>
+<body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
+  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">{{trainerName}} invited you to Train Smarter &#8212; create your account now.</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;"><tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.08);">
+      <tr><td style="background:linear-gradient(135deg,#0D9488,#0F766E);padding:32px 40px;text-align:center;">
+        <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">Train Smarter</h1>
+        <p style="margin:4px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Professional Training Management</p>
+      </td></tr>
+      <tr><td style="padding:40px;">
+        <h2 style="margin:0 0 16px;color:#0f172a;font-size:20px;font-weight:600;">You Have Been Invited</h2>
+        <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6;">
+          <strong>{{trainerName}}</strong> has invited you to join Train Smarter as an athlete. Create your account now to accept the invitation.
+        </p>
+        {{personalMessageBlock}}
+        <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr>
+          <td style="background-color:#0D9488;border-radius:8px;">
+            <a href="{{inviteLink}}" target="_blank" style="display:inline-block;padding:12px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Accept Invitation</a>
+          </td>
+        </tr></table>
+        <p style="margin:0 0 12px;color:#94a3b8;font-size:13px;line-height:1.5;">This invitation is valid for 7 days (until {{expiresAt}}).</p>
+        <p style="margin:0;color:#94a3b8;font-size:13px;line-height:1.5;">If you were not expecting this invitation, you can safely ignore this email.</p>
+      </td></tr>
+      <tr><td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
+        <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+const TEMPLATES: Record<Locale, string> = { de: TEMPLATE_DE, en: TEMPLATE_EN };
+
 // ── Template Rendering ─────────────────────────────────────────────────
 
-async function renderTemplate(
-  locale: Locale,
-  payload: InvitationPayload
-): Promise<string> {
-  const filename = `athlete_invite_${locale}.html`;
-  const templatePath = new URL(`../../templates/${filename}`, import.meta.url)
-    .pathname;
+function renderTemplate(locale: Locale, payload: InvitationPayload): string {
+  let html = TEMPLATES[locale] ?? TEMPLATES.de;
 
-  let html: string;
-  try {
-    html = await Deno.readTextFile(templatePath);
-  } catch {
-    // Fallback: try German template if locale template not found
-    if (locale === "en") {
-      const fallbackPath = new URL(
-        "../../templates/athlete_invite_de.html",
-        import.meta.url
-      ).pathname;
-      html = await Deno.readTextFile(fallbackPath);
-    } else {
-      throw new Error(`Template not found: ${filename}`);
-    }
-  }
-
-  // Build personal message block (or empty string if no message)
   let messageBlock = "";
   if (payload.personalMessage && payload.personalMessage.trim().length > 0) {
     messageBlock =
@@ -112,7 +160,6 @@ async function renderTemplate(
         : PERSONAL_MESSAGE_EN(payload.personalMessage);
   }
 
-  // Replace placeholders
   html = html
     .replace(/\{\{trainerName\}\}/g, escapeHtml(payload.trainerName))
     .replace(/\{\{personalMessageBlock\}\}/g, messageBlock)
@@ -271,7 +318,7 @@ Deno.serve(async (req: Request) => {
     const payload = result.data;
 
     // Render template
-    const html = await renderTemplate(payload.locale, payload);
+    const html = renderTemplate(payload.locale, payload);
     const plainText = htmlToPlainText(html);
 
     // Build subject
