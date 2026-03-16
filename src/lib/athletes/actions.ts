@@ -110,6 +110,40 @@ export async function inviteAthlete(data: {
     return { success: false, error: "INSERT_FAILED" };
   }
 
+  // Send invitation email via Edge Function
+  try {
+    // Get trainer's display name
+    const { data: trainerProfile } = await supabase
+      .from("profiles")
+      .select("first_name, last_name")
+      .eq("id", user.id)
+      .single();
+
+    const trainerName = trainerProfile
+      ? `${trainerProfile.first_name ?? ""} ${trainerProfile.last_name ?? ""}`.trim()
+      : user.email ?? "Trainer";
+
+    // Determine locale from trainer's metadata
+    const locale =
+      (user.user_metadata?.locale as string) === "en" ? "en" : "de";
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.train-smarter.at";
+
+    await supabase.functions.invoke("send-invitation-email", {
+      body: {
+        recipientEmail: email.toLowerCase(),
+        trainerName,
+        personalMessage: message || undefined,
+        inviteLink: `${siteUrl}/${locale}/register`,
+        expiresAt: expiresAt.toISOString(),
+        locale,
+      },
+    });
+  } catch (emailError) {
+    // Email failure should NOT prevent the invitation from being created
+    console.error("Failed to send invitation email:", emailError);
+  }
+
   revalidatePath("/organisation/athletes", "page");
   return { success: true };
 }
@@ -374,7 +408,7 @@ export async function resendInvitation(
   // Check last invite time (rate limit: 1x per 24h)
   const { data: connection } = await supabase
     .from("trainer_athlete_connections")
-    .select("invited_at")
+    .select("invited_at, athlete_email, invitation_message")
     .eq("id", connectionId)
     .eq("trainer_id", user.id)
     .eq("status", "pending")
@@ -408,6 +442,37 @@ export async function resendInvitation(
   if (updateError) {
     console.error("Failed to resend invitation:", updateError);
     return { success: false, error: "UPDATE_FAILED" };
+  }
+
+  // Re-send invitation email via Edge Function
+  try {
+    const { data: trainerProfile } = await supabase
+      .from("profiles")
+      .select("first_name, last_name")
+      .eq("id", user.id)
+      .single();
+
+    const trainerName = trainerProfile
+      ? `${trainerProfile.first_name ?? ""} ${trainerProfile.last_name ?? ""}`.trim()
+      : user.email ?? "Trainer";
+
+    const locale =
+      (user.user_metadata?.locale as string) === "en" ? "en" : "de";
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.train-smarter.at";
+
+    await supabase.functions.invoke("send-invitation-email", {
+      body: {
+        recipientEmail: connection.athlete_email,
+        trainerName,
+        personalMessage: connection.invitation_message || undefined,
+        inviteLink: `${siteUrl}/${locale}/register`,
+        expiresAt: expiresAt.toISOString(),
+        locale,
+      },
+    });
+  } catch (emailError) {
+    console.error("Failed to send invitation email:", emailError);
   }
 
   revalidatePath("/organisation/athletes", "page");
