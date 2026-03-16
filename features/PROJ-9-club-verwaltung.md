@@ -1,6 +1,6 @@
 # PROJ-9: Team-Verwaltung
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-03-12
 **Last Updated:** 2026-03-16 (Enhancement: Withdraw-Button + E-Mail-Plausibilitätsprüfung in Unified View)
 

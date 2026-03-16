@@ -1,6 +1,6 @@
 # PROJ-13: E-Mail & Transaktions-Benachrichtigungen
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-03-12
 **Last Updated:** 2026-03-16 (Enhancement 2: E-Mail-Plausibilitätsprüfung)
 

@@ -1,6 +1,6 @@
 # PROJ-5: Athleten-Management
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-03-12
 **Last Updated:** 2026-03-16 (Enhancement 2: Withdraw-Button in Unified View)
 

@@ -1,6 +1,6 @@
 # PROJ-4: Authentication & Onboarding
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-03-12
 **Last Updated:** 2026-03-16 (Enhancement 2: E-Mail-Plausibilitätsprüfung)
 
