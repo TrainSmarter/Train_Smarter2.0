@@ -33,6 +33,7 @@ export function TrendChart({
   compact = false,
   className,
 }: TrendChartProps) {
+  const t = useTranslations("feedback");
   const locale = useLocale();
   const name = locale === "en" ? data.categoryName.en : data.categoryName.de;
 
@@ -50,7 +51,7 @@ export function TrendChart({
   if (chartData.length === 0) {
     return (
       <div className={cn("flex items-center justify-center rounded-lg border border-dashed p-8", className)}>
-        <p className="text-sm text-muted-foreground">{name}: {locale === "en" ? "No data" : "Keine Daten"}</p>
+        <p className="text-sm text-muted-foreground">{t("noDataForCategory", { name })}</p>
       </div>
     );
   }

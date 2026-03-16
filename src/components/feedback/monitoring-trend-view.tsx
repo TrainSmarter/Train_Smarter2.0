@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,7 +23,6 @@ export function MonitoringTrendView({
   athletes,
 }: MonitoringTrendViewProps) {
   const t = useTranslations("feedback");
-  const locale = useLocale();
 
   if (athletes.length === 0) {
     return (
@@ -87,7 +86,7 @@ export function MonitoringTrendView({
                   {/* Weight */}
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
-                      {locale === "de" ? "Gewicht" : "Weight"}
+                      {t("columnWeight")}
                     </span>
                     <div className="flex items-center gap-1.5">
                       {athlete.latestWeight != null ? (
@@ -138,7 +137,7 @@ export function MonitoringTrendView({
                   {/* Streak */}
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
-                      Streak
+                      {t("columnStreak")}
                     </span>
                     <Badge
                       variant={athlete.streak > 0 ? "default" : "outline"}

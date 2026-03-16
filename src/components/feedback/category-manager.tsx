@@ -3,13 +3,15 @@
 import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
-import { Globe, User, GraduationCap } from "lucide-react";
+import { Globe, User, GraduationCap, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toggleCategoryOverride } from "@/lib/feedback/actions";
+import { CategoryFormModal } from "./category-form-modal";
 import type { ActiveCategory, CategoryScope } from "@/lib/feedback/types";
 
 interface CategoryManagerProps {
@@ -17,6 +19,8 @@ interface CategoryManagerProps {
   categories: ActiveCategory[];
   /** Whether the current user is a trainer managing an athlete's categories */
   isTrainerView?: boolean;
+  /** Target athlete ID when trainer creates category */
+  targetAthleteId?: string | null;
   /** Additional classes */
   className?: string;
 }
@@ -33,10 +37,12 @@ const scopeConfig: Record<
 export function CategoryManager({
   categories,
   isTrainerView = false,
+  targetAthleteId,
   className,
 }: CategoryManagerProps) {
   const t = useTranslations("feedback");
   const locale = useLocale();
+  const [showCreateModal, setShowCreateModal] = React.useState(false);
   const [localStates, setLocalStates] = React.useState<Record<string, boolean>>(() => {
     const states: Record<string, boolean> = {};
     for (const cat of categories) {
@@ -165,6 +171,25 @@ export function CategoryManager({
           {t("noCategories")}
         </p>
       )}
+
+      {/* Create new category button */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full"
+        onClick={() => setShowCreateModal(true)}
+        iconLeft={<Plus className="h-4 w-4" />}
+      >
+        {t("createCategory")}
+      </Button>
+
+      {/* Create category modal */}
+      <CategoryFormModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        isTrainerView={isTrainerView}
+        targetAthleteId={targetAthleteId}
+      />
     </div>
   );
 }

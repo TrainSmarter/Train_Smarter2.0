@@ -64,6 +64,7 @@ interface TrainerConnection {
   can_see_body_data: boolean;
   can_see_nutrition: boolean;
   can_see_calendar: boolean;
+  can_see_analysis: boolean;
 }
 
 export default function PrivacyTabContent() {
@@ -130,7 +131,7 @@ export default function PrivacyTabContent() {
         const { data: connections } = await supabase
           .from("trainer_athlete_connections")
           .select(
-            "trainer_id, can_see_body_data, can_see_nutrition, can_see_calendar, profiles!trainer_athlete_connections_trainer_id_fkey(first_name, last_name)"
+            "trainer_id, can_see_body_data, can_see_nutrition, can_see_calendar, can_see_analysis, profiles!trainer_athlete_connections_trainer_id_fkey(first_name, last_name)"
           )
           .eq("athlete_id", user.id)
           .eq("status", "active");
@@ -149,6 +150,7 @@ export default function PrivacyTabContent() {
                 can_see_body_data: c.can_see_body_data,
                 can_see_nutrition: c.can_see_nutrition,
                 can_see_calendar: c.can_see_calendar,
+                can_see_analysis: c.can_see_analysis,
               };
             })
           );
@@ -411,16 +413,18 @@ export default function PrivacyTabContent() {
       </Card>
 
       {/* Trainer Data Access */}
-      {trainerConnections.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-h3">
-              {t("trainerAccessTitle")}
-            </CardTitle>
-            <CardDescription>
-              {t("trainerAccessDescription")}
-            </CardDescription>
-          </CardHeader>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-h3">
+            {t("trainerAccessTitle")}
+          </CardTitle>
+          <CardDescription>
+            {trainerConnections.length > 0
+              ? t("trainerAccessDescription")
+              : t("noTrainerConnected")}
+          </CardDescription>
+        </CardHeader>
+        {trainerConnections.length > 0 && (
           <CardContent className="space-y-3">
             {trainerConnections.map((conn, idx) => (
               <div
@@ -461,12 +465,22 @@ export default function PrivacyTabContent() {
                     )}
                     {t("trainerCanSeeCalendar")}
                   </Badge>
+                  <Badge
+                    variant={conn.can_see_analysis ? "default" : "outline"}
+                  >
+                    {conn.can_see_analysis ? (
+                      <Eye className="mr-1.5 h-3 w-3" />
+                    ) : (
+                      <EyeOff className="mr-1.5 h-3 w-3" />
+                    )}
+                    {t("trainerCanSeeAnalysis")}
+                  </Badge>
                 </div>
               </div>
             ))}
           </CardContent>
-        </Card>
-      )}
+        )}
+      </Card>
 
       {/* Data stored overview */}
       <Card>
