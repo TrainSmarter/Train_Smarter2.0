@@ -2,14 +2,40 @@
 
 ## Status: Deployed
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-16 (Enhancement 2: E-Mail-Plausibilitätsprüfung)
+**Last Updated:** 2026-03-16 (Hotfix: send-auth-email 500-Fehler bei Registrierung)
 
 ## Deployment
 - **Production URL:** https://www.train-smarter.at
-- **Deployed:** 2026-03-15
-- **Edge Function:** `send-auth-email` deployed to Supabase (v1, ACTIVE)
+- **Deployed:** 2026-03-15 (initial), 2026-03-16 (hotfix v11)
+- **Edge Function:** `send-auth-email` deployed to Supabase (v11, ACTIVE — inline templates)
+- **Edge Function:** `send-invitation-email` deployed to Supabase (v5, ACTIVE — inline templates)
 - **Vercel:** Auto-deployed from main branch
-- **Manual Step Required:** Configure Auth Hook in Supabase Dashboard (Auth → Hooks → Send Email → point to `send-auth-email` Edge Function)
+
+## Hotfix 2026-03-16: Signup 500-Fehler behoben
+
+**Problem:** Registrierung auf www.train-smarter.at/de/register schlug mit HTTP 500 fehl.
+- Auth Hook `send_email` rief `send-auth-email` Edge Function auf
+- Edge Function nutzte `Deno.readTextFile()` um Templates zu laden
+- `Deno.readTextFile()` funktioniert NICHT in deployed Edge Functions (kein Filesystem-Zugriff)
+- Edge Function antwortete mit 500 → Auth Hook schlug fehl → Signup 500
+
+**Fix:** Alle 10 E-Mail-Templates (5 Typen × 2 Sprachen) als Inline-Strings direkt im Code.
+- Gleicher Fix wie zuvor bei `send-invitation-email` (v4→v5)
+- **REGEL:** In Supabase Edge Functions NIEMALS `Deno.readTextFile()` verwenden — Templates immer inline!
+
+**Verifizierung:** send-auth-email v11 deployed, Status ACTIVE
+
+## Hotfix 2026-03-16 (2): Bestätigungs-Link zeigte auf Supabase statt App
+
+**Problem:** E-Mail-Bestätigungs-Link zeigte auf `djnardhjdfdqpxbskahe.supabase.co/auth/v1/auth/confirm?token_hash=...` statt auf `www.train-smarter.at/auth/confirm?token_hash=...`
+- `{{ .SiteURL }}` wurde durch `email_data.site_url` ersetzt
+- Supabase gibt als `site_url` die Projekt-URL zurück, nicht die App-URL
+- Ergebnis: "No API key found in request" wenn User auf den Link klickt
+
+**Fix:** `{{ .SiteURL }}` wird jetzt durch hardcoded `APP_URL = "https://www.train-smarter.at"` ersetzt, nicht durch `email_data.site_url`.
+- **REGEL:** In Edge Functions NIEMALS `email_data.site_url` für Links verwenden — immer die App-URL hardcoden!
+
+**Verifizierung:** send-auth-email v12 deployed, Status ACTIVE
 
 ## Dependencies
 - Requires: PROJ-4 (Authentication & Onboarding) — Auth-E-Mails (Registrierung, Passwort-Reset, E-Mail-Bestätigung)

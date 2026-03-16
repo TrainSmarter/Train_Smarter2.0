@@ -14,6 +14,7 @@ export const routing = defineRouting({
     "/dashboard": "/dashboard",
     "/training": "/training",
     "/feedback": "/feedback",
+    "/feedback/[athleteId]": "/feedback/[athleteId]",
     "/account": { de: "/konto", en: "/account" },
     "/onboarding": "/onboarding",
     "/organisation": "/organisation",

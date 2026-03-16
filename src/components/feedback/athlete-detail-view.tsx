@@ -1,0 +1,265 @@
+"use client";
+
+import * as React from "react";
+import { useTranslations, useLocale } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import {
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Settings2,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TrendChart } from "./trend-chart";
+import { StreakBadge } from "./streak-badge";
+import { toggleAnalysisVisibility, updateBackfillDays } from "@/lib/feedback/actions";
+import type {
+  MonitoringAthleteSummary,
+  AthleteTrendData,
+  ActiveCategory,
+  CheckinEntry,
+  MonitoringTimeRange,
+} from "@/lib/feedback/types";
+
+interface AthleteDetailViewProps {
+  athlete: MonitoringAthleteSummary;
+  trendData: AthleteTrendData[];
+  checkinHistory: CheckinEntry[];
+  hasMoreHistory: boolean;
+  categories: ActiveCategory[];
+}
+
+export function AthleteDetailView({
+  athlete,
+  trendData,
+  checkinHistory,
+  hasMoreHistory,
+  categories,
+}: AthleteDetailViewProps) {
+  const t = useTranslations("feedback");
+  const locale = useLocale();
+  const [timeRange, setTimeRange] = React.useState<MonitoringTimeRange>("30");
+  const [canSeeAnalysis, setCanSeeAnalysis] = React.useState(athlete.canSeeAnalysis);
+  const [backfillDays, setBackfillDays] = React.useState(String(athlete.backfillDays));
+  const [togglingAnalysis, setTogglingAnalysis] = React.useState(false);
+
+  async function handleToggleAnalysis(checked: boolean) {
+    setTogglingAnalysis(true);
+    setCanSeeAnalysis(checked);
+    try {
+      const result = await toggleAnalysisVisibility(athlete.athleteId, checked);
+      if (!result.success) {
+        setCanSeeAnalysis(!checked);
+        toast.error(t("updateError"));
+      } else {
+        toast.success(
+          checked ? t("analysisEnabled") : t("analysisDisabled")
+        );
+      }
+    } catch {
+      setCanSeeAnalysis(!checked);
+      toast.error(t("updateError"));
+    } finally {
+      setTogglingAnalysis(false);
+    }
+  }
+
+  async function handleBackfillChange(days: string) {
+    setBackfillDays(days);
+    try {
+      const result = await updateBackfillDays(athlete.athleteId, parseInt(days));
+      if (!result.success) {
+        toast.error(t("updateError"));
+      }
+    } catch {
+      toast.error(t("updateError"));
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Back Navigation + Header */}
+      <div className="flex items-start gap-4">
+        <Link href="/feedback">
+          <Button variant="ghost" size="icon" aria-label={t("back")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-12 w-12">
+              {athlete.avatarUrl && (
+                <AvatarImage
+                  src={athlete.avatarUrl}
+                  alt={`${athlete.firstName} ${athlete.lastName}`}
+                />
+              )}
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {athlete.firstName.charAt(0)}
+                {athlete.lastName.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-h2 text-foreground">
+                {athlete.firstName} {athlete.lastName}
+              </h1>
+              <div className="flex items-center gap-2 mt-0.5">
+                {athlete.teamName && (
+                  <Badge variant="outline" size="sm">{athlete.teamName}</Badge>
+                )}
+                <StreakBadge streak={athlete.streak} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Settings Bar */}
+      <div className="flex flex-col gap-4 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {canSeeAnalysis ? (
+              <Eye className="h-4 w-4 text-success" />
+            ) : (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+            )}
+            <Label htmlFor="analysis-toggle" className="text-sm">
+              {t("chartsVisibleForAthlete")}
+            </Label>
+          </div>
+          <Switch
+            id="analysis-toggle"
+            checked={canSeeAnalysis}
+            onCheckedChange={handleToggleAnalysis}
+            disabled={togglingAnalysis}
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <Label className="text-sm text-muted-foreground">
+            {t("backfillLimit")}
+          </Label>
+          <Select value={backfillDays} onValueChange={handleBackfillChange}>
+            <SelectTrigger className="w-[80px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 14 }, (_, i) => i + 1).map((d) => (
+                <SelectItem key={d} value={String(d)}>
+                  {d}d
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Time Range Selector */}
+      <div className="flex items-center gap-2">
+        <Label className="text-sm">{t("timeRangeLabel")}</Label>
+        <Select
+          value={timeRange}
+          onValueChange={(v) => setTimeRange(v as MonitoringTimeRange)}
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7">{t("timeRange7")}</SelectItem>
+            <SelectItem value="30">{t("timeRange30")}</SelectItem>
+            <SelectItem value="90">{t("timeRange90")}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Charts */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {trendData.map((td) => (
+          <div key={td.categoryId} className="rounded-lg border bg-card p-4">
+            <TrendChart data={td} height={220} />
+          </div>
+        ))}
+      </div>
+
+      {/* Check-in History Table — dynamic columns from categories */}
+      <div>
+        <h2 className="text-h4 text-foreground mb-3">{t("checkinHistory")}</h2>
+        <div className="rounded-md border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="sticky left-0 bg-card z-10">{t("columnDate")}</TableHead>
+                {categories.filter(c => c.isActive).map((cat) => (
+                  <TableHead key={cat.id} className="text-xs whitespace-nowrap">
+                    {locale === "en" ? cat.name.en : cat.name.de}
+                    {cat.unit ? ` (${cat.unit})` : ""}
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {checkinHistory.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={categories.filter(c => c.isActive).length + 1}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    {t("noCheckinHistory")}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                checkinHistory.map((entry) => (
+                  <TableRow key={entry.id}>
+                    <TableCell className="text-sm sticky left-0 bg-card z-10">
+                      {new Date(entry.date).toLocaleDateString(
+                        locale === "en" ? "en-US" : "de-AT",
+                        { day: "numeric", month: "short", year: "numeric" }
+                      )}
+                    </TableCell>
+                    {categories.filter(c => c.isActive).map((cat) => {
+                      const val = entry.values[cat.id];
+                      let display = "—";
+                      if (cat.type === "text" && val?.textValue) {
+                        display = val.textValue;
+                      } else if (val?.numericValue != null) {
+                        display = String(val.numericValue);
+                      }
+                      return (
+                        <TableCell
+                          key={cat.id}
+                          className={`text-sm ${cat.type === "text" ? "text-muted-foreground max-w-[200px] truncate" : ""}`}
+                        >
+                          {display}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </div>
+  );
+}
