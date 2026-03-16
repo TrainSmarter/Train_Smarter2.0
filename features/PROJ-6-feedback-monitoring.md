@@ -812,8 +812,8 @@ src/
 - [x] Dialog opens with CategoryManager component
 - [x] Lists all categories grouped by scope (Global, Trainer, Athlete)
 - [x] Toggle switches for activating/deactivating categories
-- [ ] BUG-2: No "create new category" UI for athletes (see below)
-- [ ] BUG-3: No live preview of how category input looks in check-in (see below)
+- [x] ~~BUG-2:~~ **FIXED (2026-03-16):** CategoryFormModal with full create UI + scope-aware (athlete/trainer)
+- [x] ~~BUG-3:~~ **FIXED (2026-03-16):** Live preview in CategoryFormModal (NumberInput/SegmentedControl/Textarea)
 
 #### AC-5: Trainer Monitoring Dashboard
 - [x] Route: `/feedback` renders MonitoringDashboard for trainer role
@@ -867,7 +867,7 @@ src/
 - [x] Trainer can toggle `can_see_analysis` per athlete
 - [x] Default: `false` (athlete does not see charts by default)
 - [x] Server action validates trainer owns the connection
-- [ ] BUG-8: Athlete cannot see which data their trainer can see (read-only view missing)
+- [x] ~~BUG-8:~~ **FIXED (2026-03-16):** Trainer data visibility shown in athlete account privacy settings (can_see_analysis badge added)
 
 #### AC-8: Database & RLS
 - [x] 4 tables created: feedback_categories, feedback_category_overrides, feedback_checkins, feedback_checkin_values
@@ -977,23 +977,15 @@ src/
 - **Location:** `src/components/feedback/athlete-checkin-page.tsx` -- no consent check before rendering form
 - **Priority:** Fix before deployment
 
-#### BUG-2: No "create new category" UI for athletes
+#### BUG-2: No "create new category" UI for athletes — FIXED (2026-03-16)
 - **Severity:** Medium
-- **Steps to Reproduce:**
-  1. Open category manager as athlete
-  2. Expected: "Neue Kategorie erstellen" button per spec
-  3. Actual: Only toggle switches for existing categories, no create button
-- **Impact:** Acceptance criterion "Eigene Kategorien: Erstellen (Name, Typ, Bereich, Labels)" not met
-- **Note:** Spec marks "Athlet: Eigene Kategorien erstellen" as Phase 2, but the CategoryManager component has no create functionality at all (not even for trainers via the UI)
-- **Priority:** Fix in next sprint (Phase 2 item but category-form-modal.tsx also missing)
+- **Status:** FIXED
+- **Fix:** CategoryFormModal created with full form (Name DE/EN, Type, Unit, Min/Max, Scale Labels, Required, Icon) + live preview. Button added in CategoryManager. Scope-aware: athlete creates scope="athlete", trainer creates scope="trainer".
 
-#### BUG-3: No live preview of category input in check-in
+#### BUG-3: No live preview of category input in check-in — FIXED (2026-03-16)
 - **Severity:** Low
-- **Steps to Reproduce:**
-  1. Open category manager
-  2. Expected: "Vorschau: Wie sieht die Eingabe im Check-in aus?"
-  3. Actual: No preview shown
-- **Priority:** Nice to have
+- **Status:** FIXED
+- **Fix:** Live preview integrated in CategoryFormModal — renders NumberInput/SegmentedControl/Textarea based on selected type.
 
 #### BUG-4: MonitoringTrendView uses mock data instead of real DB data
 - **Severity:** High
@@ -1026,13 +1018,10 @@ src/
 - **Status:** FIXED
 - **Fix:** "Load More" button implemented using `hasMoreHistory` prop + server action for paginated loading.
 
-#### BUG-8: Athlete cannot see which data their trainer sees
+#### BUG-8: Athlete cannot see which data their trainer sees — FIXED (2026-03-16)
 - **Severity:** Low
-- **Steps to Reproduce:**
-  1. As athlete, navigate to account settings or feedback page
-  2. Expected: Read-only display showing which data trainer can see (spec: "Athlet sieht in Einstellungen welche Daten sein Trainer sehen kann")
-  3. Actual: No such UI exists
-- **Priority:** Fix in next sprint
+- **Status:** FIXED
+- **Fix:** Trainer data visibility section in account privacy page now shows can_see_analysis badge alongside existing visibility flags. "Kein Trainer verbunden" shown when no connection exists.
 
 #### BUG-9: Hardcoded German string in TrendChart
 - **Severity:** Low
