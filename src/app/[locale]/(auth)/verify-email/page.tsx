@@ -101,7 +101,7 @@ export default function VerifyEmailPage() {
               onResend={handleResend}
               labels={{
                 resend: t("resend"),
-                resendCooldown: t("resendCooldown"),
+                resendCooldown: t.raw("resendCooldown"),
               }}
             />
           )}
