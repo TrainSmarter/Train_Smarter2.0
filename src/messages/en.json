@@ -956,6 +956,8 @@
     "updateError": "Update failed.",
     "checkinHistory": "Check-in History",
     "noCheckinHistory": "No check-ins yet.",
+    "loadMore": "Load more",
+    "loadingMore": "Loading...",
     "scopeGlobal": "Default",
     "scopeTrainer": "From coach",
     "scopeAthlete": "Custom",

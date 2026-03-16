@@ -58,7 +58,7 @@ export default async function AthleteDetailPage({
 
   // Get trend data, history, and categories
   const [trendData, { entries: checkinHistory, hasMore }, categories] = await Promise.all([
-    getAthleteTrendData(authUser.id, athleteId, "30"),
+    getAthleteTrendData(athleteId, "30"),
     getCheckinHistory(athleteId, { limit: 20 }),
     getActiveCategories(athleteId),
   ]);

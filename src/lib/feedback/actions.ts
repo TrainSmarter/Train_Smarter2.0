@@ -260,6 +260,17 @@ export async function updateBackfillDays(
   return { success: true };
 }
 
+// ── Load More Check-in History ──────────────────────────────────
+
+export async function loadMoreCheckinHistory(
+  athleteId: string,
+  cursor: string,
+  limit: number = 20
+): Promise<{ entries: Array<{ id: string; date: string; values: Record<string, { numericValue: number | null; textValue: string | null }>; createdAt: string; updatedAt: string }>; hasMore: boolean }> {
+  const { getCheckinHistory } = await import("@/lib/feedback/queries");
+  return getCheckinHistory(athleteId, { cursor, limit });
+}
+
 // ── Toggle Category Override ────────────────────────────────────
 
 export async function toggleCategoryOverride(

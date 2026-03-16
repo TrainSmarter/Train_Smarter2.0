@@ -478,7 +478,6 @@ function getAlertsFromAthletes(
 
 /** Get trend data for an athlete's categories */
 export async function getAthleteTrendData(
-  _trainerId: string,
   athleteId: string,
   range: string
 ): Promise<AthleteTrendData[]> {

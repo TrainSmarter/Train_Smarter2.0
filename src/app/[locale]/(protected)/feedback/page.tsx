@@ -60,7 +60,7 @@ export default async function FeedbackPage() {
 
   // Load trend data if analysis is visible
   const trendData = canSeeAnalysis
-    ? await getAthleteTrendData("", authUser.id, "30")
+    ? await getAthleteTrendData(authUser.id, "30")
     : [];
 
   return (

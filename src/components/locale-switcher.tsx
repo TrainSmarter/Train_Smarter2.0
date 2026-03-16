@@ -1,7 +1,8 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { useRouter, usePathname } from "@/i18n/navigation";
+import { routing } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
 
 export function LocaleSwitcher() {
@@ -12,7 +13,32 @@ export function LocaleSwitcher() {
 
   function switchLocale(newLocale: "de" | "en") {
     if (newLocale === locale) return;
-    router.replace(pathname as "/", { locale: newLocale });
+
+    // Check if the current pathname is a known route in the routing config.
+    // usePathname() from next-intl returns the internal (non-localized) path,
+    // so we can safely pass it to router.replace for all defined routes.
+    const knownPaths = Object.keys(routing.pathnames ?? {});
+    const isKnownPath = knownPaths.some((p) => {
+      // Exact match for static routes, prefix match for dynamic routes
+      if (p === pathname) return true;
+      // Handle dynamic segments like /feedback/[athleteId]
+      const pattern = p.replace(/\[[\w]+\]/g, "[^/]+");
+      return new RegExp(`^${pattern}$`).test(pathname);
+    });
+
+    if (isKnownPath) {
+      // Safe to use typed router — pathname is in the routing config
+      router.replace(pathname as "/", { locale: newLocale });
+    } else {
+      // Fallback: navigate via window.location for unknown paths
+      const currentPath = window.location.pathname;
+      // Replace the locale segment: /de/some-path → /en/some-path
+      const newPath = currentPath.replace(
+        new RegExp(`^/(${routing.locales.join("|")})`),
+        `/${newLocale}`
+      );
+      window.location.href = newPath;
+    }
   }
 
   return (

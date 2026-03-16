@@ -956,6 +956,8 @@
     "updateError": "Aktualisierung fehlgeschlagen.",
     "checkinHistory": "Check-in Verlauf",
     "noCheckinHistory": "Noch keine Check-ins vorhanden.",
+    "loadMore": "Mehr laden",
+    "loadingMore": "Laden...",
     "scopeGlobal": "Standard",
     "scopeTrainer": "Vom Trainer",
     "scopeAthlete": "Eigene",

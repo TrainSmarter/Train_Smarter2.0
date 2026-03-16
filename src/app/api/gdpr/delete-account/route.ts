@@ -118,13 +118,19 @@ export async function POST(request: Request) {
       status: "pending",
     });
 
-    // 9. Anonymize email in auth.users + deactivate account
-    const anonymizedEmail = `deleted-${userId.slice(0, 8)}@anonymized.local`;
+    // 9. Anonymize email + clear user_metadata in auth.users + deactivate account
+    //    Art. 17 DSGVO requires full data erasure — email, name, avatar must go.
+    const anonymizedEmail = `deleted_${userId.slice(0, 8)}@anonymized.local`;
     const { error: banError } = await adminClient.auth.admin.updateUserById(
       userId,
       {
         email: anonymizedEmail,
         ban_duration: "876000h", // ~100 years — effectively permanent
+        user_metadata: {
+          first_name: null,
+          last_name: null,
+          avatar_url: null,
+        },
         app_metadata: {
           ...user.app_metadata,
           deletion_requested: true,

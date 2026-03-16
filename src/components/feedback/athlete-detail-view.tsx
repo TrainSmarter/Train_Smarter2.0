@@ -17,6 +17,12 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -33,7 +39,8 @@ import {
 } from "@/components/ui/table";
 import { TrendChart } from "./trend-chart";
 import { StreakBadge } from "./streak-badge";
-import { toggleAnalysisVisibility, updateBackfillDays } from "@/lib/feedback/actions";
+import { CategoryManager } from "./category-manager";
+import { toggleAnalysisVisibility, updateBackfillDays, loadMoreCheckinHistory } from "@/lib/feedback/actions";
 import type {
   MonitoringAthleteSummary,
   AthleteTrendData,
@@ -63,6 +70,25 @@ export function AthleteDetailView({
   const [canSeeAnalysis, setCanSeeAnalysis] = React.useState(athlete.canSeeAnalysis);
   const [backfillDays, setBackfillDays] = React.useState(String(athlete.backfillDays));
   const [togglingAnalysis, setTogglingAnalysis] = React.useState(false);
+  const [showCategoryManager, setShowCategoryManager] = React.useState(false);
+  const [history, setHistory] = React.useState(checkinHistory);
+  const [hasMore, setHasMore] = React.useState(hasMoreHistory);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+
+  async function handleLoadMore() {
+    if (!hasMore || loadingMore || history.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const cursor = history[history.length - 1].date;
+      const result = await loadMoreCheckinHistory(athlete.athleteId, cursor, 20);
+      setHistory((prev) => [...prev, ...result.entries]);
+      setHasMore(result.hasMore);
+    } catch {
+      toast.error(t("updateError"));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   async function handleToggleAnalysis(checked: boolean) {
     setTogglingAnalysis(true);
@@ -172,6 +198,15 @@ export function AthleteDetailView({
             </SelectContent>
           </Select>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowCategoryManager(true)}
+          className="gap-2"
+        >
+          <Settings2 className="h-4 w-4" />
+          {t("manageCategories")}
+        </Button>
       </div>
 
       {/* Time Range Selector */}
@@ -218,7 +253,7 @@ export function AthleteDetailView({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {checkinHistory.length === 0 ? (
+              {history.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={categories.filter(c => c.isActive).length + 1}
@@ -228,7 +263,7 @@ export function AthleteDetailView({
                   </TableCell>
                 </TableRow>
               ) : (
-                checkinHistory.map((entry) => (
+                history.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="text-sm sticky left-0 bg-card z-10">
                       {new Date(entry.date).toLocaleDateString(
@@ -259,7 +294,32 @@ export function AthleteDetailView({
             </TableBody>
           </Table>
         </div>
+        {hasMore && (
+          <div className="flex justify-center mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+            >
+              {loadingMore ? t("loadingMore") : t("loadMore")}
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* Category Manager Dialog */}
+      <Dialog open={showCategoryManager} onOpenChange={setShowCategoryManager}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              {t("manageCategories")}
+            </DialogTitle>
+          </DialogHeader>
+          <CategoryManager categories={categories} isTrainerView />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
