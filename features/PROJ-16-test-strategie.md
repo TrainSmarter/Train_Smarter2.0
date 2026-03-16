@@ -637,8 +637,18 @@ No regressions detected from PROJ-16 Phase 1 changes:
 - [x] `src/lib/utils.test.ts` — 8 tests for `cn()` utility (Tailwind conflict resolution, conditional classes, edge cases)
 - [x] `src/hooks/use-avatar-upload.test.ts` — 8 tests for `validateImageMagicBytes()` (JPEG, PNG, WebP detection, GIF rejection, empty files, disguised files)
 
-### Phase 3: E2E Tests (Playwright) — PLANNED
-- [ ] Not yet implemented
+### Phase 3: E2E Tests (Playwright) — IN PROGRESS (2026-03-16)
+- [x] Playwright + @axe-core/playwright installed
+- [x] `playwright.config.ts` with Chromium, auth state caching, dev server auto-start
+- [x] Auth fixture: `tests/e2e/fixtures/auth.setup.ts` (Trainer + Athlete login state)
+- [x] npm scripts: `npm run test:e2e`, `npm run test:e2e:ui`
+- [x] `.gitignore` updated for auth state, test-results, playwright-report
+
+**Test suites created (28 tests across 4 files):**
+- [x] `tests/e2e/fixtures/auth.setup.ts` — 2 setup tests (Trainer + Athlete login state caching)
+- [x] `tests/e2e/01-auth/registration.spec.ts` — 6 tests (form rendering, validation, password mismatch, registration → verify-email redirect, a11y)
+- [x] `tests/e2e/01-auth/password-reset.spec.ts` — 14 tests (login page, forgot-password flow, reset-password states, anti-enumeration, confirmed redirect, a11y)
+- [x] `tests/e2e/02-athletes/invite-athlete.spec.ts` — 7 tests (athletes page, invite modal, email validation, dashboard, onboarding redirect, a11y)
 
 ## Deployment
 
