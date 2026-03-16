@@ -21,10 +21,12 @@ import { PasswordField } from "@/components/password-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createClient } from "@/lib/supabase/client";
 import { registerSchema, type RegisterFormData } from "@/lib/validations/auth";
+import { useEmailValidation } from "@/hooks/use-email-validation";
 
 export default function RegisterPage() {
   const t = useTranslations("auth.register");
   const tAuth = useTranslations("auth");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const currentLocale = useLocale();
 
@@ -34,6 +36,7 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -45,6 +48,10 @@ export default function RegisterPage() {
       confirmPassword: "",
     },
   });
+
+  const emailValue = watch("email");
+  const { isValidating: isEmailValidating, isValid: isEmailValid, error: emailValidationError } =
+    useEmailValidation(emailValue);
 
   function getPasswordError(fieldError: { message?: string } | undefined): string | undefined {
     if (!fieldError?.message) return undefined;
@@ -138,8 +145,14 @@ export default function RegisterPage() {
             required
             autoComplete="email"
             error={errors.email?.message}
+            helperText={isEmailValidating ? tCommon("emailValidating") : undefined}
             {...register("email")}
           />
+          {!errors.email && emailValidationError && (
+            <p className="text-body-sm text-warning" role="status">
+              {tCommon(emailValidationError as "emailNoMxRecord" | "emailInvalidDomain")}
+            </p>
+          )}
 
           <PasswordField
             label={t("password")}

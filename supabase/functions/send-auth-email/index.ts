@@ -293,6 +293,28 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // MX-Record plausibility check (last line of defense)
+    const emailDomain = user.email.split("@")[1];
+    if (emailDomain) {
+      try {
+        const mxRecords = await Deno.resolveDns(emailDomain, "MX");
+        if (!mxRecords || mxRecords.length === 0) {
+          // Fallback: try A record
+          try {
+            await Deno.resolveDns(emailDomain, "A");
+          } catch {
+            console.log(`MX check failed: no records for ${emailDomain}`);
+            return new Response(
+              JSON.stringify({ error: `Invalid email domain: ${emailDomain}` }),
+              { status: 400, headers: { "Content-Type": "application/json" } }
+            );
+          }
+        }
+      } catch {
+        // DNS error — fail-open, allow the email through
+      }
+    }
+
     // Create admin Supabase client for reading profiles.locale
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

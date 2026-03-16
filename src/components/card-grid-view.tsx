@@ -17,6 +17,10 @@ interface CardGridViewProps {
   sortOption: OrganisationSortOption;
   teamNameMap: Record<string, string>;
   showAthletesFirst?: boolean;
+  onResendInvite?: (connectionId: string) => void;
+  resendingId?: string | null;
+  onWithdrawInvite?: (connectionId: string) => void;
+  withdrawingId?: string | null;
 }
 
 export function CardGridView({
@@ -26,6 +30,10 @@ export function CardGridView({
   sortOption,
   teamNameMap,
   showAthletesFirst = false,
+  onResendInvite,
+  resendingId,
+  onWithdrawInvite,
+  withdrawingId,
 }: CardGridViewProps) {
   const t = useTranslations("teams");
   const [expandedTeamId, setExpandedTeamId] = React.useState<string | null>(null);
@@ -53,6 +61,10 @@ export function CardGridView({
       onToggleExpand={() =>
         setExpandedTeamId((prev) => (prev === team.id ? null : team.id))
       }
+      onResendInvite={onResendInvite}
+      resendingId={resendingId}
+      onWithdrawInvite={onWithdrawInvite}
+      withdrawingId={withdrawingId}
     />
   ));
 
@@ -65,6 +77,10 @@ export function CardGridView({
           ? teamNameMap[teamAthleteMap[athlete.id]!]
           : null
       }
+      onResendInvite={onResendInvite}
+      isResending={resendingId === athlete.connectionId}
+      onWithdrawInvite={onWithdrawInvite}
+      isWithdrawing={withdrawingId === athlete.connectionId}
     />
   ));
 
@@ -116,6 +132,10 @@ export function CardGridView({
             key={athlete.id}
             athlete={athlete}
             teamName={teamNameMap[teamAthleteMap[athlete.id]!]}
+            onResendInvite={onResendInvite}
+            isResending={resendingId === athlete.connectionId}
+            onWithdrawInvite={onWithdrawInvite}
+            isWithdrawing={withdrawingId === athlete.connectionId}
           />
         ))}
       </div>

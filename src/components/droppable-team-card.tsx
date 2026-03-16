@@ -33,6 +33,10 @@ interface DroppableTeamCardProps {
   athletes: AthleteListItem[];
   isExpanded: boolean;
   onToggleExpand: () => void;
+  onResendInvite?: (connectionId: string) => void;
+  resendingId?: string | null;
+  onWithdrawInvite?: (connectionId: string) => void;
+  withdrawingId?: string | null;
 }
 
 export function DroppableTeamCard({
@@ -40,6 +44,10 @@ export function DroppableTeamCard({
   athletes,
   isExpanded,
   onToggleExpand,
+  onResendInvite,
+  resendingId,
+  onWithdrawInvite,
+  withdrawingId,
 }: DroppableTeamCardProps) {
   const t = useTranslations("teams");
   const { isOver, setNodeRef } = useDroppable({
@@ -127,6 +135,10 @@ export function DroppableTeamCard({
                   key={athlete.id}
                   athlete={athlete}
                   teamName={null}
+                  onResendInvite={onResendInvite}
+                  isResending={resendingId === athlete.connectionId}
+                  onWithdrawInvite={onWithdrawInvite}
+                  isWithdrawing={withdrawingId === athlete.connectionId}
                 />
               ))}
             </div>

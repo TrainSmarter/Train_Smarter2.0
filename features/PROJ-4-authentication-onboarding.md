@@ -1,8 +1,8 @@
 # PROJ-4: Authentication & Onboarding
 
-## Status: Deployed
+## Status: In Progress
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-15 (Enhancement: Sprachsteuerung & Locale-Persistenz)
+**Last Updated:** 2026-03-16 (Enhancement 2: E-Mail-Plausibilitätsprüfung)
 
 ## Deployment
 - **Production URL:** https://train-smarter-2.vercel.app
@@ -1661,6 +1661,50 @@ All 15 Round 1 bugs verified as fixed or partially fixed in Round 2. No status c
   - NEW-BUG-10 (Low): complete-onboarding no rate limiting
 - **Security:** 2 partially-fixed medium findings (client-only name validation, client-only magic-byte validation)
 - **Production Ready:** YES -- The High bug (NEW-BUG-1 invite flow) is blocked by PROJ-13 (email delivery) and does not affect core auth functionality. All auth flows (login, register, password reset, email verification, onboarding) work correctly.
+
+---
+
+## Enhancement 2: E-Mail-Plausibilitätsprüfung in Auth-Formularen (2026-03-16)
+
+### Übersicht
+Registrierungs- und Passwort-Reset-Formulare sollen vor dem Submit die E-Mail-Domain auf Existenz prüfen (MX-Record). Dies fängt Tippfehler in Domains ab (z.B. `gmal.com`, `gmx.ed`) bevor Supabase Auth einen Token generiert.
+
+**Spec:** Siehe PROJ-13 Enhancement 2 für die vollständige `validateEmailPlausibility()` Utility-Spezifikation.
+
+### Acceptance Criteria (PROJ-4 spezifisch)
+- [ ] **Registrierungsformular (`/register`):** Client-seitiger MX-Check nach E-Mail-Eingabe (debounced, 500ms via `POST /api/validate-email`)
+  - Bei ungültigem Domain: Inline-Fehlermeldung unter dem E-Mail-Feld
+  - Submit-Button bleibt disabled solange MX-Check fehlschlägt
+  - Bei DNS-Timeout: Submit erlaubt (fail-open)
+- [ ] **Passwort-Reset-Formular (`/forgot-password`):** Gleicher Client-seitiger MX-Check
+  - Bei ungültigem Domain: Inline-Fehlermeldung
+  - Verhindert unnötigen Supabase Auth API-Call für nicht-existente Domains
+- [ ] **Fehlermeldungen (i18n):** Neue Keys in `auth` Namespace
+  - DE: „Diese E-Mail-Adresse scheint nicht zu existieren. Bitte überprüfe die Domain."
+  - EN: „This email address doesn't appear to exist. Please check the domain."
+- [ ] **Performance:** Kein spürbarer Delay beim Tippen — Check erst nach 500ms Inaktivität
+
+### Edge Cases
+- User tippt schnell → Debounce verhindert Spam-Anfragen an `/api/validate-email`
+- User hat keinen Internetzugang → API-Call schlägt fehl → fail-open (Submit erlaubt)
+- Supabase Auth akzeptiert die E-Mail trotzdem → kein Problem, MX-Check ist Comfort-Feature, nicht Hard-Block
+
+### Enhancement 2 — Tech Design (Solution Architect)
+
+**Ansatz:** Custom Hook `useEmailValidation()` kapselt Debounce + API-Call + State.
+
+```
+register-form.tsx / forgot-password-form.tsx
++-- useEmailValidation(email)  ← Custom Hook
+    +-- 500ms Debounce
+    +-- POST /api/validate-email  ← Shared API Route (PROJ-13)
+    +-- Returns: { isValidating, isValid, error }
+    +-- Inline-Fehlermeldung unter E-Mail-Feld
+```
+
+**Warum ein Custom Hook?** Gleiche Logik in 4 Formularen (Register, Forgot-Password, Invite-Modal, Team-Invite-Modal). Ein Hook vermeidet Copy-Paste und zentralisiert das Debounce-Timing.
+
+**Vollständiger Tech Design:** Siehe PROJ-13 Enhancement 2 Tech Design (zentrale Architektur).
 
 ## Deployment
 _To be added by /deploy_

@@ -4,7 +4,7 @@ import * as React from "react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useTranslations, useFormatter } from "next-intl";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Clock, GripVertical, Hourglass, Users, UserPlus } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Clock, GripVertical, Hourglass, RefreshCw, Undo2, Users, UserPlus } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,9 +27,17 @@ import type { AthleteListItem } from "@/lib/athletes/types";
 function DraggableAthleteRow({
   athlete,
   teamName,
+  onResendInvite,
+  isResending = false,
+  onWithdrawInvite,
+  isWithdrawing = false,
 }: {
   athlete: AthleteListItem;
   teamName?: string | null;
+  onResendInvite?: (connectionId: string) => void;
+  isResending?: boolean;
+  onWithdrawInvite?: (connectionId: string) => void;
+  isWithdrawing?: boolean;
 }) {
   const tAthletes = useTranslations("athletes");
   const format = useFormatter();
@@ -112,15 +120,47 @@ function DraggableAthleteRow({
         </div>
       </TableCell>
       <TableCell>
-        {isPending ? (
-          <Badge variant={isExpired ? "error" : "warning"} size="sm">
-            {isExpired ? tAthletes("invitationExpired") : tAthletes("invitationPending")}
-          </Badge>
-        ) : (
-          <Badge variant="success" size="sm">
-            {tAthletes("active")}
-          </Badge>
-        )}
+        <div className="flex items-center gap-1.5">
+          {isPending ? (
+            <>
+              <Badge variant={isExpired ? "error" : "warning"} size="sm">
+                {isExpired ? tAthletes("invitationExpired") : tAthletes("invitationPending")}
+              </Badge>
+              {!isExpired && onResendInvite && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-1.5 text-xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onResendInvite(athlete.connectionId);
+                  }}
+                  loading={isResending}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+              )}
+              {!isExpired && onWithdrawInvite && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-1.5 text-xs text-destructive hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onWithdrawInvite(athlete.connectionId);
+                  }}
+                  loading={isWithdrawing}
+                >
+                  <Undo2 className="h-3 w-3" />
+                </Button>
+              )}
+            </>
+          ) : (
+            <Badge variant="success" size="sm">
+              {tAthletes("active")}
+            </Badge>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         {teamName ? (
@@ -217,6 +257,10 @@ interface TableViewProps {
   sortOption?: OrganisationSortOption;
   onSortChange?: (option: OrganisationSortOption) => void;
   showAthletesFirst?: boolean;
+  onResendInvite?: (connectionId: string) => void;
+  resendingId?: string | null;
+  onWithdrawInvite?: (connectionId: string) => void;
+  withdrawingId?: string | null;
 }
 
 export function TableView({
@@ -227,6 +271,10 @@ export function TableView({
   sortOption,
   onSortChange,
   showAthletesFirst = false,
+  onResendInvite,
+  resendingId,
+  onWithdrawInvite,
+  withdrawingId,
 }: TableViewProps) {
   const t = useTranslations("teams");
   const [expandedTeamId, setExpandedTeamId] = React.useState<string | null>(
@@ -297,6 +345,10 @@ export function TableView({
                       key={athlete.id}
                       athlete={athlete}
                       teamName={null}
+                      onResendInvite={onResendInvite}
+                      isResending={resendingId === athlete.connectionId}
+                      onWithdrawInvite={onWithdrawInvite}
+                      isWithdrawing={withdrawingId === athlete.connectionId}
                     />
                   ))}
                 </>
@@ -326,6 +378,10 @@ export function TableView({
                       key={athlete.id}
                       athlete={athlete}
                       teamName={null}
+                      onResendInvite={onResendInvite}
+                      isResending={resendingId === athlete.connectionId}
+                      onWithdrawInvite={onWithdrawInvite}
+                      isWithdrawing={withdrawingId === athlete.connectionId}
                     />
                   ))}
                 {isExpanded && teamAthletes.length === 0 && (
@@ -382,6 +438,10 @@ export function TableView({
                   key={athlete.id}
                   athlete={athlete}
                   teamName={null}
+                  onResendInvite={onResendInvite}
+                  isResending={resendingId === athlete.connectionId}
+                  onWithdrawInvite={onWithdrawInvite}
+                  isWithdrawing={withdrawingId === athlete.connectionId}
                 />
               ))}
             </>

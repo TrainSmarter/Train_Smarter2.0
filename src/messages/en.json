@@ -861,6 +861,9 @@
     "noResults": "No results found",
     "togglePassword": "Toggle password visibility",
     "comingSoon": "Coming soon",
-    "comingSoonDescription": "This feature is currently being developed and will be available soon."
+    "comingSoonDescription": "This feature is currently being developed and will be available soon.",
+    "emailNoMxRecord": "This email domain does not appear to receive emails. Please check the address.",
+    "emailInvalidDomain": "This email domain is invalid. Please check the address.",
+    "emailValidating": "Validating email…"
   }
 }

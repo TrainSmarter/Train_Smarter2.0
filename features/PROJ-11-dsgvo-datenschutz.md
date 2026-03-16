@@ -580,3 +580,13 @@ Die folgenden Punkte sind nicht deployment-blockierend, müssen aber nachgearbei
 - BUG-11: 30-day cleanup cron for pending_deletions (separate infra ticket)
 - BUG-14: Policy version re-consent mechanism
 - Legal text review by Austrian lawyer (documented as prerequisite in spec)
+
+---
+
+## Querverweise: Enhancements aus anderen Features (2026-03-16)
+
+### E-Mail-Plausibilitätsprüfung (PROJ-13 Enhancement 2)
+DSGVO-Relevanz: MX-Record-Validierung verhindert, dass personenbezogene Daten (Name, Trainerzuordnung) an nicht-existente E-Mail-Domains gesendet werden. Dies unterstützt das Prinzip der **Datenminimierung (Art. 5 Abs. 1 lit. c DSGVO)** — es werden keine Einladungsdaten für offensichtlich ungültige Empfänger erzeugt.
+
+- DNS-Lookups im Rahmen der MX-Validierung werden **nicht geloggt** (keine IP-Adressen, keine E-Mail-Adressen im Log)
+- Die Validierung erfolgt **vor** der Erstellung eines Datensatzes — bei Ablehnung werden keine personenbezogenen Daten gespeichert

@@ -3,10 +3,11 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useTranslations, useFormatter } from "next-intl";
-import { Clock, GripVertical, Hourglass } from "lucide-react";
+import { Clock, GripVertical, Hourglass, RefreshCw, Undo2 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { AthleteListItem } from "@/lib/athletes/types";
@@ -15,6 +16,10 @@ interface DraggableAthleteCardProps {
   athlete: AthleteListItem;
   teamName?: string | null;
   isDragOverlay?: boolean;
+  onResendInvite?: (connectionId: string) => void;
+  isResending?: boolean;
+  onWithdrawInvite?: (connectionId: string) => void;
+  isWithdrawing?: boolean;
 }
 
 function getInitials(firstName: string, lastName: string): string {
@@ -25,6 +30,10 @@ export function DraggableAthleteCard({
   athlete,
   teamName,
   isDragOverlay = false,
+  onResendInvite,
+  isResending = false,
+  onWithdrawInvite,
+  isWithdrawing = false,
 }: DraggableAthleteCardProps) {
   const t = useTranslations("teams");
   const tAthletes = useTranslations("athletes");
@@ -126,9 +135,41 @@ export function DraggableAthleteCard({
 
             <div className="flex items-center gap-1.5 shrink-0">
               {isPending ? (
-                <Badge variant={isExpired ? "error" : "warning"} size="sm">
-                  {isExpired ? tAthletes("invitationExpired") : tAthletes("invitationPending")}
-                </Badge>
+                <>
+                  <Badge variant={isExpired ? "error" : "warning"} size="sm">
+                    {isExpired ? tAthletes("invitationExpired") : tAthletes("invitationPending")}
+                  </Badge>
+                  {!isExpired && onResendInvite && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-1.5 text-xs"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onResendInvite(athlete.connectionId);
+                      }}
+                      loading={isResending}
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                    </Button>
+                  )}
+                  {!isExpired && onWithdrawInvite && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 px-1.5 text-xs text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onWithdrawInvite(athlete.connectionId);
+                      }}
+                      loading={isWithdrawing}
+                    >
+                      <Undo2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </>
               ) : teamName ? (
                 <Badge variant="outline" size="sm" className="max-w-[120px] truncate">
                   {teamName}

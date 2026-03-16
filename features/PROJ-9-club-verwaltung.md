@@ -1,8 +1,8 @@
 # PROJ-9: Team-Verwaltung
 
-## Status: Deployed
+## Status: In Progress
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-15
+**Last Updated:** 2026-03-16 (Enhancement: Withdraw-Button + E-Mail-Plausibilitätsprüfung in Unified View)
 
 ### Implementation Notes (Unified View Frontend — 2026-03-15)
 
@@ -1277,3 +1277,33 @@ Custom Hook: `useOrganisationPreferences()` — liest/schreibt `localStorage` Ke
 - **TypeScript Build:** PASS
 - **Production Build:** PASS
 - **Production Ready:** YES
+
+---
+
+## Enhancement: Withdraw-Button + E-Mail-Plausibilitätsprüfung (2026-03-16)
+
+### Problem 1: Withdraw-Button fehlt in Unified View
+Die `UnifiedOrganisationView` (Phase 2) hat bei der Ablösung der alten Tab-Ansicht den `onWithdrawInvite`-Prop nicht von `AthletesList` übernommen. Der Withdraw-Button ist dadurch in der Produktion nicht sichtbar, obwohl die Server Action und RLS Policy existieren.
+
+**Betrifft:** Alle drei Views (Card-Grid, Tabelle, Kanban) in `unified-organisation-view.tsx`
+
+**Spec:** Siehe PROJ-5 Enhancement 2 für vollständige Acceptance Criteria.
+
+### Problem 2: E-Mail-Plausibilitätsprüfung bei Team-Einladungen
+`inviteTrainer()` in `src/lib/teams/actions.ts` validiert aktuell nur das E-Mail-Format (Zod). MX-Record-Check soll ergänzt werden.
+
+**Spec:** Siehe PROJ-13 Enhancement 2 für vollständige Acceptance Criteria.
+
+### Acceptance Criteria (PROJ-9 spezifisch)
+- [ ] `inviteTrainer()` Server Action prüft MX-Record vor Einladungserstellung
+- [ ] Fehlermeldung bei ungültigem Domain: i18n-Key in `teams` Namespace (DE/EN)
+- [ ] Withdraw-Button auf Pending-Karten in allen drei Views der Unified Organisation View
+- [ ] Team-Invite-Modal zeigt Inline-Fehler bei ungültiger E-Mail-Domain
+
+### Enhancement — Tech Design (Solution Architect)
+
+**Withdraw-Button:** Gleicher Ansatz wie PROJ-5 — Props-Piping durch UnifiedOrganisationView. Die Unified View ist der Eigentümer des Withdraw-States für Athleten-Einladungen. Team-Einladungen haben bereits einen Cancel-Button in `TeamInvitationsList`.
+
+**MX-Check:** `inviteTrainer()` in `src/lib/teams/actions.ts` ruft `validateEmailPlausibility()` auf (shared mit PROJ-5). Das Team-Invite-Modal nutzt den gleichen `useEmailValidation()` Hook wie die Auth-Formulare.
+
+**Vollständiger Tech Design:** Siehe PROJ-13 Enhancement 2 Tech Design (zentrale Architektur).

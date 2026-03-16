@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { validateEmailPlausibility } from "@/lib/validation/email";
 import {
   createTeamSchema,
   updateTeamSchema,
@@ -312,6 +313,12 @@ export async function inviteTrainer(data: {
 
   const { teamId, email, message } = parsed.data;
   const normalizedEmail = email.toLowerCase();
+
+  // MX-Record plausibility check
+  const emailCheck = await validateEmailPlausibility(normalizedEmail);
+  if (!emailCheck.valid) {
+    return { success: false, error: "EMAIL_DOMAIN_INVALID" };
+  }
 
   // Cannot invite yourself
   if (normalizedEmail === user.email?.toLowerCase()) {

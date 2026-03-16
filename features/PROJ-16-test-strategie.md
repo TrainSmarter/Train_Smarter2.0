@@ -648,3 +648,30 @@ No regressions detected from PROJ-16 Phase 1 changes:
 - **Commit:** `0f16738`
 
 Phase 3 (E2E Playwright) folgt mit Implementierung weiterer kritischer Features (PROJ-6, PROJ-7).
+
+---
+
+## Neue Tests aus Enhancements (2026-03-16)
+
+### Unit Tests für E-Mail-Plausibilitätsprüfung (PROJ-13 Enhancement 2)
+- [ ] `src/lib/validation/email.test.ts` — Tests für `validateEmailPlausibility()`
+  - Gültiges Format + existierender MX-Record → `{ valid: true }`
+  - Gültiges Format + nicht-existenter Domain → `{ valid: false, reason: "no_mx_record" }`
+  - Ungültiges Format → `{ valid: false, reason: "invalid_format" }`
+  - DNS-Timeout → `{ valid: true }` (fail-open)
+  - Domain mit A-Record aber ohne MX → `{ valid: true }` (Fallback)
+  - Leerer String, nur Whitespace → `{ valid: false, reason: "invalid_format" }`
+
+### Integration Tests
+- [ ] `src/app/api/validate-email/route.test.ts` — API Route Tests
+  - POST mit gültiger E-Mail → 200 + `{ valid: true }`
+  - POST mit ungültigem Domain → 200 + `{ valid: false, reason: "no_mx_record" }`
+  - POST ohne Body → 400
+  - GET (falsche Methode) → 405
+
+### E2E Tests (Playwright — Phase 3)
+- [ ] `tests/e2e/02-athletes/invite-athlete.spec.ts` — Erweitern:
+  - Trainer gibt ungültige Domain ein → Fehlermeldung erscheint inline
+  - Trainer zieht Einladung zurück (Withdraw-Button in Unified View) → Card verschwindet
+- [ ] `tests/e2e/01-auth/registration.spec.ts` — Erweitern:
+  - User gibt ungültige Domain ein → Inline-Warnung, Submit blockiert

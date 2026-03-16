@@ -861,6 +861,9 @@
     "noResults": "Keine Ergebnisse gefunden",
     "togglePassword": "Passwort ein-/ausblenden",
     "comingSoon": "Demnächst verfügbar",
-    "comingSoonDescription": "Dieses Feature wird gerade entwickelt und ist bald verfügbar."
+    "comingSoonDescription": "Dieses Feature wird gerade entwickelt und ist bald verfügbar.",
+    "emailNoMxRecord": "Diese E-Mail-Domain scheint keine E-Mails empfangen zu können. Bitte überprüfe die Adresse.",
+    "emailInvalidDomain": "Diese E-Mail-Domain ist ungültig. Bitte überprüfe die Adresse.",
+    "emailValidating": "E-Mail wird überprüft…"
   }
 }

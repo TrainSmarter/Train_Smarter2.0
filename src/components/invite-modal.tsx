@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { inviteAthlete } from "@/lib/athletes/actions";
+import { useEmailValidation } from "@/hooks/use-email-validation";
 
 const inviteFormSchema = z.object({
   email: z.string().email().max(255),
@@ -45,7 +46,9 @@ export function InviteModal({ open, onOpenChange }: InviteModalProps) {
     },
   });
 
+  const emailValue = watch("email") ?? "";
   const messageValue = watch("message") ?? "";
+  const emailValidation = useEmailValidation(emailValue);
 
   async function onSubmit(values: InviteFormValues) {
     setIsSubmitting(true);
@@ -67,6 +70,7 @@ export function InviteModal({ open, onOpenChange }: InviteModalProps) {
           ALREADY_PENDING: t("errorAlreadyPending"),
           INVALID_INPUT: t("errorInvalidInput"),
           RATE_LIMITED: t("errorInviteRateLimited"),
+          EMAIL_DOMAIN_INVALID: tCommon("emailNoMxRecord"),
         };
         toast.error(errorMessages[errorKey] ?? t("errorGeneric"));
       }
@@ -127,6 +131,16 @@ export function InviteModal({ open, onOpenChange }: InviteModalProps) {
           {errors.email && (
             <p className="text-body-sm text-error" role="alert">
               {t("errorInvalidEmail")}
+            </p>
+          )}
+          {!errors.email && emailValidation.isValid === false && (
+            <p className="text-body-sm text-warning" role="alert">
+              {tCommon("emailNoMxRecord")}
+            </p>
+          )}
+          {!errors.email && emailValidation.isValidating && (
+            <p className="text-body-sm text-muted-foreground">
+              {tCommon("emailValidating")}
             </p>
           )}
         </div>

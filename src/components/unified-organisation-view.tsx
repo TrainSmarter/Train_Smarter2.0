@@ -36,8 +36,10 @@ import { TableView } from "@/components/table-view";
 import { KanbanView } from "@/components/kanban-view";
 import { InviteModal } from "@/components/invite-modal";
 import { TeamFormModal } from "@/components/team-form-modal";
+import { ConfirmDialog } from "@/components/modal";
 import { useOrganisationPreferences } from "@/hooks/use-organisation-preferences";
 import { moveAthleteToTeam } from "@/lib/teams/actions";
+import { resendInvitation, withdrawInvitation } from "@/lib/athletes/actions";
 import type { TeamListItem } from "@/lib/teams/types";
 import type { AthleteListItem } from "@/lib/athletes/types";
 
@@ -67,6 +69,15 @@ export function UnifiedOrganisationView({
   const [teamAthleteMap, setTeamAthleteMap] = React.useState(initialTeamAthleteMap);
   const [inviteOpen, setInviteOpen] = React.useState(false);
   const [createTeamOpen, setCreateTeamOpen] = React.useState(false);
+
+  // Resend / Withdraw invitation state
+  const [resendingId, setResendingId] = React.useState<string | null>(null);
+  const [withdrawingId, setWithdrawingId] = React.useState<string | null>(null);
+  const [withdrawConfirm, setWithdrawConfirm] = React.useState<{
+    open: boolean;
+    connectionId: string;
+    email: string;
+  }>({ open: false, connectionId: "", email: "" });
 
   // Drag state
   const [activeAthlete, setActiveAthlete] = React.useState<AthleteListItem | null>(null);
@@ -228,6 +239,54 @@ export function UnifiedOrganisationView({
   // Empty state
   const hasNoData = athletes.length === 0 && teams.length === 0;
   const hasNoResults = filteredAthletes.length === 0 && filteredTeams.length === 0 && !hasNoData;
+
+  // ── Resend / Withdraw Handlers ───────────────────────────────
+
+  async function handleResend(connectionId: string) {
+    setResendingId(connectionId);
+    try {
+      const result = await resendInvitation(connectionId);
+      if (result.success) {
+        toast.success(tAthletes("resendSuccess"));
+      } else if (result.error === "RATE_LIMITED") {
+        toast.error(tAthletes("resendRateLimited"));
+      } else {
+        toast.error(tAthletes("errorGeneric"));
+      }
+    } catch {
+      toast.error(tAthletes("errorGeneric"));
+    } finally {
+      setResendingId(null);
+    }
+  }
+
+  function handleWithdrawClick(connectionId: string) {
+    const athlete = athletes.find((a) => a.connectionId === connectionId);
+    if (!athlete) return;
+    setWithdrawConfirm({
+      open: true,
+      connectionId,
+      email: athlete.email,
+    });
+  }
+
+  async function handleWithdrawConfirm() {
+    const { connectionId, email } = withdrawConfirm;
+    setWithdrawingId(connectionId);
+    try {
+      const result = await withdrawInvitation(connectionId);
+      if (result.success) {
+        toast.success(tAthletes("withdrawSuccess", { email }));
+      } else {
+        toast.error(tAthletes("withdrawError"));
+      }
+    } catch {
+      toast.error(tAthletes("withdrawError"));
+    } finally {
+      setWithdrawingId(null);
+      setWithdrawConfirm({ open: false, connectionId: "", email: "" });
+    }
+  }
 
   // ── DnD Handlers ──────────────────────────────────────────────
 
@@ -469,6 +528,10 @@ export function UnifiedOrganisationView({
                 sortOption={sortOption}
                 teamNameMap={teamNameMap}
                 showAthletesFirst={showAthletesFirst}
+                onResendInvite={handleResend}
+                resendingId={resendingId}
+                onWithdrawInvite={handleWithdrawClick}
+                withdrawingId={withdrawingId}
               />
             )}
 
@@ -481,6 +544,10 @@ export function UnifiedOrganisationView({
                 sortOption={sortOption}
                 onSortChange={setSortOption}
                 showAthletesFirst={showAthletesFirst}
+                onResendInvite={handleResend}
+                resendingId={resendingId}
+                onWithdrawInvite={handleWithdrawClick}
+                withdrawingId={withdrawingId}
               />
             )}
 
@@ -491,6 +558,10 @@ export function UnifiedOrganisationView({
                 teamAthleteMap={teamAthleteMap}
                 onInviteAthlete={() => setInviteOpen(true)}
                 showAthletesFirst={showAthletesFirst}
+                onResendInvite={handleResend}
+                resendingId={resendingId}
+                onWithdrawInvite={handleWithdrawClick}
+                withdrawingId={withdrawingId}
               />
             )}
 
@@ -525,6 +596,21 @@ export function UnifiedOrganisationView({
         toTeamName={confirmDialog.toTeamName}
         onConfirm={handleConfirmMove}
         loading={isMoving}
+      />
+
+      {/* Withdraw Confirm Dialog */}
+      <ConfirmDialog
+        open={withdrawConfirm.open}
+        onOpenChange={(open) =>
+          setWithdrawConfirm((prev) => ({ ...prev, open }))
+        }
+        variant="danger"
+        title={tAthletes("withdrawDialogTitle")}
+        message={tAthletes("withdrawDialogMessage", { email: withdrawConfirm.email })}
+        confirmLabel={tAthletes("withdraw")}
+        cancelLabel={tCommon("cancel")}
+        onConfirm={handleWithdrawConfirm}
+        loading={withdrawingId !== null}
       />
     </>
   );

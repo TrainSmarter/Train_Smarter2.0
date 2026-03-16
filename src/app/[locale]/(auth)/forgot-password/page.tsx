@@ -19,9 +19,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClient } from "@/lib/supabase/client";
 import { forgotPasswordSchema, type ForgotPasswordFormData } from "@/lib/validations/auth";
+import { useEmailValidation } from "@/hooks/use-email-validation";
 
 export default function ForgotPasswordPage() {
   const t = useTranslations("auth.forgotPassword");
+  const tCommon = useTranslations("common");
 
   const [error, setError] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -30,11 +32,16 @@ export default function ForgotPasswordPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
     defaultValues: { email: "" },
   });
+
+  const emailValue = watch("email");
+  const { isValidating: isEmailValidating, error: emailValidationError } =
+    useEmailValidation(emailValue);
 
   async function onSubmit(data: ForgotPasswordFormData) {
     setError(null);
@@ -127,8 +134,14 @@ export default function ForgotPasswordPage() {
             required
             autoComplete="email"
             error={errors.email?.message}
+            helperText={isEmailValidating ? tCommon("emailValidating") : undefined}
             {...register("email")}
           />
+          {!errors.email && emailValidationError && (
+            <p className="text-body-sm text-warning" role="status">
+              {tCommon(emailValidationError as "emailNoMxRecord" | "emailInvalidDomain")}
+            </p>
+          )}
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting && (

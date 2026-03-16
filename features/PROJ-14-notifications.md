@@ -145,6 +145,14 @@ notification_preferences
 - [ ] **Event `account_deletion_confirmed`:** In-App Bestätigung der Account-Löschung (bereits in Benachrichtigungs-Typen-Tabelle oben definiert)
 - [ ] **Event `data_export_ready`:** In-App Benachrichtigung wenn Export fertig — aktuell nicht nötig (sync Download), aber bei Umstellung auf async relevant
 
+## Querverweise: Enhancements aus anderen Features (2026-03-16)
+
+### E-Mail-Plausibilitätsprüfung (PROJ-13 Enhancement 2)
+Wenn PROJ-14 den E-Mail-Kanal nutzt (Kanal-Logik → `email`), muss die E-Mail-Validierung aus PROJ-13 Enhancement 2 (`validateEmailPlausibility()`) **nicht** erneut geprüft werden. Der MX-Check erfolgt bei der Registrierung und Einladung — die `profiles.email` in der Datenbank ist zu diesem Zeitpunkt bereits validiert.
+
+### Einladung zurückgezogen (PROJ-5 Enhancement 2)
+Neues Notification-Event für Phase 2: `invitation_withdrawn` — wird ausgelöst wenn ein Trainer eine ausstehende Einladung zurückzieht. Aktuell nicht implementiert (kein In-App-Notification-System), aber im Event-Katalog oben berücksichtigen.
+
 ## Tech Design (Solution Architect)
 _To be added by /architecture_
 

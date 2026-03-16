@@ -22,6 +22,10 @@ interface KanbanColumnProps {
   isUnassigned?: boolean;
   /** Callback to open the invite athlete flow (only for unassigned column) */
   onInviteAthlete?: () => void;
+  onResendInvite?: (connectionId: string) => void;
+  resendingId?: string | null;
+  onWithdrawInvite?: (connectionId: string) => void;
+  withdrawingId?: string | null;
 }
 
 export function KanbanColumn({
@@ -32,6 +36,10 @@ export function KanbanColumn({
   athletes,
   isUnassigned = false,
   onInviteAthlete,
+  onResendInvite,
+  resendingId,
+  onWithdrawInvite,
+  withdrawingId,
 }: KanbanColumnProps) {
   const t = useTranslations("teams");
   const tAthletes = useTranslations("athletes");
@@ -76,6 +84,10 @@ export function KanbanColumn({
                 key={athlete.id}
                 athlete={athlete}
                 teamName={null}
+                onResendInvite={onResendInvite}
+                isResending={resendingId === athlete.connectionId}
+                onWithdrawInvite={onWithdrawInvite}
+                isWithdrawing={withdrawingId === athlete.connectionId}
               />
             ))}
           </div>

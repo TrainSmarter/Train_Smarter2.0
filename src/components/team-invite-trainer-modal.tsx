@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { inviteTrainer } from "@/lib/teams/actions";
+import { useEmailValidation } from "@/hooks/use-email-validation";
 
 const inviteFormSchema = z.object({
   email: z.string().email().max(255),
@@ -54,6 +55,9 @@ export function TeamInviteTrainerModal({
   });
 
   const messageValue = watch("message") ?? "";
+  const emailValue = watch("email");
+  const { isValidating: isEmailValidating, error: emailValidationError } =
+    useEmailValidation(emailValue);
 
   async function onSubmit(values: InviteFormValues) {
     setIsSubmitting(true);
@@ -79,6 +83,7 @@ export function TeamInviteTrainerModal({
           ALREADY_MEMBER: t("errorAlreadyMember"),
           ALREADY_INVITED: t("errorAlreadyInvited"),
           RATE_LIMITED: t("errorRateLimited"),
+          EMAIL_DOMAIN_INVALID: tCommon("emailNoMxRecord"),
         };
         toast.error(errorMessages[result.error ?? ""] ?? t("errorGeneric"));
       }
@@ -198,6 +203,16 @@ export function TeamInviteTrainerModal({
           {errors.email && (
             <p className="text-body-sm text-error" role="alert">
               {t("errorEmailRequired")}
+            </p>
+          )}
+          {!errors.email && isEmailValidating && (
+            <p className="text-body-sm text-muted-foreground" role="status">
+              {tCommon("emailValidating")}
+            </p>
+          )}
+          {!errors.email && emailValidationError && (
+            <p className="text-body-sm text-warning" role="status">
+              {tCommon(emailValidationError as "emailNoMxRecord" | "emailInvalidDomain")}
             </p>
           )}
         </div>

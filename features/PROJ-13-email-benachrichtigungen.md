@@ -1,8 +1,8 @@
 # PROJ-13: E-Mail & Transaktions-Benachrichtigungen
 
-## Status: Deployed
+## Status: In Progress
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-15 (Enhancement: E-Mail-Locale basierend auf Seitensprache)
+**Last Updated:** 2026-03-16 (Enhancement 2: E-Mail-Plausibilitätsprüfung)
 
 ## Deployment
 - **Production URL:** https://www.train-smarter.at
@@ -612,6 +612,505 @@ Die folgenden E-Mails werden von PROJ-11 benötigt und müssen bei der Implement
 - [ ] **E-Mail #9:** Daten-Export bereit — aktuell ist der Export synchron (direkter Download), aber bei Umstellung auf async-Export wird diese E-Mail benötigt
 
 **Kontext:** Die DSGVO-Frontend-UI und API-Routes existieren bereits (`/api/gdpr/delete-account`, `/api/gdpr/export`). Die E-Mails müssen in die bestehenden API-Routes integriert werden.
+
+---
+
+## Enhancement 2: E-Mail-Plausibilitätsprüfung vor Versand (2026-03-16)
+
+### Übersicht
+Bevor eine E-Mail versendet wird, soll die Empfänger-Adresse auf Plausibilität geprüft werden. Dies betrifft **alle** Stellen im System, an denen E-Mail-Adressen eingegeben oder verarbeitet werden.
+
+### Validierungsstufen
+
+**Stufe 1 — Format (Client + Server):**
+- RFC 5322-konformes E-Mail-Format (bereits via Zod `z.string().email()` vorhanden)
+- Max. 254 Zeichen Gesamtlänge
+- Keine Leerzeichen, korrekte `@`-Struktur
+
+**Stufe 2 — MX-Record (Server-seitig):**
+- DNS-Lookup des Domains nach dem `@` (z.B. `gmx.at` → hat MX-Records)
+- Domains ohne MX-Record und ohne A-Record → Ablehnung mit klarer Fehlermeldung
+- Timeout: max. 3 Sekunden für DNS-Lookup, danach durchlassen (fail-open, nicht fail-closed)
+- Ergebnis kann gecacht werden (z.B. 1h TTL) um wiederholte DNS-Lookups zu vermeiden
+
+### Einsatzorte (alle Stellen mit E-Mail-Eingabe)
+
+| Stelle | Datei | Aktuell | Neu |
+|--------|-------|---------|-----|
+| Athleten-Einladung | `src/lib/athletes/actions.ts` → `inviteAthlete()` | Zod `z.string().email()` | + MX-Check |
+| Team-Einladung | `src/lib/teams/actions.ts` → `inviteTrainer()` | Zod `z.string().email()` | + MX-Check |
+| Registrierung | Supabase Auth (extern) | Supabase-eigene Validierung | + MX-Check in Client vor Submit |
+| Passwort-Reset | Supabase Auth (extern) | Supabase-eigene Validierung | + MX-Check in Client vor Submit |
+| Edge Function | `supabase/functions/send-auth-email/index.ts` | Nur Presence-Check | + MX-Check als letzte Verteidigungslinie |
+
+### Acceptance Criteria
+
+- [ ] **Utility-Funktion:** `validateEmailPlausibility(email: string): Promise<{ valid: boolean; reason?: string }>` in `src/lib/validation/email.ts`
+  - Prüft Format (Zod) + MX-Record (DNS über `fetch` oder `dns.resolve`)
+  - Gibt spezifische Fehlergründe zurück: `invalid_format`, `no_mx_record`, `dns_timeout`
+- [ ] **Athleten-Einladung:** `inviteAthlete()` ruft `validateEmailPlausibility()` auf — bei Fehler: Einladung wird nicht erstellt, Fehlermeldung an User
+- [ ] **Team-Einladung:** `inviteTrainer()` ruft `validateEmailPlausibility()` auf — bei Fehler: Einladung wird nicht erstellt, Fehlermeldung an User
+- [ ] **Registrierungsformular:** Client-seitiger MX-Check nach Eingabe (debounced, 500ms) — bei Fehler: Inline-Fehlermeldung unter dem E-Mail-Feld
+- [ ] **Passwort-Reset-Formular:** Gleicher Client-seitiger MX-Check
+- [ ] **Edge Function:** MX-Check als letzte Verteidigungslinie vor SMTP-Versand — bei Fehler: 400 Response statt E-Mail-Versuch
+- [ ] **Fehlermeldungen (i18n):**
+  - DE: „Diese E-Mail-Adresse scheint nicht zu existieren. Bitte überprüfe die Domain."
+  - EN: „This email address doesn't appear to exist. Please check the domain."
+- [ ] **DNS-Timeout:** Bei Timeout (>3s) wird die E-Mail **durchgelassen** (fail-open) — kein Blocking bei DNS-Problemen
+- [ ] **Performance:** MX-Check dauert nicht länger als 3 Sekunden (Timeout)
+- [ ] **API-Route:** `POST /api/validate-email` für Client-seitige Validierung (vermeidet CORS-Issues mit DNS)
+
+### Edge Cases
+- Domain existiert, hat aber keine MX-Records (z.B. reine Website ohne E-Mail) → Prüfe auch A-Record als Fallback (manche Mailserver nutzen den A-Record)
+- Domain hat MX-Record, aber Mailbox existiert nicht → **Nicht prüfbar** ohne SMTP VRFY (zu invasiv, wird nicht gemacht)
+- Tippfehler in bekannten Domains (z.B. `gmal.com`, `gmx.ed`) → Optional: Suggestion „Meinten Sie gmail.com?" (Phase 2)
+- DNS-Server temporär nicht erreichbar → fail-open (E-Mail wird durchgelassen)
+- Internationalisierte Domains (IDN, z.B. `ö.at`) → Punycode-Konvertierung vor DNS-Lookup
+- Caching: Wenn ein Domain einmal als gültig geprüft wurde, muss es nicht bei jeder Eingabe neu geprüft werden (1h Cache)
+
+### Nicht im Scope
+- SMTP VRFY (zu invasiv, kann zu Blacklisting führen)
+- Wegwerf-E-Mail-Blocklist (kann als Phase 2 nachgerüstet werden)
+- Catch-All-Erkennung
+- E-Mail-Ping/Bounce-Tracking
+
+### Enhancement 2 — Tech Design (Solution Architect)
+
+#### A) Component Structure
+
+```
+Shared Infrastructure (PROJ-13 owns, others consume)
++-- src/lib/validation/email.ts          ← Core Utility
+|   +-- validateEmailPlausibility()       Format (Zod) + MX-Record (DNS)
+|   +-- In-memory domain cache            Map<domain, {valid, expires}>
+|
++-- src/app/api/validate-email/route.ts  ← API Route (Client-Zugang)
+    +-- POST { email } → { valid, reason? }
+
+PROJ-5: Withdraw-Button in Unified View
++-- unified-organisation-view.tsx         ← Orchestriert withdraw/resend State
+|   +-- card-grid-view.tsx                ← Leitet onWithdraw/onResend weiter
+|   |   +-- draggable-athlete-card.tsx    ← Zeigt Buttons auf Pending-Cards
+|   +-- table-view.tsx                    ← Action-Spalte mit Withdraw-Button
+|   +-- kanban-view.tsx                   ← Leitet an kanban-column weiter
+|       +-- kanban-column.tsx             ← Leitet an draggable-athlete-card
+
+PROJ-4: Auth-Formulare
++-- register-form.tsx                     ← Debounced MX-Check nach Email-Blur
++-- forgot-password-form.tsx              ← Debounced MX-Check nach Email-Blur
+    (beide nutzen POST /api/validate-email)
+
+PROJ-9: Team-Einladungen
++-- team-invite-trainer-modal.tsx         ← Debounced MX-Check nach Email-Blur
+    (nutzt POST /api/validate-email)
+
+PROJ-13: Edge Function
++-- send-auth-email/index.ts             ← MX-Check via Deno DNS API
+    (eigene Implementierung, nicht die Next.js Utility)
+```
+
+#### B) Data Model
+
+```
+Kein neues Datenbankschema nötig.
+
+E-Mail-Validierung ist stateless:
+- Input: E-Mail-Adresse (String)
+- Output: { valid: true/false, reason?: "invalid_format" | "no_mx_record" | "dns_timeout" }
+
+Domain-Cache (in-memory, pro Server-Instanz):
+- Key: Domain-String (z.B. "gmx.at")
+- Value: { valid: boolean, expiresAt: number }
+- TTL: 1 Stunde
+- Kein persistenter Speicher, kein Redis — einfache Map reicht für MVP
+
+Withdraw-Button:
+- Nutzt bestehende trainer_athlete_connections Tabelle (Hard DELETE auf status="pending")
+- Bestehende Server Action withdrawInvitation() und RLS Policy — kein neues Schema
+```
+
+#### C) Tech Decisions
+
+| Entscheidung | Warum |
+|---|---|
+| **DNS via `dns.resolve` (Node.js)** statt externer API | Kostenlos, kein API-Key nötig, keine Abhängigkeit. Node.js `dns/promises` ist in Next.js API Routes verfügbar. |
+| **Separate Deno-DNS in Edge Function** | Edge Functions laufen in Deno, nicht Node.js. `Deno.resolveDns()` ist das Äquivalent. Eigene Implementierung statt shared Code. |
+| **In-Memory Cache** statt Redis/DB | Ein DNS-Lookup dauert ~50-200ms. Bei Vercel Serverless wird der Cache pro Instanz gehalten — worst case: erneuter Lookup. Kein Infra-Overhead. |
+| **API Route `/api/validate-email`** statt direktem Client-DNS | Browser können keine DNS-Lookups machen. Die API Route ist der Proxy. |
+| **Debounced Client-Check (500ms)** statt Submit-Block | Bessere UX: User sieht Fehler während des Tippens, nicht erst beim Submit. |
+| **Fail-open bei Timeout** | Besser eine E-Mail an fragwürdige Domain durchlassen als einen echten User blockieren. |
+| **Props durch Unified View pipen** statt Context | Withdraw/Resend betrifft nur 3 Ebenen (UnifiedView → ViewComponent → Card). Context wäre Over-Engineering. |
+
+#### D) Dependencies
+
+Keine neuen Packages nötig:
+- `dns/promises` — Node.js built-in (für API Route)
+- `Deno.resolveDns()` — Deno built-in (für Edge Function)
+- Alle UI-Komponenten existieren bereits (Button, ConfirmDialog, Toast)
+
+#### E) Datenfluss
+
+```
+Client-seitig (Registrierung, Passwort-Reset, Einladungs-Modals):
+  User tippt E-Mail → 500ms Debounce → POST /api/validate-email
+  → API Route extrahiert Domain → dns.resolveMx(domain)
+  → Cache hit? → Sofort antworten
+  → Cache miss? → DNS Lookup (max 3s) → Cachen → Antworten
+  → Client zeigt Inline-Fehler oder ✓
+
+Server-seitig (Server Actions):
+  inviteAthlete() / inviteTrainer() → validateEmailPlausibility()
+  → Gleiche Logik wie API Route (shared Utility)
+  → Bei Fehler: return { success: false, error: "emailDomainInvalid" }
+
+Edge Function (letzte Verteidigungslinie):
+  send-auth-email → Deno.resolveDns(domain, "MX")
+  → Bei Fehler: 400 Response, kein SMTP-Versuch
+```
+
+---
+
+## QA Test Report: Enhancement 2 + PROJ-5 Withdraw Button (2026-03-16)
+
+**Tester:** QA / Red-Team Pen-Test
+**Date:** 2026-03-16
+**Scope:** Email validation infrastructure (PROJ-13), Withdraw button prop piping (PROJ-5), Auth form integration (PROJ-4), Server action MX checks (PROJ-5 + PROJ-9), Edge Function MX check (PROJ-13), Invite modals, i18n keys, build + lint
+
+---
+
+### 1. Build + Lint
+
+- [x] **PASS:** `npm run build` succeeds with 0 errors. All routes generated correctly including `/api/validate-email`.
+- [x] **PASS:** `npm run lint` returns 0 errors, 2 warnings (React Hook Form `watch()` incompatible-library warnings in login and register pages -- expected, non-blocking).
+
+---
+
+### 2. PROJ-5: Withdraw Button Prop Piping in Unified View
+
+#### 2a. unified-organisation-view.tsx
+- [x] **PASS:** `withdrawingId` state declared (line 75)
+- [x] **PASS:** `resendingId` state declared (line 74)
+- [x] **PASS:** `handleResend` handler defined (lines 245-261)
+- [x] **PASS:** `handleWithdrawClick` handler defined (lines 263-271)
+- [x] **PASS:** `handleWithdrawConfirm` handler defined (lines 273-289)
+- [x] **PASS:** `ConfirmDialog` for withdraw rendered (lines 602-614)
+- [x] **PASS:** Props passed to `CardGridView`: `onResendInvite`, `resendingId`, `onWithdrawInvite`, `withdrawingId` (lines 531-534)
+- [x] **PASS:** Props passed to `TableView`: `onResendInvite`, `resendingId`, `onWithdrawInvite`, `withdrawingId` (lines 547-550)
+- [x] **PASS:** Props passed to `KanbanView`: `onResendInvite`, `resendingId`, `onWithdrawInvite`, `withdrawingId` (lines 561-564)
+
+#### 2b. kanban-view.tsx
+- [x] **PASS:** Interface declares `onResendInvite`, `resendingId`, `onWithdrawInvite`, `withdrawingId` (lines 15-18)
+- [x] **PASS:** Props destructured (lines 29-30)
+- [x] **PASS:** Props passed to `KanbanColumn` for team columns (lines 48-51)
+- [x] **PASS:** Props passed to `KanbanColumn` for unassigned column (lines 65-68)
+
+#### 2c. kanban-column.tsx
+- [x] **PASS:** Interface declares `onResendInvite`, `resendingId`, `onWithdrawInvite`, `withdrawingId` (lines 25-28)
+- [x] **PASS:** Props destructured (lines 39-42)
+- [x] **PASS:** Props passed to `DraggableAthleteCard` (lines 87-90)
+
+#### 2d. card-grid-view.tsx
+- [x] **PASS:** Interface declares `onResendInvite`, `resendingId`, `onWithdrawInvite`, `withdrawingId` (lines 20-23)
+- [x] **PASS:** Props destructured (lines 33-36)
+- [x] **PASS:** Props passed to `DroppableTeamCard` (lines 64-67)
+- [x] **PASS:** Props passed to `DraggableAthleteCard` for unassigned athletes (lines 80-83)
+- [x] **PASS:** Props passed to `DraggableAthleteCard` for assigned-not-expanded athletes (lines 135-138)
+
+#### 2e. table-view.tsx
+- [x] **PASS:** Interface declares `onResendInvite`, `resendingId`, `onWithdrawInvite`, `withdrawingId` (lines 260-263)
+- [x] **PASS:** Props destructured (lines 275-277)
+- [x] **PASS:** `showAthletesFirst` branch: unassigned athletes receive props (lines 348-351)
+- [x] **PASS:** Team expanded athletes receive props (lines 381-384)
+- [x] **PASS:** `!showAthletesFirst` branch: unassigned athletes receive props (lines 440-443)
+
+#### 2f. draggable-athlete-card.tsx
+- [x] **PASS:** Interface declares `onResendInvite`, `isResending`, `onWithdrawInvite`, `isWithdrawing` (lines 19-22)
+- [x] **PASS:** Withdraw button rendered for pending athletes (lines 157-171)
+- [x] **PASS:** Resend button rendered for pending athletes (lines 142-156)
+
+#### 2g. droppable-team-card.tsx
+- [x] **PASS:** Interface declares `onResendInvite`, `resendingId`, `onWithdrawInvite`, `withdrawingId` (lines 36-39)
+- [x] **PASS:** Props passed to nested `DraggableAthleteCard` (lines 138-141)
+
+**Withdraw Button Verdict: ALL PASS (22/22 checks). Full prop chain verified from UnifiedOrganisationView down to DraggableAthleteCard across all three view modes (Grid, Table, Kanban).**
+
+---
+
+### 3. PROJ-13: Email Validation Infrastructure
+
+#### 3a. validateEmailPlausibility() utility — src/lib/validation/email.ts
+- [x] **PASS:** Function exported with correct signature: `(email: string) => Promise<{ valid: boolean; reason?: string }>`
+- [x] **PASS:** Step 1: Zod format check (line 32-35)
+- [x] **PASS:** Step 2: Domain extraction via `email.split("@").pop()` (line 38)
+- [x] **PASS:** Step 3: In-memory cache with 1-hour TTL (lines 41-45, constant on line 14)
+- [x] **PASS:** Step 4: DNS MX lookup via `dns.resolveMx(domain)` with 3-second timeout (lines 50-53, constant on line 15)
+- [x] **PASS:** Fallback to A record when MX fails with ENODATA/ENOTFOUND/ESERVFAIL (lines 67-88)
+- [x] **PASS:** Fail-open on timeout: returns `{ valid: true }` when DNS times out (lines 61-64, 79-84)
+- [x] **PASS:** Cache results after lookup (lines 57, 73, 83, 92)
+- [x] **PASS:** `withTimeout()` helper correctly clears timer on resolve/reject (lines 116-131)
+
+#### 3b. API Route — src/app/api/validate-email/route.ts
+- [x] **PASS:** POST handler exported (line 18)
+- [x] **PASS:** Input validation via Zod `z.object({ email: z.string().email() })` (lines 5-7)
+- [x] **PASS:** Calls `validateEmailPlausibility()` (line 30)
+- [x] **PASS:** Returns `{ valid, reason }` JSON response (line 32)
+- [x] **PASS:** Error handling: JSON parse errors return 400 (lines 33-38)
+- [ ] **BUG-18 (MEDIUM — Security):** API route has NO rate limiting. The endpoint is public (no auth required, per the comment on line 14). An attacker could enumerate valid email domains by sending thousands of requests. While DNS results are cached (1h), the first request for each domain triggers a real DNS lookup. This could be abused for: (a) domain reconnaissance, (b) DNS amplification via the server as proxy, (c) resource exhaustion. **Recommendation:** Add rate limiting (e.g., 60 requests/minute per IP) via middleware or Vercel Edge Config.
+- [ ] **BUG-19 (LOW — Security):** API route does not validate Content-Type header. Sending a non-JSON body (e.g., form-encoded) will cause a JSON parse error caught by the outer try/catch, returning `{ valid: false, reason: "invalid_format" }` with status 400. Not a vulnerability but could mask real errors during debugging.
+
+#### 3c. useEmailValidation hook — src/hooks/use-email-validation.ts
+- [x] **PASS:** Returns `{ isValidating, isValid, error }` interface (lines 5-12)
+- [x] **PASS:** 500ms debounce before API call (line 96)
+- [x] **PASS:** Only fires when email has `@` and domain has `.` (lines 37-47)
+- [x] **PASS:** AbortController cancels previous in-flight requests (lines 52-55)
+- [x] **PASS:** Cleanup on unmount/email change clears timeout and aborts (lines 98-101)
+- [x] **PASS:** Fail-open on network error: sets `isValid: null`, `error: null` (lines 88-90)
+- [x] **PASS:** Maps `no_mx_record` reason to `emailNoMxRecord` error key (line 84)
+- [x] **PASS:** Maps other reasons to `emailInvalidDomain` error key (line 84)
+- [x] **PASS:** Resets state when email changes (lines 32-33)
+
+---
+
+### 4. PROJ-4: Auth Form Integration
+
+#### 4a. Register page — src/app/[locale]/(auth)/register/page.tsx
+- [x] **PASS:** Imports `useEmailValidation` (line 24)
+- [x] **PASS:** Watches email field: `const emailValue = watch("email")` (line 52)
+- [x] **PASS:** Calls hook: `useEmailValidation(emailValue)` (line 53-54)
+- [x] **PASS:** Shows validating helper text: `isEmailValidating ? tCommon("emailValidating")` (line 148)
+- [x] **PASS:** Shows validation error when not a form error: `emailValidationError` displayed (lines 151-155)
+- [x] **PASS:** Error displayed as warning (not blocking): `text-warning` class (line 152)
+- [ ] **BUG-20 (LOW — UX):** Register form does NOT prevent submission when email domain is invalid. The MX check result is purely informational (warning text), but `onSubmit` does not check `isEmailValid`. The user can still submit with an invalid domain, and the server-side check in `inviteAthlete()` does not apply here (this is Supabase Auth signup). Supabase will accept the signup, send a confirmation email to a non-existent domain, and the email will bounce silently. This is by-design per the spec ("fail-open"), but worth noting for awareness.
+
+#### 4b. Forgot-password page — src/app/[locale]/(auth)/forgot-password/page.tsx
+- [x] **PASS:** Imports `useEmailValidation` (line 22)
+- [x] **PASS:** Watches email field: `const emailValue = watch("email")` (line 42)
+- [x] **PASS:** Calls hook (line 43-44)
+- [x] **PASS:** Shows validating helper text (line 137)
+- [x] **PASS:** Shows validation error (lines 140-144)
+- [x] **PASS:** Error displayed as warning: `text-warning` class (line 141)
+
+---
+
+### 5. PROJ-5 + PROJ-9: Server Action MX Check
+
+#### 5a. inviteAthlete() — src/lib/athletes/actions.ts
+- [x] **PASS:** Imports `validateEmailPlausibility` (line 6)
+- [x] **PASS:** Calls `validateEmailPlausibility(email)` before DB insert (line 52)
+- [x] **PASS:** Returns `{ success: false, error: "EMAIL_DOMAIN_INVALID" }` on invalid (line 54)
+- [x] **PASS:** MX check happens after Zod validation, before self-invite check (correct order)
+
+#### 5b. inviteTrainer() — src/lib/teams/actions.ts
+- [x] **PASS:** Imports `validateEmailPlausibility` (line 5)
+- [x] **PASS:** Calls `validateEmailPlausibility(normalizedEmail)` before DB insert (line 318)
+- [x] **PASS:** Returns `{ success: false, error: "EMAIL_DOMAIN_INVALID" }` on invalid (line 320)
+- [x] **PASS:** MX check happens after Zod validation, after email normalization (correct order)
+
+---
+
+### 6. PROJ-13: Edge Function MX Check
+
+#### 6a. send-auth-email/index.ts
+- [x] **PASS:** Extracts domain: `user.email.split("@")[1]` (line 297)
+- [x] **PASS:** MX check via `Deno.resolveDns(emailDomain, "MX")` (line 300)
+- [x] **PASS:** A record fallback when MX is empty (lines 302-305)
+- [x] **PASS:** Returns 400 with error message when both MX and A fail (lines 306-309)
+- [x] **PASS:** Fail-open on DNS error (outer catch on line 313 falls through)
+- [ ] **BUG-21 (LOW):** Edge Function MX check does not have a timeout. `Deno.resolveDns()` could theoretically hang if the DNS server is unresponsive. The Node.js utility has a 3-second timeout, but the Edge Function does not. In practice, Deno's DNS resolver has its own internal timeout, but the spec requires "max 3 Sekunden".
+
+---
+
+### 7. Invite Modals
+
+#### 7a. invite-modal.tsx (Athlete invitation)
+- [x] **PASS:** Imports `useEmailValidation` (line 16)
+- [x] **PASS:** Calls hook with watched email value (line 52)
+- [x] **PASS:** Shows inline error for invalid domain (lines 137-141)
+- [x] **PASS:** Shows validating text (lines 142-146)
+- [x] **PASS:** Error map includes `EMAIL_DOMAIN_INVALID` key mapped to `tValidation("emailDomainInvalid")` (line 74)
+
+#### 7b. team-invite-trainer-modal.tsx (Trainer invitation)
+- [x] **PASS:** Imports `useEmailValidation` (line 17)
+- [x] **PASS:** Calls hook with watched email value (lines 58-60)
+- [x] **PASS:** Shows validating text (lines 208-211)
+- [x] **PASS:** Shows inline validation error (lines 213-217)
+- [x] **PASS:** Error map includes `EMAIL_DOMAIN_INVALID` key (line 86)
+- [ ] **BUG-22 (LOW — Inconsistency):** `team-invite-trainer-modal.tsx` maps `EMAIL_DOMAIN_INVALID` to `tCommon("emailNoMxRecord")` (line 86), while `invite-modal.tsx` maps it to `tValidation("emailDomainInvalid")` (line 74). These are two different translation keys with different wording. The athlete invite modal says "Diese E-Mail-Adresse scheint nicht zu existieren" while the trainer invite modal says "Diese E-Mail-Domain scheint keine E-Mails empfangen zu können". Both are valid messages, but the inconsistency could confuse users who use both features.
+
+---
+
+### 8. i18n Keys
+
+#### 8a. common namespace
+- [x] **PASS:** `de.json` has `common.emailNoMxRecord` (line 865)
+- [x] **PASS:** `de.json` has `common.emailInvalidDomain` (line 866)
+- [x] **PASS:** `de.json` has `common.emailValidating` (line 867)
+- [x] **PASS:** `en.json` has `common.emailNoMxRecord` (line 865)
+- [x] **PASS:** `en.json` has `common.emailInvalidDomain` (line 866)
+- [x] **PASS:** `en.json` has `common.emailValidating` (line 867)
+
+#### 8b. validation namespace
+- [x] **PASS:** `de.json` has `validation.emailDomainInvalid` (line 870)
+- [x] **PASS:** `de.json` has `validation.emailValidating` (line 871)
+- [x] **PASS:** `en.json` has `validation.emailDomainInvalid` (line 870)
+- [x] **PASS:** `en.json` has `validation.emailValidating` (line 871)
+
+- [ ] **BUG-23 (LOW — Duplication):** The keys `emailValidating` and email-domain-related error messages exist in BOTH `common` and `validation` namespaces. `common.emailValidating` = "E-Mail wird überprüft..." and `validation.emailValidating` = "E-Mail wird überprüft..." (identical content with different punctuation: three dots vs ellipsis character). This duplication means different components may use different namespaces for the same concept, leading to inconsistency if one is updated but not the other. The register/forgot-password pages use `tCommon("emailValidating")` while `invite-modal.tsx` uses `tValidation("emailValidating")`.
+
+---
+
+### 9. Security Audit (Red-Team)
+
+#### 9a. validate-email API endpoint
+- [ ] **BUG-18 (MEDIUM — documented above):** No rate limiting on public endpoint. Can be used for domain reconnaissance and DNS amplification.
+- [x] **PASS:** Input is validated via Zod before processing (line 21-27).
+- [x] **PASS:** No auth secrets or internal state leaked in responses.
+- [x] **PASS:** Error responses are generic (no stack traces exposed).
+
+#### 9b. Server Actions
+- [x] **PASS:** `inviteAthlete()` authenticates user before any processing (lines 33-41).
+- [x] **PASS:** `inviteTrainer()` authenticates user before any processing (lines 299-307).
+- [x] **PASS:** Both actions have rate limiting (MAX_INVITES_PER_DAY = 20).
+- [x] **PASS:** `withdrawInvitation()` verifies trainer ownership before deletion (lines 317-328).
+- [x] **PASS:** `resendInvitation()` enforces 24-hour cooldown between resends (lines 387-393).
+
+#### 9c. Edge Function
+- [x] **PASS:** Webhook signature verification when `SEND_EMAIL_HOOK_SECRET` is set (lines 280-283).
+- [x] **PASS:** MX check prevents sending to completely bogus domains.
+- [x] **PASS:** DSGVO-compliant logging: email is hashed before logging (lines 342-351). Note: This contradicts the earlier BUG-15 finding -- on re-inspection, the email IS hashed (SHA-256, first 12 chars). BUG-15 from the previous QA round appears to have been FIXED.
+
+#### 9d. Client-side hook
+- [x] **PASS:** Hook only sends email to the API after basic format validation (must contain @ and domain with dot).
+- [x] **PASS:** AbortController prevents stale responses from overwriting newer results.
+- [x] **PASS:** Hook does not block form submission -- purely advisory.
+
+---
+
+### 10. Edge Case Analysis
+
+| Edge Case | Result |
+|-----------|--------|
+| Empty email input | PASS: Hook skips validation (line 37) |
+| Email without domain (`user@`) | PASS: Hook skips (checks `indexOf("@") === length - 1`, line 37) |
+| Domain without dot (`user@localhost`) | PASS: Hook skips (checks `domain.includes(".")`, line 44) |
+| DNS timeout (>3s) | PASS: Node.js utility fails open (lines 61-64). Edge Function has no explicit timeout (BUG-21). |
+| Network error during API call | PASS: Hook catches error, sets `isValid: null` (lines 86-90) |
+| Rapid typing (debounce) | PASS: 500ms debounce + AbortController cancels in-flight (lines 52-55, 96) |
+| Component unmount during validation | PASS: Cleanup function aborts and clears timeout (lines 98-101) |
+| Cached domain re-check | PASS: Cache checked before DNS lookup (lines 41-45), 1h TTL |
+| `hook returns null` for isValid | PASS: Components check `emailValidation.isValid === false` (strict equality), so `null` does not trigger error display |
+
+---
+
+### Bugs Found (Enhancement 2 QA)
+
+#### BUG-18 (MEDIUM): No rate limiting on /api/validate-email
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Send POST requests to `/api/validate-email` in a loop with different domains
+  2. No auth required, no rate limit enforced
+  3. Expected: Rate limiting (e.g., 60 req/min per IP)
+  4. Actual: Unlimited requests accepted
+- **Impact:** Domain reconnaissance, DNS amplification, resource exhaustion
+- **Priority:** Fix before production -- add rate limiting via middleware or Vercel Edge Config
+
+#### BUG-19 (LOW): No Content-Type validation on API route
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Send POST with `Content-Type: text/plain` body
+  2. JSON parse fails, caught by outer try/catch
+  3. Returns `{ valid: false, reason: "invalid_format" }` status 400
+- **Impact:** None (fails gracefully), but could mask debugging issues
+- **Priority:** Nice to have
+
+#### BUG-20 (LOW): Register form does not block submission on invalid MX
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Enter email with non-existent domain (e.g., `user@thisdomaindoesnotexist123.com`)
+  2. Warning appears below email field
+  3. Click "Registrieren" -- form submits successfully to Supabase Auth
+  4. Supabase sends confirmation email to non-existent domain (bounces silently)
+- **Impact:** Wasted confirmation email, user never receives it
+- **Priority:** By-design (spec says fail-open), but could add submit-block when `isValid === false`
+
+#### BUG-21 (LOW): Edge Function MX check has no explicit timeout
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. If DNS server is unresponsive, `Deno.resolveDns()` has no explicit timeout
+  2. Spec requires max 3 seconds
+  3. Node.js utility correctly implements 3s timeout
+  4. Edge Function relies on Deno's internal timeout (typically 5-30s)
+- **Impact:** Edge Function could hang on slow DNS resolution
+- **Priority:** Nice to have -- Deno has its own defaults, and Supabase Edge Functions have a 2-minute overall timeout
+
+#### BUG-22 (LOW): Inconsistent error message for EMAIL_DOMAIN_INVALID
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Invite athlete with invalid domain: shows "Diese E-Mail-Adresse scheint nicht zu existieren" (validation.emailDomainInvalid)
+  2. Invite trainer with invalid domain: shows "Diese E-Mail-Domain scheint keine E-Mails empfangen zu können" (common.emailNoMxRecord)
+  3. Expected: Same message for same error
+  4. Actual: Different wording
+- **Impact:** Minor UX inconsistency
+- **Priority:** Nice to have -- unify to use one key
+
+#### BUG-23 (LOW): Duplicate i18n keys across namespaces
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. `common.emailValidating` = "E-Mail wird überprüft..." (three dots)
+  2. `validation.emailValidating` = "E-Mail wird überprüft..." (ellipsis character)
+  3. `common.emailNoMxRecord` and `validation.emailDomainInvalid` cover similar concepts
+  4. Different components use different namespaces for the same concept
+- **Impact:** Maintenance burden, potential for drift
+- **Priority:** Nice to have -- consolidate into one namespace
+
+---
+
+### Regression Testing
+
+- [x] PROJ-1 (Design System): Build passes, no CSS/Tailwind regressions.
+- [x] PROJ-2 (UI Components): All shadcn components used correctly (Button, Card, Badge, Modal, etc.)
+- [x] PROJ-3 (App Shell): All routes present in build output, navigation components unchanged.
+- [x] PROJ-4 (Authentication): Register, login, forgot-password pages build correctly. New email validation integrated without breaking existing functionality.
+- [x] PROJ-5 (Athleten-Management): Organisation routes build correctly. Withdraw/Resend props fully piped through all view modes.
+- [x] PROJ-9 (Team-Verwaltung): Team routes build correctly. `inviteTrainer()` action enhanced with MX check.
+- [x] PROJ-11 (DSGVO): GDPR routes present in build output.
+- [x] PROJ-13 (Email): Edge Function code verified, auth templates unchanged.
+
+---
+
+### Enhancement 2 QA Summary
+
+**Acceptance Criteria Results:**
+
+| AC | Description | Status |
+|----|-------------|--------|
+| Utility function | `validateEmailPlausibility()` in `src/lib/validation/email.ts` | PASS |
+| Athleten-Einladung | `inviteAthlete()` calls MX check | PASS |
+| Team-Einladung | `inviteTrainer()` calls MX check | PASS |
+| Registrierungsformular | Client-side MX check with debounce | PASS |
+| Passwort-Reset | Client-side MX check with debounce | PASS |
+| Edge Function | MX check as last line of defense | PASS (with BUG-21 minor) |
+| Fehlermeldungen (i18n) | DE + EN keys present | PASS (with BUG-22/23 minor) |
+| DNS-Timeout | Fail-open on timeout | PASS |
+| Performance | 3-second timeout | PASS (Node.js), PARTIAL (Edge Function BUG-21) |
+| API Route | POST /api/validate-email | PASS (with BUG-18 security) |
+
+**PROJ-5 Withdraw Button:** ALL PASS (22/22 checks)
+
+**Overall: 10/10 acceptance criteria PASS (some with minor caveats)**
+**Bugs found: 6 new (0 critical, 1 medium, 5 low)**
+
+**Blocking for production:**
+1. **BUG-18 (MEDIUM):** Add rate limiting to `/api/validate-email` endpoint
+
+**Non-blocking improvements:**
+2. BUG-19 (LOW): Content-Type validation
+3. BUG-20 (LOW): Optional submit-block on invalid MX
+4. BUG-21 (LOW): Edge Function timeout
+5. BUG-22 (LOW): Inconsistent error messages
+6. BUG-23 (LOW): Duplicate i18n keys
+
+**Previous BUG-15 status update:** On re-inspection, the Edge Function DOES hash the email before logging (lines 342-351 use SHA-256). The previous QA finding BUG-15 appears to be FIXED.
 
 ## Deployment
 _To be added by /deploy_

@@ -12,6 +12,10 @@ interface KanbanViewProps {
   teamAthleteMap: Record<string, string | null>;
   onInviteAthlete?: () => void;
   showAthletesFirst?: boolean;
+  onResendInvite?: (connectionId: string) => void;
+  resendingId?: string | null;
+  onWithdrawInvite?: (connectionId: string) => void;
+  withdrawingId?: string | null;
 }
 
 export function KanbanView({
@@ -20,6 +24,10 @@ export function KanbanView({
   teamAthleteMap,
   onInviteAthlete,
   showAthletesFirst = false,
+  onResendInvite,
+  resendingId,
+  onWithdrawInvite,
+  withdrawingId,
 }: KanbanViewProps) {
   const t = useTranslations("teams");
 
@@ -37,6 +45,10 @@ export function KanbanView({
         athleteCount={teamAthletes.length}
         trainerCount={team.trainerCount}
         athletes={teamAthletes}
+        onResendInvite={onResendInvite}
+        resendingId={resendingId}
+        onWithdrawInvite={onWithdrawInvite}
+        withdrawingId={withdrawingId}
       />
     );
   });
@@ -50,6 +62,10 @@ export function KanbanView({
       athletes={unassignedAthletes}
       isUnassigned
       onInviteAthlete={onInviteAthlete}
+      onResendInvite={onResendInvite}
+      resendingId={resendingId}
+      onWithdrawInvite={onWithdrawInvite}
+      withdrawingId={withdrawingId}
     />
   );
 

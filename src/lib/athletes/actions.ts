@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { validateEmailPlausibility } from "@/lib/validation/email";
 
 /**
  * Server Actions for Athlete Management — PROJ-5
@@ -46,6 +47,12 @@ export async function inviteAthlete(data: {
   }
 
   const { email, message } = parsed.data;
+
+  // MX-Record plausibility check
+  const emailCheck = await validateEmailPlausibility(email);
+  if (!emailCheck.valid) {
+    return { success: false, error: "EMAIL_DOMAIN_INVALID" };
+  }
 
   // Cannot invite yourself
   if (email.toLowerCase() === user.email?.toLowerCase()) {

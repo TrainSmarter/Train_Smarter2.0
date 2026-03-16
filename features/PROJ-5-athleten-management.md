@@ -1,8 +1,8 @@
 # PROJ-5: Athleten-Management
 
-## Status: Deployed
+## Status: In Progress
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-14
+**Last Updated:** 2026-03-16 (Enhancement 2: Withdraw-Button in Unified View)
 
 ## Dependencies
 - Requires: PROJ-1 (Design System Foundation)
@@ -1410,3 +1410,55 @@ PROJ-5 is production-ready. All functional and security bugs are fixed. Remainin
 - **Build:** PASS
 - **i18n:** PASS -- all strings present in both locales with correct German umlauts
 - **Production Ready:** YES
+
+---
+
+## Enhancement 2: Withdraw-Button in Unified View nachrüsten (2026-03-16)
+
+### Problem
+Die `withdrawInvitation()` Server Action und die RLS Policy existieren. Der Withdraw-Button wird in der alten `AthleteCard` korrekt gerendert und von `AthletesList` aufgerufen. **Aber:** Die Hauptseite `/organisation` nutzt seit PROJ-9 die `UnifiedOrganisationView`, die den `onWithdrawInvite`-Prop **nicht weiterreicht** — der Button ist in der Produktion unsichtbar.
+
+### Betroffene Dateien
+- `src/components/unified-organisation-view.tsx` — leitet `onWithdrawInvite` nicht an Karten weiter
+- Möglicherweise auch: Tabellen-View und Kanban-View (alle drei Views müssen geprüft werden)
+
+### Acceptance Criteria
+- [ ] **Karten-View:** Jede Pending-Athleten-Card zeigt „Zurückziehen"-Button (Ghost, destructive, Icon `Undo2`)
+- [ ] **Tabellen-View:** Pending-Athleten-Zeile zeigt „Zurückziehen"-Action (z.B. im Row-Action-Menü oder als Icon-Button)
+- [ ] **Kanban-View:** Draggable Pending-Card zeigt „Zurückziehen"-Button
+- [ ] Klick auf „Zurückziehen" → ConfirmDialog: „Einladung zurückziehen? [Email] erhält keinen Zugang mehr über den bestehenden Einladungslink."
+- [ ] Nach Bestätigung: Einladung wird gelöscht (Hard Delete via `withdrawInvitation()`)
+- [ ] Success-Toast: „Einladung an [email] wurde zurückgezogen"
+- [ ] Section-Zähler aktualisiert sich (z.B. „Ohne Team (1)" statt „(2)")
+- [ ] Button wird **nicht** angezeigt bei abgelaufenen Einladungen (nur bei aktiven Pending)
+- [ ] Resend- und Withdraw-Buttons stehen nebeneinander (kein Layout-Bruch auf Mobile)
+
+### Edge Cases
+- Trainer zieht zurück während Athlet gleichzeitig annimmt → Server Action prüft Status, wer zuerst schreibt gewinnt
+- Abgelaufene Einladung: Kein Withdraw-Button sichtbar (nur Resend oder gar nichts)
+
+### Enhancement 2 — Tech Design (Solution Architect)
+
+**Ansatz:** Props-Piping durch die View-Hierarchie. Kein neues Backend, kein neues Schema.
+
+```
+UnifiedOrganisationView (State: withdrawingId, resendingId, withdrawConfirm)
+├── CardGridView        → erhält onWithdrawInvite, onResendInvite Props
+│   └── DraggableAthleteCard  → zeigt Buttons bei status="pending" && !isExpired
+├── TableView           → erhält gleiche Props, zeigt Action-Buttons in Zeile
+│   └── Inline Buttons oder DropdownMenu pro Pending-Row
+└── KanbanView          → erhält gleiche Props
+    └── KanbanColumn
+        └── DraggableAthleteCard → gleiche Logik wie CardGridView
+```
+
+**Warum Props statt Context?** Nur 3 Ebenen tief, nur 2 Callbacks. Context wäre Over-Engineering für diesen Fall. Das Pattern entspricht dem bestehenden `onMoveAthlete`-Prop das bereits durch die gleiche Hierarchie fließt.
+
+**Bestehende Infrastruktur (kein Neubau):**
+- Server Action: `withdrawInvitation()` in `src/lib/athletes/actions.ts`
+- Server Action: `resendInvitation()` in `src/lib/athletes/actions.ts`
+- RLS Policy: `"Trainers can delete own pending connections"`
+- i18n Keys: `withdraw`, `withdrawSuccess`, `withdrawError`, `withdrawDialogTitle`, `withdrawDialogMessage` (bereits in de.json/en.json)
+- ConfirmDialog: Bestehende `<ConfirmDialog>` Komponente aus PROJ-2
+
+**E-Mail-Plausibilitätsprüfung:** `inviteAthlete()` wird um `validateEmailPlausibility()` erweitert → siehe PROJ-13 Enhancement 2 Tech Design.
