@@ -1,6 +1,6 @@
 # PROJ-16: Test-Strategie & Qualitätssicherung
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-03-12
 **Last Updated:** 2026-03-12
 
@@ -628,121 +628,270 @@ Reihenfolge die den höchsten ROI liefert:
 4. Unit Tests für Utility-Funktionen — **billigste Tests, hohe Coverage**
 5. Visuelles Monitoring (Sentry) — **ergänzt, ersetzt keine Tests**
 
-## QA Test Results
+## QA Test Results (Round 2 -- Full Phases 1-4)
 
-**Tested:** 2026-03-14
+**Tested:** 2026-03-17
 **App URL:** http://localhost:3000
 **Tester:** QA Engineer (AI)
-**Scope:** Phase 1 Sofort-Massnahmen only (Phase 2+3 not yet implemented)
+**Scope:** All 4 phases of PROJ-16 (Sofort-Massnahmen, Unit Tests, E2E Tests, CI/CD + Email Tests)
 
-### Acceptance Criteria Status (Phase 1: Sofort-Massnahmen)
+### Previous QA Bugs -- Re-verification
 
-#### AC-1: `src/lib/env.ts` validates all required env vars at startup -- clear error instead of 500
-- [ ] FAIL: `src/lib/env.ts` does NOT exist. No env validation module was created.
-- [ ] FAIL: `@t3-oss/env-nextjs` (recommended in Tech Design) is NOT installed.
-- [ ] FAIL: All env var access uses `process.env.X!` with TypeScript non-null assertions, which silently passes `undefined` at runtime if the variable is missing.
+| Bug | Previous Status | Current Status | Notes |
+|-----|----------------|----------------|-------|
+| BUG-1 (Missing env.ts) | FAIL | FIXED | `src/lib/env.ts` exists with `@t3-oss/env-nextjs`, validates 4 vars via Zod |
+| BUG-2 (tsc not in lint-staged) | FAIL | FIXED | lint-staged now includes `"*.ts?(x)": ["bash -c 'tsc --noEmit'"]` |
+| BUG-3 (eslint --fix auto-fixes) | Low | ACCEPTED | Industry-standard pattern, unfixable errors still block |
+| BUG-4 (Duplicate .env files) | Low | FIXED | Only `.env.example` remains, `.env.local.example` removed |
+| Status discrepancy | Low | PARTIAL | Header now says "In Progress" (correct), INDEX.md matches |
 
-#### AC-2: Missing `NEXT_PUBLIC_SUPABASE_ANON_KEY` causes app to not start, shows which variable is missing
-- [ ] FAIL: No startup validation exists. A missing key would produce a cryptic Supabase client error at runtime, not a clear startup message.
+---
+
+### Phase 1: Sofort-Massnahmen -- Acceptance Criteria
+
+#### AC-1: `src/lib/env.ts` validates all required env vars at startup
+- [x] PASS: `src/lib/env.ts` exists and uses `@t3-oss/env-nextjs` (v0.13.10)
+- [x] PASS: Validates 4 env vars via Zod: `NEXT_PUBLIC_SUPABASE_URL` (url), `NEXT_PUBLIC_SUPABASE_ANON_KEY` (string.min(1)), `NEXT_PUBLIC_SITE_URL` (url), `SUPABASE_SERVICE_ROLE_KEY` (string.min(1))
+- [x] PASS: Client/server separation correct -- `SUPABASE_SERVICE_ROLE_KEY` is server-only
+- [ ] BUG-5: `env.ts` is NEVER imported anywhere in the codebase. Zero files import from `@/lib/env`. All Supabase client files (`client.ts`, `server.ts`, `middleware.ts`) still use `process.env.X!` with non-null assertions. The env validation module is dead code -- it does not execute at startup and provides zero runtime protection.
+
+#### AC-2: Missing `NEXT_PUBLIC_SUPABASE_ANON_KEY` causes app to not start
+- [ ] FAIL: Since `env.ts` is never imported, a missing env var will NOT cause the app to fail at startup. The `@t3-oss/env-nextjs` module only validates when its exported `env` object is first accessed -- but nothing accesses it. This AC is still not met.
 
 #### AC-3: Husky installed -- `git commit` with lint error blocks commit
-- [x] PASS: Husky v9 is installed (`devDependencies`, `.husky/pre-commit` exists)
-- [x] PASS: Pre-commit hook runs `npx lint-staged`
-- [x] PASS: lint-staged configured to run `eslint --fix` on `*.{ts,tsx}` files
-- [ ] BUG: lint-staged runs `eslint --fix` which auto-fixes many lint issues silently. Only unfixable errors will block the commit. The spec says "ESLint Fehler blockieren den Commit" -- auto-fixing is a softer behavior than strictly blocking.
+- [x] PASS: Husky v9 installed, `.husky/pre-commit` runs `npx lint-staged`
+- [x] PASS: lint-staged runs `eslint --fix` on `*.{ts,tsx}` files
+- [x] PASS: Unfixable lint errors block the commit
 
 #### AC-4: Husky installed -- `git commit` with TypeScript error blocks commit
-- [ ] FAIL: lint-staged config does NOT include `tsc --noEmit`. TypeScript errors will NOT block commits. The spec explicitly requires: "tsc --noEmit -- TS-Fehler blockieren den Commit".
+- [x] PASS (FIXED): lint-staged config now includes `"*.ts?(x)": ["bash -c 'tsc --noEmit'"]`
+- [x] PASS: The `bash -c` wrapper correctly discards file arguments so `tsc` checks the full project
 
 #### AC-5: `.env.example` with all required vars exists in the repository
-- [x] PASS: `.env.example` exists, is tracked in git, contains all 4 required variables:
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - `SUPABASE_SERVICE_ROLE_KEY`
-  - `NEXT_PUBLIC_SITE_URL`
+- [x] PASS: `.env.example` exists with all required vars plus SMTP and HEALTH_API_KEY
 
 #### AC-6: `npm run check` runs lint + type-check
-- [x] PASS: Script defined as `npm run lint && npm run typecheck`
-- [x] PASS: `npm run typecheck` defined as `tsc --noEmit`
-- [x] PASS: Both commands execute successfully
+- [x] PASS: Script runs `npm run lint && npm run typecheck`
+- [x] PASS: Both commands complete successfully (1 warning in lint, 0 errors)
 
-### Additional Findings
+**Phase 1 Result: 5/6 AC passed. AC-2 still fails due to BUG-5 (dead code).**
 
-#### Duplicate env example files
-- `.env.example` (added in PROJ-16) and `.env.local.example` (added earlier) both exist with near-identical content. This creates confusion about which is the canonical reference.
+---
 
-#### Build verification
-- [x] PASS: `npm run build` completes successfully
-- [x] PASS: All routes render without errors
+### Phase 2: Unit Tests (Vitest) -- Acceptance Criteria
 
-### Security Audit Results (Phase 1 scope)
+#### AC-7: Vitest installed and configured
+- [x] PASS: `vitest` v4.1.0, `@vitejs/plugin-react`, `@vitest/coverage-v8`, `jsdom`, `@testing-library/react` all installed
+- [x] PASS: `vitest.config.ts` has correct path aliases (`@/` -> `./src/`), jsdom environment, coverage config
+- [x] PASS: Test scripts: `npm run test`, `npm run test:watch`, `npm run test:coverage`
 
-- [ ] BUG: Non-null assertions (`!`) on `process.env` values in `src/lib/supabase/client.ts`, `server.ts`, and `middleware.ts` are a runtime safety hazard. If env vars are undefined, the Supabase client will be initialized with `undefined` values, leading to cryptic errors rather than a clear failure. This is exactly what AC-1 was supposed to prevent.
-- [x] PASS: `.env.local` is in `.gitignore` and not tracked in git -- secrets are not committed.
-- [x] PASS: `.env.example` contains no actual secret values.
-- [x] PASS: `SUPABASE_SERVICE_ROLE_KEY` is NOT prefixed with `NEXT_PUBLIC_`, so it is server-side only.
+#### AC-8: Unit tests pass
+- [x] PASS: 104 tests across 9 test files, ALL passing (verified 2026-03-17)
+- [x] PASS: Test run completes in ~2.3s
+
+#### AC-9: Test suites cover specified areas
+- [x] PASS: `auth.test.ts` -- 22 tests for Zod validation schemas
+- [x] PASS: `mock-session.test.ts` -- 8 tests for toAuthUser()
+- [x] PASS: `utils.test.ts` -- 8 tests for cn() utility
+- [x] PASS: `use-avatar-upload.test.ts` -- 8 tests for magic byte validation
+- [x] PASS: `email.test.ts` -- 17 tests for validateEmailPlausibility() (format, MX, A-record fallback, DNS timeout, caching, edge cases)
+- [x] PASS: `route.test.ts` (validate-email) -- 10 tests (happy path, validation errors, rate limiting, method handling)
+- [x] PASS: `security-headers.test.ts`, `manifest.test.ts`, `icon/route.test.ts` -- additional coverage
+
+#### AC-10: Coverage thresholds configured
+- [x] PASS: Coverage config specifies thresholds for `src/lib/validations/` (90%) and `src/lib/utils.ts` (90%)
+- [ ] BUG-6: Overall coverage is very low (5.2% statements). Large areas like `lib/athletes/`, `lib/feedback/`, `lib/teams/`, and most hooks have 0% coverage. While coverage thresholds exist for specific files, the broad coverage is well below the spec targets of "Utilities & Validierung: 90%+, Custom Hooks: 80%+, Components: 60%+".
+
+**Phase 2 Result: 3/4 AC passed. Coverage breadth (AC-10) is partially met.**
+
+---
+
+### Phase 3: E2E Tests (Playwright) -- Acceptance Criteria
+
+#### AC-11: Playwright installed and configured
+- [x] PASS: `@playwright/test` v1.58.2 and `@axe-core/playwright` v4.11.1 installed
+- [x] PASS: `playwright.config.ts` with Chromium project, auth state caching, dev server auto-start
+- [x] PASS: `PLAYWRIGHT_BASE_URL` env var support for CI usage
+- [x] PASS: npm scripts `test:e2e` and `test:e2e:ui` defined
+
+#### AC-12: Auth fixture caches login state
+- [x] PASS: `tests/e2e/fixtures/auth.setup.ts` logs in as Trainer and Athlete, saves state to `tests/e2e/.auth/`
+- [x] PASS: Playwright config has `setup` project that runs before `chromium` project
+- [x] PASS: Test credentials come from env vars with fallback defaults
+
+#### AC-13: E2E tests cover critical user journeys
+- [x] PASS: Registration flow (6 tests) -- form rendering, validation, password mismatch, redirect to verify-email, a11y
+- [x] PASS: Password reset / login flow (14 tests) -- forgot-password, reset-password states, anti-enumeration, login, a11y
+- [x] PASS: Athlete invite flow (7 tests) -- athletes page, invite modal, email validation, dashboard, onboarding redirect, a11y
+- [ ] NOTE: Only Chromium browser configured. Spec mentions cross-browser (Firefox, Safari) but only Chromium project exists. This is acceptable for MVP but should be expanded.
+
+#### AC-14: Accessibility checks in every E2E test
+- [x] PASS: Every test file includes axe-core accessibility checks with WCAG 2.0 AA tags
+- [x] PASS: Only critical violations fail the test (correct approach)
+
+**Phase 3 Result: 4/4 AC passed.**
+
+---
+
+### Phase 4: CI/CD Pipeline + Email Tests -- Acceptance Criteria
+
+#### AC-15: `ci.yml` exists -- push on any branch triggers lint + typecheck + unit tests
+- [x] PASS: `.github/workflows/ci.yml` exists
+- [x] PASS: Triggers on `push` to all branches and `pull_request` to `main`
+- [x] PASS: Runs lint, typecheck, and `npm run test` in sequence
+- [x] PASS: Uses Node.js 20, npm cache, 10-minute timeout
+- [x] PASS: Concurrency group with cancel-in-progress prevents parallel runs
+
+#### AC-16: `e2e.yml` exists -- PR to main triggers E2E against Vercel Preview URL
+- [x] PASS: `.github/workflows/e2e.yml` exists
+- [x] PASS: Triggers only on PR to `main`
+- [x] PASS: Waits for Vercel preview deployment via `wait-for-vercel-preview@v1.3.2`
+- [x] PASS: Uses `PLAYWRIGHT_BASE_URL` from Vercel output
+- [x] PASS: Caches Playwright browsers, uploads failure artifacts
+- [x] PASS: Test-user secrets passed via `secrets.*` env vars
+
+#### AC-17: CI blocks merge on test failure
+- [ ] BUG-7: No branch protection rules are configured. The CI/CD workflows exist but there is no evidence of GitHub branch protection rules that would actually block merging when CI fails. The workflows run, but merging is not gated.
+
+#### AC-18: Secrets for test users configured in GitHub
+- [ ] CANNOT VERIFY: This requires GitHub repository settings access. The workflow references `secrets.E2E_TRAINER_EMAIL`, etc. but whether these are actually configured cannot be verified from code alone. The auth.setup.ts has hardcoded fallback values which would be used if secrets are missing.
+
+#### AC-19: Unit tests for `validateEmailPlausibility()` -- at least 6 tests
+- [x] PASS: `src/lib/validation/email.test.ts` contains 17 tests (exceeds minimum of 6)
+- [x] PASS: Covers format checks (5), valid MX (1), non-existent domain (3), A-record fallback (1), DNS timeout (2), empty MX array (1), caching (2), edge cases (2)
+
+#### AC-20: Integration tests for `/api/validate-email` -- at least 4 tests
+- [x] PASS: `src/app/api/validate-email/route.test.ts` contains 10 tests (exceeds minimum of 4)
+- [x] PASS: Covers happy path (2), validation errors (4), rate limiting (2), method handling (1), content-type check (1)
+
+#### AC-21: All existing tests remain green
+- [x] PASS: All 104 unit tests pass (was 49 in Phase 2, now 104 with email tests added)
+
+**Phase 4 Result: 5/7 AC passed. AC-17 (branch protection) not configured, AC-18 cannot verify.**
+
+---
+
+### Security Audit Results (Red Team)
+
+#### Env Var Safety
+- [ ] BUG-5 (repeated): `env.ts` is dead code. All 6 instances of `process.env.NEXT_PUBLIC_SUPABASE_*!` still use non-null assertions. No runtime protection against missing env vars.
+- [x] PASS: `.env.local` is gitignored via `.env*.local` pattern
+- [x] PASS: `.env.example` contains no secret values
+- [x] PASS: `SUPABASE_SERVICE_ROLE_KEY` is server-side only (no `NEXT_PUBLIC_` prefix)
+
+#### Rate Limiting on validate-email API
+- [x] PASS: Rate limiting implemented at 30 requests/minute/IP
+- [x] PASS: Rate limit tested and verified in unit tests
+- [ ] BUG-8: Rate limiting uses in-memory Map which resets on every serverless cold start. On Vercel, each new instance has a fresh Map, so the rate limit is effectively per-instance, not global. An attacker could bypass the rate limit by triggering cold starts or waiting for instance recycling. The code documents this limitation but no persistent rate limiting (Upstash Redis, Vercel KV) is configured.
+
+#### E2E Test Credential Hardcoding
+- [ ] BUG-9: `tests/e2e/fixtures/auth.setup.ts` contains hardcoded fallback credentials: `test-trainer@train-smarter.at` / `TestTrainer123!` and `test-athlete@train-smarter.at` / `TestAthlete123!`. While these are test accounts, the passwords are committed to the repository in plain text. If these are real Supabase accounts (even for testing), the passwords should come exclusively from env vars/secrets with no fallback defaults in code.
+
+#### Health Check API
+- [x] PASS: `/api/health` requires authentication (admin role or API key)
+- [x] PASS: Health endpoint does not expose sensitive data in responses
+- [ ] NOTE: `HEALTH_API_KEY` is compared with simple string equality (`apiKey === envApiKey`). This is vulnerable to timing attacks. For a health check endpoint this is low risk, but a constant-time comparison would be more secure.
+
+#### CI/CD Secret Handling
+- [x] PASS: CI workflows use `secrets.*` for test credentials, never hardcoded in YAML
+- [x] PASS: Artifact uploads only on failure, with 7-day retention
+
+---
 
 ### Regression Check (Deployed Features)
 
-No regressions detected from PROJ-16 Phase 1 changes:
-- [x] PASS: `npm run build` still succeeds (PROJ-1 through PROJ-5 routes intact)
-- [x] PASS: `npm run lint` still succeeds
-- [x] PASS: `npm run typecheck` still succeeds
-- [x] PASS: No existing files were modified (only new files added + package.json scripts)
+- [x] PASS: `npm run build` succeeds -- all routes compile without errors
+- [x] PASS: `npm run lint` succeeds (1 warning, 0 errors)
+- [x] PASS: `npm run typecheck` succeeds (0 errors)
+- [x] PASS: All 104 unit tests pass
+- [x] PASS: No changes to deployed feature code (PROJ-1 through PROJ-13)
+
+---
 
 ### Bugs Found
 
-#### BUG-1: Missing env validation module (src/lib/env.ts)
+#### BUG-5: env.ts is dead code -- never imported anywhere (REOPENED from BUG-1)
 - **Severity:** High
 - **Steps to Reproduce:**
-  1. Check for `src/lib/env.ts` -- file does not exist
-  2. Check for `@t3-oss/env-nextjs` in package.json -- not installed
-  3. Remove `NEXT_PUBLIC_SUPABASE_ANON_KEY` from `.env.local`
-  4. Run `npm run dev`
-  5. Expected: App fails to start with clear message "Missing required env var: NEXT_PUBLIC_SUPABASE_ANON_KEY"
-  6. Actual: App starts but crashes at runtime with a cryptic Supabase client error
-- **Priority:** Fix before deployment -- this is 2 of 6 acceptance criteria (AC-1, AC-2) not met
+  1. Run: `grep -r "from.*@/lib/env\|import.*env.*from" src/` -- zero results
+  2. `src/lib/env.ts` exists with correct validation, but no file imports it
+  3. `src/lib/supabase/client.ts` line 5-6 still use `process.env.NEXT_PUBLIC_SUPABASE_URL!`
+  4. `src/lib/supabase/server.ts` line 8-9 still use `process.env.NEXT_PUBLIC_SUPABASE_URL!`
+  5. `src/lib/supabase/middleware.ts` line 10-11 still use `process.env.NEXT_PUBLIC_SUPABASE_URL!`
+  6. Expected: All Supabase client files import from `@/lib/env` and use `env.NEXT_PUBLIC_SUPABASE_URL`
+  7. Actual: env.ts is unreachable code providing zero protection
+- **Priority:** Fix before deployment -- this defeats the purpose of AC-1 and AC-2
 
-#### BUG-2: TypeScript errors do not block git commits
-- **Severity:** High
+#### BUG-6: Overall test coverage far below spec targets
+- **Severity:** Medium
 - **Steps to Reproduce:**
-  1. Open any `.ts` file and introduce a type error (e.g., `const x: number = "hello"`)
-  2. Stage the file with `git add`
-  3. Run `git commit -m "test"`
-  4. Expected: Commit blocked by `tsc --noEmit` error
-  5. Actual: Commit succeeds -- lint-staged only runs `eslint --fix`, not `tsc --noEmit`
-- **Priority:** Fix before deployment -- the spec explicitly requires TypeScript checking in pre-commit
+  1. Run `npm run test:coverage`
+  2. Observe: overall 5.2% statement coverage
+  3. `lib/athletes/` -- 0%, `lib/feedback/` -- 0%, `lib/teams/` -- 0%
+  4. Most hooks (5 of 6) -- 0% coverage
+  5. Spec target: "Utilities & Validierung: 90%+, Custom Hooks: 80%+, Components: 60%+"
+- **Priority:** Fix in next sprint -- the tested files have good coverage, but major business logic areas are untested
 
-#### BUG-3: lint-staged auto-fixes instead of strictly blocking
+#### BUG-7: No GitHub branch protection rules
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. CI/CD workflows (`ci.yml`, `e2e.yml`) exist and define checks
+  2. However, no branch protection rules gate merging on these checks passing
+  3. Expected: PR to `main` cannot be merged if CI fails (Phase 4 AC: "CI blockiert Merge bei fehlgeschlagenen Tests")
+  4. Actual: Merging is not gated -- CI runs but failure does not prevent merge
+- **Priority:** Fix before deployment -- configure GitHub branch protection requiring CI status checks
+
+#### BUG-8: Rate limiting on validate-email is per-instance only
 - **Severity:** Low
 - **Steps to Reproduce:**
-  1. Introduce a fixable lint error (e.g., missing semicolon if configured)
-  2. Stage and commit
-  3. Expected: Commit blocked so developer sees the error
-  4. Actual: `eslint --fix` silently corrects the issue and commit succeeds
-- **Note:** This is a design choice, not strictly a bug. The spec says "ESLint Fehler blockieren den Commit" but auto-fix-then-pass is a common and acceptable pattern. The key protection (unfixable errors still block) works correctly.
-- **Priority:** Nice to have -- current behavior is industry-standard
+  1. Rate limit uses in-memory Map that resets on cold start
+  2. On Vercel serverless, each instance has independent state
+  3. An attacker can bypass rate limits by hitting different instances
+- **Priority:** Nice to have -- acceptable for MVP, document for future improvement with Upstash/KV
 
-#### BUG-4: Duplicate .env example files
+#### BUG-9: Hardcoded test credentials in source code
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Open `tests/e2e/fixtures/auth.setup.ts`
+  2. Lines 3-6 contain hardcoded email/password fallbacks
+  3. `TestTrainer123!` and `TestAthlete123!` are committed to git in plain text
+  4. If these are real Supabase accounts, an attacker with repo access can authenticate
+- **Priority:** Fix before deployment -- remove hardcoded password fallbacks, require env vars
+
+#### BUG-10: CI workflow does not post coverage report as PR comment
 - **Severity:** Low
 - **Steps to Reproduce:**
-  1. Observe both `.env.example` and `.env.local.example` exist in the repo
-  2. Both contain nearly identical content
-  3. New developers may be confused about which to use
-- **Priority:** Nice to have -- consolidate into one file (recommend keeping `.env.example` and removing `.env.local.example`)
+  1. Phase 4 spec states: "Coverage-Report als PR-Kommentar"
+  2. `ci.yml` runs `npm run test` but does not generate or post coverage report
+  3. No coverage action (e.g., `romeovs/lcov-reporter-action`) is configured
+- **Priority:** Nice to have -- add coverage reporting action to CI
 
-### Feature Spec Status Discrepancy
+#### BUG-11: E2E only tests Chromium -- no Firefox or Safari
 - **Severity:** Low
-- `features/INDEX.md` shows PROJ-16 as "In Progress"
-- The spec header on line 3 shows "Status: Planned"
-- These should match.
+- **Steps to Reproduce:**
+  1. `playwright.config.ts` only defines `chromium` project
+  2. Spec and QA checklist require cross-browser testing (Chrome, Firefox, Safari)
+  3. No Firefox or WebKit projects exist
+- **Priority:** Nice to have for MVP -- add Firefox and WebKit projects when E2E suite is stable
+
+---
 
 ### Summary
-- **Acceptance Criteria:** 3/6 passed (AC-3 partial, AC-5, AC-6 pass; AC-1, AC-2, AC-4 fail)
-- **Bugs Found:** 4 total (0 critical, 2 high, 0 medium, 2 low)
-- **Security:** Env var safety hazard due to missing validation (BUG-1)
+
+| Phase | AC Passed | AC Total | Status |
+|-------|-----------|----------|--------|
+| Phase 1: Sofort-Massnahmen | 5 | 6 | BUG-5 blocks AC-2 |
+| Phase 2: Unit Tests | 3 | 4 | Coverage breadth below target |
+| Phase 3: E2E Tests | 4 | 4 | Complete |
+| Phase 4: CI/CD + Email Tests | 5 | 7 | Branch protection missing, secrets unverifiable |
+| **Total** | **17** | **21** | |
+
+- **Acceptance Criteria:** 17/21 passed
+- **Bugs Found:** 7 total (0 critical, 1 high, 3 medium, 3 low)
+- **Security:** env validation dead code (BUG-5), hardcoded test passwords (BUG-9)
 - **Production Ready:** NO
-- **Recommendation:** Fix BUG-1 (env validation module) and BUG-2 (add tsc to lint-staged) before considering Phase 1 complete. These are the two highest-impact items and represent the core safety net that Phase 1 was designed to provide.
+- **Blockers:** BUG-5 (env.ts dead code) and BUG-9 (hardcoded credentials) must be fixed
+- **Recommendation:** Fix BUG-5 by wiring `env.ts` into the Supabase client files so all `process.env.X!` usages are replaced with `env.X`. Fix BUG-9 by removing hardcoded password fallbacks. Fix BUG-7 by configuring GitHub branch protection. After these 3 fixes, PROJ-16 can be considered production-ready.
 
 ## Implementation Progress
 
@@ -791,21 +940,24 @@ Phase 3 (E2E Playwright) folgt mit Implementierung weiterer kritischer Features 
 
 ## Neue Tests aus Enhancements (2026-03-16)
 
-### Unit Tests für E-Mail-Plausibilitätsprüfung (PROJ-13 Enhancement 2)
-- [ ] `src/lib/validation/email.test.ts` — Tests für `validateEmailPlausibility()`
-  - Gültiges Format + existierender MX-Record → `{ valid: true }`
-  - Gültiges Format + nicht-existenter Domain → `{ valid: false, reason: "no_mx_record" }`
-  - Ungültiges Format → `{ valid: false, reason: "invalid_format" }`
-  - DNS-Timeout → `{ valid: true }` (fail-open)
-  - Domain mit A-Record aber ohne MX → `{ valid: true }` (Fallback)
-  - Leerer String, nur Whitespace → `{ valid: false, reason: "invalid_format" }`
+### Unit Tests für E-Mail-Plausibilitätsprüfung (PROJ-13 Enhancement 2) -- DONE
+- [x] `src/lib/validation/email.test.ts` -- 17 tests (all passing)
+  - Gültiges Format + existierender MX-Record -> `{ valid: true }`
+  - Gültiges Format + nicht-existenter Domain -> `{ valid: false, reason: "no_mx_record" }`
+  - Ungültiges Format -> `{ valid: false, reason: "invalid_format" }`
+  - DNS-Timeout -> `{ valid: true }` (fail-open)
+  - Domain mit A-Record aber ohne MX -> `{ valid: true }` (Fallback)
+  - Leerer String, nur Whitespace -> `{ valid: false, reason: "invalid_format" }`
+  - Caching, edge cases, empty MX array
 
-### Integration Tests
-- [ ] `src/app/api/validate-email/route.test.ts` — API Route Tests
-  - POST mit gültiger E-Mail → 200 + `{ valid: true }`
-  - POST mit ungültigem Domain → 200 + `{ valid: false, reason: "no_mx_record" }`
-  - POST ohne Body → 400
-  - GET (falsche Methode) → 405
+### Integration Tests -- DONE
+- [x] `src/app/api/validate-email/route.test.ts` -- 10 tests (all passing)
+  - POST mit gültiger E-Mail -> 200 + `{ valid: true }`
+  - POST mit ungültigem Domain -> 200 + `{ valid: false, reason: "no_mx_record" }`
+  - POST ohne Body -> 400
+  - Content-Type check -> 400
+  - Rate limiting -> 429
+  - Method handling (only POST exported)
 
 ### E2E Tests (Playwright — Phase 3)
 - [ ] `tests/e2e/02-athletes/invite-athlete.spec.ts` — Erweitern:

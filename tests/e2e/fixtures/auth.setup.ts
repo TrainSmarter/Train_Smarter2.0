@@ -1,14 +1,19 @@
 import { test as setup, expect } from "@playwright/test";
 
 const TRAINER_EMAIL = process.env.E2E_TRAINER_EMAIL || "test-trainer@train-smarter.at";
-const TRAINER_PASSWORD = process.env.E2E_TRAINER_PASSWORD || "TestTrainer123!";
+const TRAINER_PASSWORD = process.env.E2E_TRAINER_PASSWORD;
 const ATHLETE_EMAIL = process.env.E2E_ATHLETE_EMAIL || "test-athlete@train-smarter.at";
-const ATHLETE_PASSWORD = process.env.E2E_ATHLETE_PASSWORD || "TestAthlete123!";
+const ATHLETE_PASSWORD = process.env.E2E_ATHLETE_PASSWORD;
 
 const TRAINER_STATE = "tests/e2e/.auth/trainer.json";
 const ATHLETE_STATE = "tests/e2e/.auth/athlete.json";
 
 setup("authenticate as trainer", async ({ page }) => {
+  if (!TRAINER_PASSWORD) {
+    setup.skip();
+    return;
+  }
+
   await page.goto("/de/login");
 
   await page.locator('input[name="email"]').fill(TRAINER_EMAIL);
@@ -23,6 +28,11 @@ setup("authenticate as trainer", async ({ page }) => {
 });
 
 setup("authenticate as athlete", async ({ page }) => {
+  if (!ATHLETE_PASSWORD) {
+    setup.skip();
+    return;
+  }
+
   await page.goto("/de/login");
 
   await page.locator('input[name="email"]').fill(ATHLETE_EMAIL);

@@ -34,6 +34,22 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
+    {
+      name: "firefox",
+      use: {
+        ...devices["Desktop Firefox"],
+        storageState: "tests/e2e/.auth/trainer.json",
+      },
+      dependencies: ["setup"],
+    },
+    {
+      name: "webkit",
+      use: {
+        ...devices["Desktop Safari"],
+        storageState: "tests/e2e/.auth/trainer.json",
+      },
+      dependencies: ["setup"],
+    },
   ],
 
   // Start dev server locally; skip when running against a preview URL (CI)
