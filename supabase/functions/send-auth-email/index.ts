@@ -180,7 +180,7 @@ const TEMPLATES: Record<string, string> = {
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
               <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
-              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | &Ouml;sterreich</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Graz, &Ouml;sterreich</p>
             </td>
           </tr>
         </table>
@@ -234,7 +234,7 @@ const TEMPLATES: Record<string, string> = {
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
               <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
-              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Austria</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Graz, Austria</p>
             </td>
           </tr>
         </table>
@@ -291,7 +291,7 @@ const TEMPLATES: Record<string, string> = {
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
               <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
-              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | &Ouml;sterreich</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Graz, &Ouml;sterreich</p>
             </td>
           </tr>
         </table>
@@ -348,7 +348,7 @@ const TEMPLATES: Record<string, string> = {
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
               <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
-              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Austria</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Graz, Austria</p>
             </td>
           </tr>
         </table>
@@ -402,7 +402,7 @@ const TEMPLATES: Record<string, string> = {
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
               <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
-              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | &Ouml;sterreich</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Graz, &Ouml;sterreich</p>
             </td>
           </tr>
         </table>
@@ -456,7 +456,7 @@ const TEMPLATES: Record<string, string> = {
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
               <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
-              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Austria</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Graz, Austria</p>
             </td>
           </tr>
         </table>
@@ -510,7 +510,7 @@ const TEMPLATES: Record<string, string> = {
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
               <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
-              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | &Ouml;sterreich</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Graz, &Ouml;sterreich</p>
             </td>
           </tr>
         </table>
@@ -564,7 +564,7 @@ const TEMPLATES: Record<string, string> = {
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
               <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
-              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Austria</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Graz, Austria</p>
             </td>
           </tr>
         </table>
@@ -618,7 +618,7 @@ const TEMPLATES: Record<string, string> = {
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
               <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
-              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | &Ouml;sterreich</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Graz, &Ouml;sterreich</p>
             </td>
           </tr>
         </table>
@@ -672,7 +672,7 @@ const TEMPLATES: Record<string, string> = {
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
               <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
-              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Austria</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Graz, Austria</p>
             </td>
           </tr>
         </table>
@@ -816,8 +816,8 @@ async function sendEmail(
         "X-Entity-Ref-ID": crypto.randomUUID(),
         "Feedback-ID": "auth:train-smarter:transactional:train-smarter.at",
         "Reply-To": "office@train-smarter.at",
-        "List-Unsubscribe": "<mailto:office@train-smarter.at?subject=unsubscribe>",
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        "Auto-Submitted": "auto-generated",
+        "X-Mailer": "Train Smarter Mailer 1.0",
       },
     });
   } finally {
