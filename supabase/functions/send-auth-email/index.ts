@@ -144,7 +144,6 @@ const TEMPLATES: Record<string, string> = {
   <title>E-Mail bestätigen</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">Willkommen bei Train Smarter &#8212; bestätige deine E-Mail-Adresse, um dein Konto zu aktivieren.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;">
     <tr>
       <td align="center">
@@ -180,7 +179,8 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | &Ouml;sterreich</p>
             </td>
           </tr>
         </table>
@@ -198,7 +198,6 @@ const TEMPLATES: Record<string, string> = {
   <title>Confirm Email</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">Welcome to Train Smarter &#8212; confirm your email address to activate your account.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;">
     <tr>
       <td align="center">
@@ -234,7 +233,8 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Austria</p>
             </td>
           </tr>
         </table>
@@ -252,7 +252,6 @@ const TEMPLATES: Record<string, string> = {
   <title>Passwort zurücksetzen</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">Setze dein Passwort bei Train Smarter zurück &#8212; klicke den Button in dieser E-Mail.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;">
     <tr>
       <td align="center">
@@ -291,7 +290,8 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | &Ouml;sterreich</p>
             </td>
           </tr>
         </table>
@@ -309,7 +309,6 @@ const TEMPLATES: Record<string, string> = {
   <title>Reset Password</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">Reset your Train Smarter password &#8212; click the button in this email.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;">
     <tr>
       <td align="center">
@@ -348,7 +347,8 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Austria</p>
             </td>
           </tr>
         </table>
@@ -366,7 +366,6 @@ const TEMPLATES: Record<string, string> = {
   <title>Login-Link</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">Dein sicherer Login-Link für Train Smarter &#8212; gültig für eine Anmeldung.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;">
     <tr>
       <td align="center">
@@ -402,7 +401,8 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | &Ouml;sterreich</p>
             </td>
           </tr>
         </table>
@@ -420,7 +420,6 @@ const TEMPLATES: Record<string, string> = {
   <title>Login Link</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">Your secure login link for Train Smarter &#8212; valid for one sign-in.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;">
     <tr>
       <td align="center">
@@ -456,7 +455,8 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Austria</p>
             </td>
           </tr>
         </table>
@@ -474,7 +474,6 @@ const TEMPLATES: Record<string, string> = {
   <title>E-Mail ändern</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">Bestätige deine neue E-Mail-Adresse bei Train Smarter.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;">
     <tr>
       <td align="center">
@@ -510,7 +509,8 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | &Ouml;sterreich</p>
             </td>
           </tr>
         </table>
@@ -528,7 +528,6 @@ const TEMPLATES: Record<string, string> = {
   <title>Change Email</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">Confirm your new email address on Train Smarter.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;">
     <tr>
       <td align="center">
@@ -564,7 +563,8 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Austria</p>
             </td>
           </tr>
         </table>
@@ -582,7 +582,6 @@ const TEMPLATES: Record<string, string> = {
   <title>Einladung</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">Du wurdest zu Train Smarter eingeladen &#8212; erstelle jetzt dein Konto.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;">
     <tr>
       <td align="center">
@@ -618,7 +617,8 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | &Ouml;sterreich</p>
             </td>
           </tr>
         </table>
@@ -636,7 +636,6 @@ const TEMPLATES: Record<string, string> = {
   <title>Invitation</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">You've been invited to Train Smarter &#8212; create your account now.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;">
     <tr>
       <td align="center">
@@ -672,7 +671,8 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
+              <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+              <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Austria</p>
             </td>
           </tr>
         </table>
@@ -813,6 +813,8 @@ async function sendEmail(
       html,
       headers: {
         "Message-ID": generateMessageId(),
+        "X-Entity-Ref-ID": crypto.randomUUID(),
+        "Feedback-ID": "auth:train-smarter:transactional:train-smarter.at",
         "Reply-To": "office@train-smarter.at",
         "List-Unsubscribe": "<mailto:office@train-smarter.at?subject=unsubscribe>",
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",

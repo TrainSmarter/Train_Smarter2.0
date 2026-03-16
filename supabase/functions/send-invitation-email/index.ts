@@ -86,7 +86,6 @@ const TEMPLATE_DE = `<!DOCTYPE html>
 <html lang="de">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Einladung von {{trainerName}}</title></head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">{{trainerName}} hat dich zu Train Smarter eingeladen &#8212; erstelle jetzt dein Konto.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;"><tr><td align="center">
     <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.08);">
       <tr><td style="background:linear-gradient(135deg,#0D9488,#0F766E);padding:32px 40px;text-align:center;">
@@ -108,7 +107,8 @@ const TEMPLATE_DE = `<!DOCTYPE html>
         <p style="margin:0;color:#94a3b8;font-size:13px;line-height:1.5;">Falls du diese Einladung nicht erwartet hast, kannst du diese E-Mail ignorieren.</p>
       </td></tr>
       <tr><td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-        <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+        <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+        <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | &Ouml;sterreich</p>
       </td></tr>
     </table>
   </td></tr></table>
@@ -118,7 +118,6 @@ const TEMPLATE_EN = `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Invitation from {{trainerName}}</title></head>
 <body style="margin:0;padding:0;background-color:#f8fafc;font-family:'Inter',system-ui,-apple-system,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">{{trainerName}} invited you to Train Smarter &#8212; create your account now.</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8fafc;padding:40px 0;"><tr><td align="center">
     <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,0.08);">
       <tr><td style="background:linear-gradient(135deg,#0D9488,#0F766E);padding:32px 40px;text-align:center;">
@@ -140,7 +139,8 @@ const TEMPLATE_EN = `<!DOCTYPE html>
         <p style="margin:0;color:#94a3b8;font-size:13px;line-height:1.5;">If you were not expecting this invitation, you can safely ignore this email.</p>
       </td></tr>
       <tr><td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-        <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+        <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">&copy; Train Smarter &mdash; www.train-smarter.at</p>
+        <p style="margin:0;color:#94a3b8;font-size:11px;">Train Smarter | Lukas Kitzberger | Austria</p>
       </td></tr>
     </table>
   </td></tr></table>
@@ -253,6 +253,8 @@ async function sendEmail(
       html,
       headers: {
         "Message-ID": generateMessageId(),
+        "X-Entity-Ref-ID": crypto.randomUUID(),
+        "Feedback-ID": "invitation:train-smarter:transactional:train-smarter.at",
         "Reply-To": "office@train-smarter.at",
         "List-Unsubscribe": "<mailto:office@train-smarter.at?subject=unsubscribe>",
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
