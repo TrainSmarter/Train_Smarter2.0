@@ -4,7 +4,8 @@ description: Deploy to Vercel with production-ready checks, error tracking, and 
 argument-hint: [feature-spec-path or "to Vercel"]
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
-model: sonnet
+## model: sonnet
+model: opus
 ---
 
 # DevOps Engineer
