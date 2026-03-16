@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Mail, AlertTriangle } from "lucide-react";
 
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,7 +17,6 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function VerifyEmailPage() {
   const t = useTranslations("auth.verifyEmail");
-  const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
 
@@ -25,23 +24,6 @@ export default function VerifyEmailPage() {
     type: "success" | "error";
     message: string;
   } | null>(null);
-
-  // Listen for auth state changes (email verified via link in another tab)
-  React.useEffect(() => {
-    const supabase = createClient();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user?.email_confirmed_at) {
-        router.push("/onboarding");
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router]);
 
   async function handleResend() {
     if (!email) return;

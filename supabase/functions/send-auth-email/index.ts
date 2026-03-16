@@ -180,7 +180,7 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; {{ .SiteURL }} — Train Smarter</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
             </td>
           </tr>
         </table>
@@ -234,7 +234,7 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; {{ .SiteURL }} — Train Smarter</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
             </td>
           </tr>
         </table>
@@ -291,7 +291,7 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; {{ .SiteURL }} — Train Smarter</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
             </td>
           </tr>
         </table>
@@ -348,7 +348,7 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; {{ .SiteURL }} — Train Smarter</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
             </td>
           </tr>
         </table>
@@ -402,7 +402,7 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; {{ .SiteURL }} — Train Smarter</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
             </td>
           </tr>
         </table>
@@ -456,7 +456,7 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; {{ .SiteURL }} — Train Smarter</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
             </td>
           </tr>
         </table>
@@ -510,7 +510,7 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; {{ .SiteURL }} — Train Smarter</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
             </td>
           </tr>
         </table>
@@ -564,7 +564,7 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; {{ .SiteURL }} — Train Smarter</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
             </td>
           </tr>
         </table>
@@ -618,7 +618,7 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; {{ .SiteURL }} — Train Smarter</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
             </td>
           </tr>
         </table>
@@ -672,7 +672,7 @@ const TEMPLATES: Record<string, string> = {
           <!-- Footer -->
           <tr>
             <td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
-              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; {{ .SiteURL }} — Train Smarter</p>
+              <p style="margin:0;color:#94a3b8;font-size:12px;">&copy; https://www.train-smarter.at — Train Smarter</p>
             </td>
           </tr>
         </table>
@@ -714,7 +714,7 @@ function renderTemplate(
   const APP_URL = "https://www.train-smarter.at";
   const { email_data, user } = payload;
   html = html
-    .replace(/\{\{\s*\.SiteURL\s*\}\}/g, APP_URL)
+    .replace(/\{\{\s*\.SiteURL\s*\}\}/g, `${APP_URL}/${locale}`)
     .replace(/\{\{\s*\.TokenHash\s*\}\}/g, email_data.token_hash)
     .replace(/\{\{\s*\.Token\s*\}\}/g, email_data.token)
     .replace(

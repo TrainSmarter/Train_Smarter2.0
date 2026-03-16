@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Loader2, Mail } from "lucide-react";
 
@@ -20,6 +20,7 @@ import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 export default function LoginPage() {
   const t = useTranslations("auth.login");
   const tAuth = useTranslations("auth");
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
@@ -85,8 +86,8 @@ export default function LoginPage() {
       // Full page reload to ensure middleware picks up fresh session cookie
       // router.push() uses client-side navigation which may read stale cookies
       const destination = returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//") && !returnUrl.includes("://")
-        ? returnUrl
-        : "/dashboard";
+        ? `/${locale}${returnUrl}`
+        : `/${locale}/dashboard`;
       window.location.href = destination;
     } catch {
       setError(t("networkError"));

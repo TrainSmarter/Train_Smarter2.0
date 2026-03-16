@@ -109,6 +109,7 @@ export default async function middleware(request: NextRequest) {
     pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/auth/callback") ||
+    pathname.includes("/auth/confirm") ||
     pathname.includes(".")
   ) {
     return intlMiddleware(request);

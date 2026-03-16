@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { Loader2, Mail, User } from "lucide-react";
 
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,7 +27,6 @@ export default function RegisterPage() {
   const t = useTranslations("auth.register");
   const tAuth = useTranslations("auth");
   const tCommon = useTranslations("common");
-  const router = useRouter();
   const currentLocale = useLocale();
 
   const [error, setError] = React.useState<string | null>(null);
@@ -89,16 +88,16 @@ export default function RegisterPage() {
         } else {
           setError(t("genericError"));
         }
-        setIsSubmitting(false);
         return;
       }
 
-      // Success: Redirect to verify email page
+      // Success: Redirect to verify email page using full page navigation
       // Note: Supabase signUp returns identical response for both new and
       // existing accounts to prevent account enumeration
-      router.push(`/verify-email?email=${encodeURIComponent(data.email)}` as "/verify-email");
+      window.location.href = `/${currentLocale}/verify-email?email=${encodeURIComponent(data.email)}`;
     } catch {
       setError(t("genericError"));
+    } finally {
       setIsSubmitting(false);
     }
   }
