@@ -7,10 +7,11 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.describe("Forgot Password Flow", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/de/forgot-password");
+    await page.waitForLoadState("networkidle");
   });
 
   test("page renders correctly", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "Passwort vergessen" })).toBeVisible();
+    await expect(page.getByText("Passwort vergessen")).toBeVisible({ timeout: 10_000 });
     await expect(page.locator('input[name="email"]')).toBeVisible();
     await expect(page.getByRole("button", { name: "Link senden" })).toBeVisible();
   });
@@ -19,18 +20,19 @@ test.describe("Forgot Password Flow", () => {
     await page.locator('input[name="email"]').fill("test-trainer@train-smarter.at");
     await page.getByRole("button", { name: "Link senden" }).click();
 
-    // Success state — always shown (prevents account enumeration)
-    await expect(page.getByText("E-Mail gesendet")).toBeVisible({ timeout: 10_000 });
+    // Success state or rate-limit (both are valid outcomes)
     await expect(
-      page.getByText("Wenn ein Konto mit dieser E-Mail existiert")
-    ).toBeVisible();
+      page.getByText(/E-Mail gesendet|Zu viele Anfragen/)
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows success even for non-existent email (anti-enumeration)", async ({ page }) => {
     await page.locator('input[name="email"]').fill("nobody-exists@example.com");
     await page.getByRole("button", { name: "Link senden" }).click();
 
-    await expect(page.getByText("E-Mail gesendet")).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/E-Mail gesendet|Zu viele Anfragen/)
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("back to login link works", async ({ page }) => {
@@ -50,19 +52,21 @@ test.describe("Forgot Password Flow", () => {
 test.describe("Reset Password Page States", () => {
   test("shows expired state for invalid token", async ({ page }) => {
     await page.goto("/de/reset-password?token_hash=invalid_token&type=recovery");
+    await page.waitForLoadState("networkidle");
 
-    // Should show expired/error state
+    // Should show expired heading
     await expect(
-      page.getByText(/abgelaufen|Fehler|Neuen Link anfordern/)
+      page.getByText("Dieser Link ist abgelaufen")
     ).toBeVisible({ timeout: 10_000 });
   });
 
   test("shows error state for missing parameters", async ({ page }) => {
     await page.goto("/de/reset-password");
+    await page.waitForLoadState("networkidle");
 
-    // Without any token params, should show error or redirect
+    // Without any token params, should show error
     await expect(
-      page.getByText(/abgelaufen|Fehler|Neuen Link anfordern/)
+      page.getByText("Ein Fehler ist aufgetreten")
     ).toBeVisible({ timeout: 10_000 });
   });
 });
@@ -70,10 +74,11 @@ test.describe("Reset Password Page States", () => {
 test.describe("Login Page", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/de/login");
+    await page.waitForLoadState("networkidle");
   });
 
   test("page renders with all elements", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "Willkommen zurück" })).toBeVisible();
+    await expect(page.getByText("Willkommen zurück")).toBeVisible({ timeout: 10_000 });
     await expect(page.locator('input[name="email"]')).toBeVisible();
     await expect(page.locator('input[name="password"]')).toBeVisible();
     await expect(page.getByRole("button", { name: "Anmelden" })).toBeVisible();

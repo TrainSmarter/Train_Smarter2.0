@@ -7,10 +7,11 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.describe("Registration Flow", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/de/register");
+    await page.waitForLoadState("networkidle");
   });
 
   test("page renders with all form fields", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "Konto erstellen" })).toBeVisible();
+    await expect(page.getByText("Konto erstellen")).toBeVisible({ timeout: 10_000 });
     await expect(page.locator('input[name="firstName"]')).toBeVisible();
     await expect(page.locator('input[name="lastName"]')).toBeVisible();
     await expect(page.locator('input[name="email"]')).toBeVisible();
@@ -61,7 +62,7 @@ test.describe("Registration → Verify Email (with test account)", () => {
 
     const uniqueEmail = `e2e-reg-${Date.now()}@train-smarter.at`;
 
-    await page.locator('input[name="firstName"]').fill("E2E");
+    await page.locator('input[name="firstName"]').fill("Emilia");
     await page.locator('input[name="lastName"]').fill("Testuser");
     await page.locator('input[name="email"]').fill(uniqueEmail);
     await page.locator('input[name="password"]').fill("TestPass123!");
