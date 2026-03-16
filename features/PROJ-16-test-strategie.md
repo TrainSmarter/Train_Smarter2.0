@@ -478,6 +478,134 @@ Bei jeder neuen Migration die eine Tabelle erstellt: ein RLS-Integrationstest wi
 
 ---
 
+### Phase 4: CI/CD Pipeline + Offene Tests (Solution Architect)
+
+**Last Updated:** 2026-03-16
+
+#### Überblick
+
+Phase 4 schließt das Testsystem ab: Automatische Tests bei jedem Push/PR via GitHub Actions und die noch offenen Unit-/Integration-Tests für die E-Mail-Validierung. Danach ist PROJ-16 vollständig abgeschlossen.
+
+#### Entscheidungen
+
+| Entscheidung | Gewählt | Begründung |
+|---|---|---|
+| Test-Umgebung für CI | Prod-Supabase mit Test-Usern | Kein zweites Projekt nötig. Test-User haben feste UUIDs, sind isoliert von echten Nutzern. Weniger Wartung als Staging-Instanz. |
+| CI-Trigger | Push + PR zu main | Push auf jeden Branch → schnelle Checks (lint, types, unit). PR zu main → volle Suite inkl. E2E. Standard-Pattern, frühes Feedback. |
+| E2E in CI gegen | Vercel Preview URL | Testet den echten Build (nicht nur Dev-Server). Preview Deployment existiert bereits bei PRs. |
+| Secrets-Handling | GitHub Secrets | Test-User-Passwörter und Supabase-Keys als Repository Secrets. Nie im Code. |
+
+---
+
+#### A) CI/CD Pipeline — Zwei Workflows
+
+```
+.github/workflows/
+  ci.yml      ← Schnell (<2min), bei jedem Push
+  e2e.yml     ← Langsamer (~5min), nur bei PR zu main
+```
+
+**Workflow 1: `ci.yml`** — Schnelle Checks
+
+```
+Trigger: Push auf jeden Branch + PR zu main
+
+Schritte:
+  1. Checkout + Node.js Setup + npm ci (gecacht)
+  2. Lint (npm run lint)
+  3. TypeScript Check (npm run typecheck)
+  4. Unit Tests (npm run test)
+  5. Coverage-Report als PR-Kommentar
+
+Fail-Policy: Merge blockiert wenn irgendein Schritt fehlschlägt
+Dauer: ~1-2 Minuten
+```
+
+**Workflow 2: `e2e.yml`** — E2E gegen Vercel Preview
+
+```
+Trigger: Nur bei PR zu main
+
+Schritte:
+  1. Warten auf Vercel Preview Deployment (via Vercel GitHub Integration)
+  2. Playwright installieren (gecacht)
+  3. E2E-Tests gegen Preview URL ausführen
+  4. Screenshot-Artifacts bei Fehlern hochladen
+  5. Accessibility-Violations als PR-Kommentar
+
+Fail-Policy:
+  - Kritische Tests (Auth, Athletes) fehlgeschlagen → Merge blockiert
+  - Accessibility-Violations → Warnung (nicht blockierend)
+
+Dauer: ~3-5 Minuten
+```
+
+**Secrets die konfiguriert werden müssen:**
+
+| Secret | Zweck |
+|---|---|
+| `E2E_TRAINER_EMAIL` | Login für Trainer-Tests |
+| `E2E_TRAINER_PASSWORD` | Passwort Trainer-Account |
+| `E2E_ATHLETE_EMAIL` | Login für Athlete-Tests |
+| `E2E_ATHLETE_PASSWORD` | Passwort Athlete-Account |
+
+---
+
+#### B) Offene Tests — E-Mail-Validierung
+
+**Unit Tests** für `validateEmailPlausibility()`:
+
+```
+Was wird getestet:
+  - Gültige E-Mail + existierender MX-Record → valid
+  - Gültige E-Mail + nicht-existente Domain → invalid (no_mx_record)
+  - Ungültiges Format → invalid (invalid_format)
+  - DNS-Timeout → valid (fail-open, damit User nicht blockiert wird)
+  - Leerer String → invalid
+
+Werkzeug: Vitest + MSW (DNS-Antworten mocken)
+Datei: src/lib/validation/email.test.ts
+```
+
+**Integration Tests** für `/api/validate-email` Route:
+
+```
+Was wird getestet:
+  - POST mit gültiger E-Mail → 200 + { valid: true }
+  - POST mit ungültiger Domain → 200 + { valid: false, reason }
+  - POST ohne Body → 400
+  - Falsche HTTP-Methode → 405
+
+Werkzeug: Vitest (Route Handler direkt aufrufen)
+Datei: src/app/api/validate-email/route.test.ts
+```
+
+---
+
+#### C) Akzeptanzkriterien Phase 4
+
+- [ ] `ci.yml` existiert: Push auf beliebigen Branch → lint + typecheck + unit tests laufen
+- [ ] `e2e.yml` existiert: PR zu main → E2E-Tests gegen Vercel Preview URL
+- [ ] CI blockiert Merge bei fehlgeschlagenen Tests (Branch Protection Rule)
+- [ ] Secrets für Test-User in GitHub konfiguriert
+- [ ] Unit Tests für `validateEmailPlausibility()` — mindestens 6 Tests
+- [ ] Integration Tests für `/api/validate-email` — mindestens 4 Tests
+- [ ] Alle bestehenden Tests (49 Unit + 28 E2E) bleiben grün
+
+---
+
+#### D) Dateien die erstellt/geändert werden
+
+| Datei | Aktion | Beschreibung |
+|---|---|---|
+| `.github/workflows/ci.yml` | Neu | Lint + TypeCheck + Unit Tests bei Push |
+| `.github/workflows/e2e.yml` | Neu | Playwright E2E bei PR zu main |
+| `src/lib/validation/email.test.ts` | Neu | Unit Tests für E-Mail-Plausibilität |
+| `src/app/api/validate-email/route.test.ts` | Neu | Integration Tests für API Route |
+| `playwright.config.ts` | Ändern | `baseURL` aus Env-Variable für CI |
+
+Keine neuen Pakete nötig — alle Tools sind bereits installiert.
+
 ### Expertenantworten: Langfristig das Beste rausholen
 
 **1. "Test-first" vs. "Test-alongside" für Solo-Entwickler**
@@ -637,7 +765,7 @@ No regressions detected from PROJ-16 Phase 1 changes:
 - [x] `src/lib/utils.test.ts` — 8 tests for `cn()` utility (Tailwind conflict resolution, conditional classes, edge cases)
 - [x] `src/hooks/use-avatar-upload.test.ts` — 8 tests for `validateImageMagicBytes()` (JPEG, PNG, WebP detection, GIF rejection, empty files, disguised files)
 
-### Phase 3: E2E Tests (Playwright) — IN PROGRESS (2026-03-16)
+### Phase 3: E2E Tests (Playwright) — COMPLETE (2026-03-16)
 - [x] Playwright + @axe-core/playwright installed
 - [x] `playwright.config.ts` with Chromium, auth state caching, dev server auto-start
 - [x] Auth fixture: `tests/e2e/fixtures/auth.setup.ts` (Trainer + Athlete login state)
