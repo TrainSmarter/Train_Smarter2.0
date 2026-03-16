@@ -1462,3 +1462,203 @@ UnifiedOrganisationView (State: withdrawingId, resendingId, withdrawConfirm)
 - ConfirmDialog: Bestehende `<ConfirmDialog>` Komponente aus PROJ-2
 
 **E-Mail-Plausibilitätsprüfung:** `inviteAthlete()` wird um `validateEmailPlausibility()` erweitert → siehe PROJ-13 Enhancement 2 Tech Design.
+
+---
+
+## QA Investigation: Athlete Invitation Emails Not Sent (2026-03-16)
+
+**Investigated:** 2026-03-16
+**Tester:** QA Engineer (AI)
+**Scope:** End-to-end trace of the athlete invitation email delivery pipeline
+
+### Executive Summary
+
+**Athlete invitation emails are NOT being sent. The root cause is that `inviteAthlete()` only creates a database row -- it never triggers any email sending mechanism.** This is a CRITICAL architectural gap, not a configuration issue.
+
+### Full Pipeline Trace
+
+#### Step 1: UI -- "Athlet einladen" Button Click
+
+**File:** `src/components/invite-modal.tsx`
+
+The InviteModal component calls `inviteAthlete({ email, message })` on form submit (line 56). On success, it shows a toast "Einladung gesendet" (line 62). The UI tells the user the invitation was sent, but no email is actually delivered.
+
+#### Step 2: Server Action -- `inviteAthlete()`
+
+**File:** `src/lib/athletes/actions.ts` (lines 29-115)
+
+The function does the following:
+1. Authenticates the user
+2. Validates input with Zod
+3. Runs MX-record plausibility check on the email domain
+4. Checks self-invite, rate limits, duplicate connections
+5. **Inserts a row into `trainer_athlete_connections` table** with status "pending"
+6. Revalidates the path
+7. Returns `{ success: true }`
+
+**CRITICAL FINDING: `inviteAthlete()` NEVER calls any of the following:**
+- `supabase.auth.admin.inviteUserByEmail()` -- the Supabase Auth invite mechanism
+- `supabase.functions.invoke("send-auth-email", ...)` -- direct Edge Function call
+- Any other email-sending function, API route, or webhook trigger
+
+The function ONLY creates a database row. No email is sent. Period.
+
+#### Step 3: No Database Trigger Exists
+
+**File:** `supabase/migrations/20260313000000_proj5_athleten_management.sql`
+
+Searched for `AFTER INSERT` triggers, `pg_notify`, or any function that would fire on `trainer_athlete_connections` insert. **None exist.** The migration only creates the table, indexes, and RLS policies.
+
+#### Step 4: Edge Function `send-auth-email` -- Not Involved
+
+**File:** `supabase/functions/send-auth-email/index.ts`
+
+This Edge Function is a **Supabase Auth Hook** that intercepts Supabase Auth email events (signup, recovery, invite, magiclink, email_change). It would only be triggered if:
+- `supabase.auth.admin.inviteUserByEmail()` was called (triggers the `invite` email_action_type)
+- Or another Supabase Auth event fires
+
+Since `inviteAthlete()` never calls `inviteUserByEmail()`, the Auth Hook is never triggered for athlete invitations.
+
+The `invite_de.html` and `invite_en.html` templates exist but are dead code for the athlete invitation flow -- they are generic Supabase Auth invite templates, NOT the PROJ-5 athlete invitation templates specified in the requirements (which should include trainer name, personal message, 7-day expiry notice, and privacy policy footer).
+
+#### Step 5: `resendInvitation()` -- Also Does Not Send Email
+
+**File:** `src/lib/athletes/actions.ts` (lines 355-415)
+
+The `resendInvitation()` function only updates the `invited_at` and `invitation_expires_at` timestamps. It does NOT trigger any email sending either.
+
+#### Step 6: Auth Hook Configuration Status
+
+**File:** `supabase/config.toml` (lines 18-21)
+
+The Auth Hook IS configured in config.toml:
+```toml
+[auth.hook.send_email]
+enabled = true
+uri = "https://djnardhjdfdqpxbskahe.supabase.co/functions/v1/send-auth-email"
+secrets = "env(SEND_EMAIL_HOOK_SECRET)"
+```
+
+This was added in commit `6bb8696`. However, whether `supabase config push` was actually run against the remote project is unclear -- the deploy commit `eb8f12a` only modified markdown files.
+
+**Regardless, even if the Auth Hook is perfectly active, it does not help because `inviteAthlete()` never calls Supabase Auth.**
+
+### Root Cause Analysis
+
+The spec says (PROJ-5, line 48): "Supabase sendet Einladungs-E-Mail via Supabase Auth Invite"
+
+The implementation deviates from the spec. There are two possible architectural approaches, and neither is implemented:
+
+**Approach A: Use Supabase Auth Invite (spec's intent)**
+- `inviteAthlete()` should call `supabase.auth.admin.inviteUserByEmail(email)`
+- This would trigger Supabase Auth's built-in invite flow
+- The Auth Hook (`send-auth-email`) would intercept this and send via SMTP
+- The invite templates (`invite_de.html`/`invite_en.html`) would be used
+- Problem: These templates are generic and do not include trainer name, personal message, or 7-day expiry -- they would need to be enhanced
+
+**Approach B: Custom Email via Edge Function (more flexible)**
+- `inviteAthlete()` should call a dedicated Edge Function (e.g., `send-invitation-email`)
+- This Edge Function would send a custom athlete-invitation email with:
+  - Trainer name and personal message
+  - "Einladung annehmen" link with invite token
+  - 7-day expiry notice
+  - Privacy policy footer
+- This approach was documented in PROJ-13 AC-4 as "NOT IMPLEMENTED"
+
+### Bugs Found
+
+#### BUG-EMAIL-1: inviteAthlete() does not send any email (CRITICAL)
+
+- **Severity:** CRITICAL
+- **Impact:** Athletes never receive invitation emails. The trainer sees "Einladung gesendet" success toast, but the athlete has no way to know they were invited unless they happen to log in and check pending invitations.
+- **Steps to Reproduce:**
+  1. Log in as a Trainer
+  2. Navigate to Organisation > Athletes
+  3. Click "Athlet einladen"
+  4. Enter any valid email address
+  5. Click "Einladung senden"
+  6. Observe: Toast shows "Einladung gesendet" (success)
+  7. Check the entered email inbox -- no email received
+  8. Check Supabase Edge Function logs -- no invocation recorded
+- **Root Cause:** `src/lib/athletes/actions.ts` line 97-106 only inserts a DB row. No call to `supabase.auth.admin.inviteUserByEmail()`, no Edge Function invocation, no email sending of any kind.
+- **Fix Required:** Either call `supabase.auth.admin.inviteUserByEmail()` (Approach A) or invoke a custom Edge Function (Approach B). Approach B is recommended because it supports the spec requirements for trainer name, personal message, and 7-day expiry in the email body.
+
+#### BUG-EMAIL-2: resendInvitation() does not resend any email (HIGH)
+
+- **Severity:** HIGH
+- **Impact:** Trainers who click "Erneut senden" for a pending invitation believe the email was resent, but no email is sent.
+- **Steps to Reproduce:**
+  1. Have a pending invitation in the athletes list
+  2. Click "Erneut senden" on the pending invitation card
+  3. Observe: Success feedback shown
+  4. Check the athlete's email inbox -- no email received
+- **Root Cause:** `src/lib/athletes/actions.ts` lines 395-406 only update timestamps. No email trigger.
+- **Fix Required:** Same as BUG-EMAIL-1 -- add email sending to the resend flow.
+
+#### BUG-EMAIL-3: Misleading success feedback (MEDIUM)
+
+- **Severity:** MEDIUM
+- **Impact:** The UI shows `toast.success(t("inviteSent"))` ("Einladung gesendet") when only a DB row was created. This is misleading -- the user believes an email was sent when it was not.
+- **Steps to Reproduce:** Same as BUG-EMAIL-1, step 6.
+- **Fix Required:** Either fix the email sending (resolves this bug automatically) or change the toast to indicate that no email was sent (not recommended -- better to fix the email sending).
+
+#### BUG-EMAIL-4: invite_de.html / invite_en.html templates are generic, not per-spec (MEDIUM)
+
+- **Severity:** MEDIUM
+- **Impact:** Even if email sending is implemented, the current invite templates do not match the PROJ-13 AC-3 spec requirements.
+- **Missing from templates:**
+  - Trainer name ("[Trainer-Name] hat dich zu Train Smarter eingeladen")
+  - Personal message from trainer
+  - 7-day expiry notice
+  - Privacy policy footer link
+  - "Du hast diese E-Mail erhalten weil [Trainer-Name] deine Adresse angegeben hat"
+- **Current templates:** Generic "Du wurdest eingeladen, Train Smarter beizutreten" without any personalization.
+
+#### BUG-EMAIL-5: SMTP password leaked in .env.example (CRITICAL -- SECURITY)
+
+- **Severity:** CRITICAL
+- **Impact:** The file `.env.example` (line 13-14) contains what appears to be a real SMTP password: `SMTP_PASS="2G~Y}4smR'~!cS`. This file is committed to git. Anyone with repository access has the SMTP credentials for `noreply@train-smarter.at`.
+- **Steps to Reproduce:**
+  1. Open `.env.example`
+  2. Read line 13-14: `SMTP_PASS="2G~Y}4smR'~!cS`
+  3. This looks like a real password, not a placeholder
+- **Fix Required:**
+  1. Immediately rotate the SMTP password in Webgo Hosting Panel
+  2. Replace the value in `.env.example` with a placeholder like `SMTP_PASS=your-smtp-password-here`
+  3. Update the password in Supabase Secrets
+  4. Scrub from git history using `git filter-branch` or BFG Repo-Cleaner
+
+#### BUG-EMAIL-6: supabase config push status unknown (MEDIUM)
+
+- **Severity:** MEDIUM
+- **Impact:** The Auth Hook configuration exists in `config.toml` (commit `6bb8696`) but there is no evidence that `supabase config push` was run against the remote Supabase project. The deploy commit `eb8f12a` only modified markdown files. If the config was never pushed, even Auth emails (signup, recovery) are still using Supabase's built-in German-only templates.
+- **Steps to Reproduce:**
+  1. Register a new account on https://www.train-smarter.at using English locale (/en/register)
+  2. Check if the confirmation email is in English (Auth Hook active) or German (built-in template)
+  3. If German: the Auth Hook is not active on the remote project
+- **Fix Required:** Run `supabase config push --project-ref djnardhjdfdqpxbskahe` to apply the Auth Hook configuration.
+
+### Summary
+
+| Bug | Severity | Category |
+|-----|----------|----------|
+| BUG-EMAIL-1 | CRITICAL | Missing functionality -- no email sent on invite |
+| BUG-EMAIL-2 | HIGH | Missing functionality -- no email sent on resend |
+| BUG-EMAIL-3 | MEDIUM | Misleading UI feedback |
+| BUG-EMAIL-4 | MEDIUM | Template content does not match spec |
+| BUG-EMAIL-5 | CRITICAL (SECURITY) | Real SMTP password committed to git |
+| BUG-EMAIL-6 | MEDIUM | Config push status unknown |
+
+### Production-Ready Decision: NOT READY
+
+Two CRITICAL bugs must be fixed before this feature can be considered functional:
+1. BUG-EMAIL-1: Implement actual email sending in `inviteAthlete()`
+2. BUG-EMAIL-5: Rotate SMTP password and scrub from git history
+
+### Recommended Fix Priority
+
+1. **IMMEDIATELY:** BUG-EMAIL-5 -- Rotate SMTP password, replace `.env.example` value with placeholder
+2. **HIGH:** BUG-EMAIL-1 + BUG-EMAIL-2 -- Implement email sending (Approach B recommended)
+3. **HIGH:** BUG-EMAIL-6 -- Verify Auth Hook is active on remote, run `supabase config push` if not
+4. **MEDIUM:** BUG-EMAIL-4 -- Enhance invite templates with trainer name, message, expiry
+5. **LOW:** BUG-EMAIL-3 -- Auto-resolves when BUG-EMAIL-1 is fixed
