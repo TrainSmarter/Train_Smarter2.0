@@ -103,7 +103,7 @@ const TEMPLATE_DE = `<!DOCTYPE html>
             <a href="{{inviteLink}}" target="_blank" style="display:inline-block;padding:12px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Einladung annehmen</a>
           </td>
         </tr></table>
-        <p style="margin:0 0 12px;color:#94a3b8;font-size:13px;line-height:1.5;">Diese Einladung ist 7 Tage g&uuml;ltig (bis {{expiresAt}}).</p>
+        <p style="margin:0 0 12px;color:#94a3b8;font-size:13px;line-height:1.5;">Diese Einladung ist 7 Tage gültig (bis {{expiresAt}}).</p>
         <p style="margin:0;color:#94a3b8;font-size:13px;line-height:1.5;">Falls du diese Einladung nicht erwartet hast, kannst du diese E-Mail ignorieren.</p>
       </td></tr>
       <tr><td style="padding:24px 40px;background-color:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;">
