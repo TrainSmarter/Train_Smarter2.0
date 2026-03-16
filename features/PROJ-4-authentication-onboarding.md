@@ -1706,5 +1706,16 @@ register-form.tsx / forgot-password-form.tsx
 
 **Vollständiger Tech Design:** Siehe PROJ-13 Enhancement 2 Tech Design (zentrale Architektur).
 
+---
+
+## Enhancement 2 Implementation Notes (2026-03-16) — DEPLOYED
+
+### E-Mail-Plausibilitätsprüfung
+- `useEmailValidation()` hook integrated in register form (`register-form.tsx`) and forgot-password form (`forgot-password-form.tsx`)
+- Shows inline warning (not blocking) when email domain has no MX record
+- API route `POST /api/validate-email` with rate limiting (30 req/min per IP)
+- 500ms debounce prevents spam during typing
+- Fail-open on DNS timeout — submit remains enabled
+
 ## Deployment
 _To be added by /deploy_

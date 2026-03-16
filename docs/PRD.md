@@ -29,16 +29,16 @@ Train Smarter ist eine professionelle Trainingsmanagement-Plattform für Athleti
 | P0 (MVP) | PROJ-1: Design System Foundation | Deployed |
 | P0 (MVP) | PROJ-2: UI Component Library | Deployed |
 | P0 (MVP) | PROJ-3: App Shell & Navigation | Deployed |
-| P0 (MVP) | PROJ-4: Authentication & Onboarding | In Progress |
-| P0 (MVP) | PROJ-5: Athleten-Management (Organisation) | In Progress |
+| P0 (MVP) | PROJ-4: Authentication & Onboarding | Deployed |
+| P0 (MVP) | PROJ-5: Athleten-Management (Organisation) | Deployed |
 | P0 (MVP) | PROJ-6: Feedback & Monitoring | Planned |
 | P1 | PROJ-7: Training Workspace & Periodisierung | Planned |
 | P1 | PROJ-8: Trainingskalender (Sub-View im Workspace) | Planned |
-| P2 | PROJ-9: Team-Verwaltung | In Progress |
+| P2 | PROJ-9: Team-Verwaltung | Deployed |
 | P2 | PROJ-10: Admin-Bereich | Planned |
 | P0 (MVP) | PROJ-11: DSGVO-Compliance & Datenschutz | Deployed |
 | P1 | PROJ-12: Übungsbibliothek | Planned |
-| P0 (MVP) | PROJ-13: E-Mail & Transaktions-Benachrichtigungen | In Progress |
+| P0 (MVP) | PROJ-13: E-Mail & Transaktions-Benachrichtigungen | Deployed |
 | P1 | PROJ-14: In-App Notifications & Einstellungen | Planned |
 | P1 | PROJ-15: Globale Suche | Planned |
 | P0 (MVP) | PROJ-16: Test-Strategie & Qualitätssicherung | In Progress |

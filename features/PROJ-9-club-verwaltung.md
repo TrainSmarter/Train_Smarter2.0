@@ -1307,3 +1307,16 @@ Die `UnifiedOrganisationView` (Phase 2) hat bei der Ablösung der alten Tab-Ansi
 **MX-Check:** `inviteTrainer()` in `src/lib/teams/actions.ts` ruft `validateEmailPlausibility()` auf (shared mit PROJ-5). Das Team-Invite-Modal nutzt den gleichen `useEmailValidation()` Hook wie die Auth-Formulare.
 
 **Vollständiger Tech Design:** Siehe PROJ-13 Enhancement 2 Tech Design (zentrale Architektur).
+
+---
+
+## Enhancement Implementation Notes (2026-03-16) — DEPLOYED
+
+### Withdraw-Button in Unified View
+- Withdraw button now visible in all 3 views (Card-Grid, Table, Kanban) for pending athlete invitations
+- Props piped through `UnifiedOrganisationView` → child views → card components (same pattern as PROJ-5)
+
+### MX-Check in Team Invitations
+- `inviteTrainer()` server action enhanced with `validateEmailPlausibility()` MX-record check
+- `EMAIL_DOMAIN_INVALID` error handled in `team-invite-trainer-modal.tsx` with i18n error message
+- `useEmailValidation()` hook integrated in team-invite-trainer-modal for client-side inline feedback

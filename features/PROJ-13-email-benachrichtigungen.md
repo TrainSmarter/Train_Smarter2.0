@@ -1112,5 +1112,28 @@ Edge Function (letzte Verteidigungslinie):
 
 **Previous BUG-15 status update:** On re-inspection, the Edge Function DOES hash the email before logging (lines 342-351 use SHA-256). The previous QA finding BUG-15 appears to be FIXED.
 
+---
+
+## Enhancement 2 Implementation Notes (2026-03-16) — DEPLOYED
+
+### send-invitation-email Edge Function
+- Edge Function deployed: `send-invitation-email` (v5, ACTIVE, `verify_jwt: false`)
+- Templates inlined in Edge Function code — deployed EFs cannot read filesystem (`Deno.readTextFile` fails)
+- `=20` encoding fix: UTF-8 characters used directly instead of HTML entities to avoid SMTP quoted-printable encoding artifacts
+
+### MX Validation Pipeline
+- `validateEmailPlausibility()` utility in `src/lib/validation/email.ts`
+- API route: `POST /api/validate-email` with rate limiting (30 req/min per IP)
+- `useEmailValidation()` hook with 500ms debounce — integrated in register, forgot-password, invite-modal, team-invite-modal
+
+### DNS Email Authentication
+- SPF: OK (train-smarter.at TXT record)
+- DKIM: OK (selector: `dkim`)
+- DMARC: Upgraded to `p=quarantine`
+- Note: Domain reputation needs 1-2 weeks to build (new domain since 30.12.2025) — some providers may still flag as spam
+
+### BUG-18 Fixed
+- Rate limiting added to `/api/validate-email` (30 requests/min per IP via in-memory store)
+
 ## Deployment
 _To be added by /deploy_

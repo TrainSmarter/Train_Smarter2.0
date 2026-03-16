@@ -590,3 +590,9 @@ DSGVO-Relevanz: MX-Record-Validierung verhindert, dass personenbezogene Daten (N
 
 - DNS-Lookups im Rahmen der MX-Validierung werden **nicht geloggt** (keine IP-Adressen, keine E-Mail-Adressen im Log)
 - Die Validierung erfolgt **vor** der Erstellung eines Datensatzes — bei Ablehnung werden keine personenbezogenen Daten gespeichert
+
+### DNS E-Mail-Authentifizierung (2026-03-16)
+- SPF: Korrekt konfiguriert (TXT Record für train-smarter.at)
+- DKIM: Korrekt konfiguriert (Selector: `dkim`)
+- DMARC: Hochgestuft auf `p=quarantine` (vorher `p=none`)
+- Kein PII in Edge Function Logs — E-Mail-Adressen werden mit SHA-256 gehasht bevor sie geloggt werden

@@ -1662,3 +1662,20 @@ Two CRITICAL bugs must be fixed before this feature can be considered functional
 3. **HIGH:** BUG-EMAIL-6 -- Verify Auth Hook is active on remote, run `supabase config push` if not
 4. **MEDIUM:** BUG-EMAIL-4 -- Enhance invite templates with trainer name, message, expiry
 5. **LOW:** BUG-EMAIL-3 -- Auto-resolves when BUG-EMAIL-1 is fixed
+
+---
+
+## Enhancement 2 Implementation Notes (2026-03-16) — DEPLOYED
+
+### Withdraw-Button in Unified View
+- Withdraw/Resend props piped through: `unified-organisation-view.tsx` → `card-grid-view.tsx` / `table-view.tsx` / `kanban-view.tsx` → `draggable-athlete-card.tsx` / `kanban-column.tsx`
+- ConfirmDialog + toast in `unified-organisation-view.tsx` (same pattern as `athletes-list.tsx`)
+- All 3 views (Card-Grid, Table, Kanban) now show withdraw + resend buttons on pending cards
+
+### Invitation Email Sending (BUG-EMAIL-1 + BUG-EMAIL-2 fixed)
+- `inviteAthlete()` now sends emails via Edge Function `send-invitation-email`
+- `resendInvitation()` now sends emails via same Edge Function
+- Bug fixes during deployment:
+  - Edge Function 401: `verify_jwt` disabled (invoked from server action, not client)
+  - Edge Function 500: Templates inlined in Edge Function code (deployed EFs cannot read filesystem)
+  - `=20` encoding: Fixed by using UTF-8 characters directly instead of HTML entities
