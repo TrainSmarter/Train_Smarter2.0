@@ -4,15 +4,14 @@ import * as React from "react";
 import { Minus, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export interface NumberInputProps {
   /** Field ID for label association */
   id?: string;
-  /** Field label */
+  /** Field label (shown in standalone mode) */
   label?: string;
-  /** Unit suffix displayed inside the input (e.g. "kg", "kcal") */
+  /** Unit suffix (e.g. "kg", "kcal") */
   unit?: string | null;
   /** Current numeric value (null = empty) */
   value: number | null;
@@ -26,22 +25,20 @@ export interface NumberInputProps {
   step?: number;
   /** Placeholder text */
   placeholder?: string;
-  /** Whether the field is required */
+  /** Whether the field is required (shows asterisk in standalone mode) */
   required?: boolean;
   /** Whether the field is disabled */
   disabled?: boolean;
-  /** Error message */
+  /** Error state */
+  hasError?: boolean;
+  /** Error message (standalone mode) */
   error?: string;
   /** Called when the input loses focus */
   onBlur?: () => void;
-  /** Additional classes for the wrapper */
+  /** Use inline strip layout (no label/wrapper, just value+stepper) */
+  inline?: boolean;
+  /** Additional classes */
   className?: string;
-  /** Show +/- stepper buttons */
-  showStepper?: boolean;
-  /** Step increment for stepper buttons (defaults to step prop) */
-  stepperIncrement?: number;
-  /** Last known value to use as starting point for stepper */
-  lastValue?: number | null;
 }
 
 export function NumberInput({
@@ -56,19 +53,17 @@ export function NumberInput({
   placeholder,
   required = false,
   disabled = false,
-  onBlur,
+  hasError = false,
   error,
+  onBlur,
+  inline = false,
   className,
-  showStepper = false,
-  stepperIncrement,
-  lastValue,
 }: NumberInputProps) {
   const generatedId = React.useId();
   const id = providedId ?? generatedId;
   const errorId = `${id}-error`;
-  const hasError = !!error;
   const isInteger = step >= 1;
-  const increment = stepperIncrement ?? step;
+  const increment = step;
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value;
@@ -86,133 +81,119 @@ export function NumberInput({
     let clamped = val;
     if (min != null && clamped < min) clamped = min;
     if (max != null && clamped > max) clamped = max;
-    // Round to avoid floating point issues
     const decimals = increment < 1 ? Math.ceil(-Math.log10(increment)) : 0;
     return parseFloat(clamped.toFixed(decimals));
   }
 
-  function handleStepperClick(direction: 1 | -1) {
-    let baseValue: number;
-    if (value != null) {
-      baseValue = value;
-    } else if (lastValue != null) {
-      baseValue = lastValue;
-    } else {
-      // Start from min or 0
-      baseValue = direction === 1 ? (min ?? 0) : (min ?? 0);
-      onChange(clamp(baseValue));
-      onBlur?.();
-      return;
-    }
-    const newValue = clamp(baseValue + direction * increment);
+  function handleStep(direction: 1 | -1) {
+    const base = value ?? min ?? 0;
+    const newValue = clamp(base + direction * increment);
     onChange(newValue);
-    // Trigger save immediately after stepper click
     onBlur?.();
   }
 
-  // Determine placeholder: show lastValue if available and field is empty
-  const effectivePlaceholder =
-    value == null && lastValue != null
-      ? String(lastValue)
-      : placeholder;
+  const effectiveError = error ?? (hasError ? "Error" : undefined);
 
+  // Inline mode: just value + unit + stepper (no wrapper, label comes from parent)
+  if (inline) {
+    return (
+      <div className={cn("flex items-center gap-1.5", className)}>
+        <button
+          type="button"
+          onClick={() => handleStep(-1)}
+          disabled={disabled || (min != null && value != null && value <= min)}
+          className="flex h-7 w-7 items-center justify-center rounded-md
+                     text-muted-foreground hover:text-foreground hover:bg-muted/50
+                     active:scale-95 transition-all disabled:opacity-30 disabled:pointer-events-none"
+          tabIndex={-1}
+          aria-label={`${label ?? ""} verringern`}
+        >
+          <Minus className="h-3 w-3" />
+        </button>
+
+        <div className="flex items-baseline gap-1">
+          <input
+            id={id}
+            type="number"
+            inputMode={isInteger ? "numeric" : "decimal"}
+            value={value ?? ""}
+            onChange={handleChange}
+            onBlur={onBlur}
+            min={min}
+            max={max}
+            step={step}
+            disabled={disabled}
+            placeholder={placeholder}
+            className={cn(
+              "w-[6ch] bg-transparent text-right text-lg font-semibold",
+              "tabular-nums text-foreground",
+              "border-none outline-none focus:outline-none",
+              "placeholder:text-muted-foreground/30",
+              "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            )}
+          />
+          {unit && (
+            <span className="text-xs text-muted-foreground">{unit}</span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => handleStep(1)}
+          disabled={disabled || (max != null && value != null && value >= max)}
+          className="flex h-7 w-7 items-center justify-center rounded-md
+                     text-muted-foreground hover:text-foreground hover:bg-muted/50
+                     active:scale-95 transition-all disabled:opacity-30 disabled:pointer-events-none"
+          tabIndex={-1}
+          aria-label={`${label ?? ""} erhöhen`}
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+      </div>
+    );
+  }
+
+  // Standalone mode: full input with label, border, error message (used in CategoryFormModal)
   return (
     <div className={cn("space-y-2", className)}>
       {label && (
         <Label htmlFor={id} className="text-label text-foreground">
           {label}
           {required && (
-            <span className="ml-1 text-error" aria-hidden="true">
-              *
-            </span>
+            <span className="ml-1 text-error" aria-hidden="true">*</span>
           )}
         </Label>
       )}
-      {showStepper ? (
-        /* Compact inline group: [input] [unit] [−] [+] */
-        <div className="flex items-center gap-1.5">
-          <Input
-            id={id}
-            type="number"
-            inputMode={isInteger ? "numeric" : "decimal"}
-            value={value ?? ""}
-            onChange={handleChange}
-            onBlur={onBlur}
-            min={min}
-            max={max}
-            step={step}
-            placeholder={effectivePlaceholder}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError || undefined}
-            aria-describedby={hasError ? errorId : undefined}
-            className={cn(
-              "w-24 shrink-0",
-              hasError && "border-error focus-visible:ring-error"
-            )}
-          />
-          {unit && (
-            <span className="text-sm text-muted-foreground shrink-0">
-              {unit}
-            </span>
+      <div className="relative">
+        <Input
+          id={id}
+          type="number"
+          inputMode={isInteger ? "numeric" : "decimal"}
+          value={value ?? ""}
+          onChange={handleChange}
+          onBlur={onBlur}
+          min={min}
+          max={max}
+          step={step}
+          placeholder={placeholder}
+          required={required}
+          disabled={disabled}
+          aria-invalid={!!effectiveError || undefined}
+          aria-describedby={effectiveError ? errorId : undefined}
+          className={cn(
+            unit && "pr-14",
+            effectiveError && "border-error focus-visible:ring-error"
           )}
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={() => handleStepperClick(-1)}
-            disabled={disabled || (min != null && value != null && value <= min)}
-            aria-label={`${label ?? ""} verringern`}
-            tabIndex={-1}
-          >
-            <Minus className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={() => handleStepperClick(1)}
-            disabled={disabled || (max != null && value != null && value >= max)}
-            aria-label={`${label ?? ""} erhöhen`}
-            tabIndex={-1}
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      ) : (
-        <div className="relative">
-          <Input
-            id={id}
-            type="number"
-            inputMode={isInteger ? "numeric" : "decimal"}
-            value={value ?? ""}
-            onChange={handleChange}
-            onBlur={onBlur}
-            min={min}
-            max={max}
-            step={step}
-            placeholder={effectivePlaceholder}
-            required={required}
-            disabled={disabled}
-            aria-invalid={hasError || undefined}
-            aria-describedby={hasError ? errorId : undefined}
-            className={cn(
-              unit && "pr-14",
-              hasError && "border-error focus-visible:ring-error"
-            )}
-          />
-          {unit && (
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-              {unit}
-            </span>
-          )}
-        </div>
-      )}
-      {hasError && (
+        />
+        {unit && (
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+            {unit}
+          </span>
+        )}
+      </div>
+      {effectiveError && (
         <p id={errorId} className="text-body-sm text-error" role="alert">
-          {error}
+          {effectiveError}
         </p>
       )}
     </div>

@@ -17,6 +17,7 @@ import {
 import { SegmentedControl } from "./segmented-control";
 import { NumberInput } from "./number-input";
 import { autosaveCheckinField } from "@/lib/feedback/actions";
+import { cn } from "@/lib/utils";
 import type { ActiveCategory } from "@/lib/feedback/types";
 
 interface CheckinFormProps {
@@ -195,120 +196,183 @@ export function CheckinForm({
     );
   }
 
+  // Separate categories by type for grouped rendering
+  const numberCategories = activeCategories.filter((c) => c.type === "number");
+  const macroSlugs = new Set(["carbs", "protein", "fat", "kohlenhydrate", "eiweiss", "fett"]);
+  const macroCategories = numberCategories.filter(
+    (c) => c.unit === "g" && (macroSlugs.has(c.slug) || c.slug === "carbs" || c.slug === "protein" || c.slug === "fat")
+  );
+  const macroCatIds = new Set(macroCategories.map((c) => c.id));
+  const mainNumberCategories = numberCategories.filter((c) => !macroCatIds.has(c.id));
+  const scaleCategories = activeCategories.filter((c) => c.type === "scale");
+  const textCategories = activeCategories.filter((c) => c.type === "text");
+
+  // Save status indicator for a field
+  function StatusIcon({ categoryId }: { categoryId: string }) {
+    const s = fieldStatus[categoryId];
+    if (s === "saving") return <Loader2 className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />;
+    if (s === "saved") return <Check className="h-3 w-3 text-primary shrink-0" />;
+    if (s === "error") return <span className="text-[10px] text-error shrink-0">!</span>;
+    return null;
+  }
+
   return (
-    <div className="space-y-5">
-      {activeCategories.map((cat) => {
+    <div className="space-y-4">
+      {/* Number fields — compact inline strips in a shared card */}
+      {mainNumberCategories.length > 0 && (
+        <div className="rounded-xl border border-border/50 bg-card overflow-hidden divide-y divide-border/30">
+          {mainNumberCategories.map((cat) => {
+            const name = locale === "en" ? cat.name.en : cat.name.de;
+            const val = values[cat.id];
+            const needsDecimals = cat.unit === "kg";
+            const inputStep = needsDecimals ? 0.1 : 1;
+
+            return (
+              <div key={cat.id} className="flex items-center justify-between px-4 py-3 transition-colors focus-within:bg-muted/30">
+                <div className="flex items-center gap-1.5 shrink-0 mr-3">
+                  <span className="text-sm font-medium text-muted-foreground">{name}</span>
+                  <StatusIcon categoryId={cat.id} />
+                </div>
+                <NumberInput
+                  inline
+                  unit={cat.unit}
+                  value={val?.numericValue ?? null}
+                  onChange={(v) => setFieldValue(cat.id, v, null, "blur")}
+                  onBlur={() => handleBlurSave(cat.id)}
+                  min={cat.minValue ?? undefined}
+                  max={cat.maxValue ?? undefined}
+                  step={inputStep}
+                  hasError={fieldStatus[cat.id] === "error"}
+                />
+              </div>
+            );
+          })}
+
+          {/* Macros row inside the same card */}
+          {macroCategories.length > 0 && (
+            <div className="px-4 py-3">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2.5 block">
+                {t("macros")}
+              </span>
+              <div className={`grid grid-cols-${Math.min(macroCategories.length, 3)} gap-2`}>
+                {macroCategories.map((cat) => {
+                  const name = locale === "en" ? cat.name.en : cat.name.de;
+                  const val = values[cat.id];
+                  return (
+                    <div key={cat.id} className="rounded-lg bg-muted/20 px-2.5 py-2 text-center focus-within:bg-muted/40 transition-colors">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {name}
+                        </span>
+                        <StatusIcon categoryId={cat.id} />
+                      </div>
+                      <div className="flex items-baseline justify-center gap-0.5">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={val?.numericValue ?? ""}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === "") {
+                              setFieldValue(cat.id, null, null, "blur");
+                            } else {
+                              const num = parseFloat(raw);
+                              if (!isNaN(num)) setFieldValue(cat.id, num, null, "blur");
+                            }
+                          }}
+                          onBlur={() => handleBlurSave(cat.id)}
+                          min={cat.minValue ?? undefined}
+                          max={cat.maxValue ?? undefined}
+                          step={1}
+                          className={cn(
+                            "w-[5ch] bg-transparent text-center text-base font-semibold",
+                            "tabular-nums text-foreground",
+                            "border-none outline-none focus:outline-none",
+                            "placeholder:text-muted-foreground/30",
+                            "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          )}
+                        />
+                        <span className="text-[10px] text-muted-foreground">g</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Scale fields — dropdowns */}
+      {scaleCategories.map((cat) => {
         const name = locale === "en" ? cat.name.en : cat.name.de;
         const val = values[cat.id];
-        const status = fieldStatus[cat.id];
-        const hasError = status === "error";
+        const hasError = fieldStatus[cat.id] === "error";
+        const minVal = cat.minValue ?? 1;
+        const maxVal = cat.maxValue ?? 5;
+        const stepCount = maxVal - minVal + 1;
+        const steps = Array.from({ length: stepCount }, (_, i) => minVal + i);
+        const getStepLabel = (step: number): string | null => {
+          if (!cat.scaleLabels) return null;
+          const label = cat.scaleLabels[String(step)];
+          if (!label) return null;
+          return locale === "en" ? label.en : label.de;
+        };
 
-        // Field label with inline save status
-        const fieldLabel = (
-          <div className="flex items-center gap-2">
-            <Label className="text-label text-foreground">{name}</Label>
-            {status === "saving" && (
-              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-            )}
-            {status === "saved" && (
-              <span className="flex items-center gap-0.5 text-[11px] text-success">
-                <Check className="h-3 w-3" />
-                {t("saved")}
-              </span>
-            )}
-            {status === "error" && (
-              <span className="text-[11px] text-error">{t("saveFailed")}</span>
-            )}
+        return (
+          <div key={cat.id} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-label text-foreground">{name}</Label>
+              <StatusIcon categoryId={cat.id} />
+            </div>
+            <Select
+              value={val?.numericValue != null ? String(val.numericValue) : "__none__"}
+              onValueChange={(v) => {
+                if (v === "__none__") {
+                  setFieldValue(cat.id, null, null, "immediate");
+                } else {
+                  const numVal = parseInt(v, 10);
+                  setFieldValue(cat.id, numVal, null, "immediate");
+                }
+              }}
+            >
+              <SelectTrigger
+                className={hasError ? "border-error focus-visible:ring-error" : undefined}
+                aria-label={name}
+              >
+                <SelectValue placeholder={t("selectValue")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__" className="text-muted-foreground">
+                  {t("noSelection")}
+                </SelectItem>
+                {steps.map((step) => {
+                  const label = getStepLabel(step);
+                  return (
+                    <SelectItem key={step} value={String(step)}>
+                      {label ? `${step} — ${label}` : String(step)}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           </div>
         );
+      })}
 
-        if (cat.type === "number") {
-          const needsDecimals = cat.unit === "kg";
-          const inputStep = needsDecimals ? 0.1 : 1;
-          const showStepper = !!cat.unit && ["kg", "kcal", "g", "Anzahl"].includes(cat.unit);
-          const stepperIncrement = cat.unit === "kg" ? 0.1 : 1;
+      {/* Text fields */}
+      {textCategories.map((cat) => {
+        const name = locale === "en" ? cat.name.en : cat.name.de;
+        const val = values[cat.id];
+        const hasError = fieldStatus[cat.id] === "error";
 
-          return (
-            <div key={cat.id} className="space-y-2">
-              {fieldLabel}
-              <NumberInput
-                unit={cat.unit}
-                value={val?.numericValue ?? null}
-                onChange={(v) => setFieldValue(cat.id, v, null, "blur")}
-                onBlur={() => handleBlurSave(cat.id)}
-                min={cat.minValue ?? undefined}
-                max={cat.maxValue ?? undefined}
-                step={inputStep}
-                showStepper={showStepper}
-                stepperIncrement={stepperIncrement}
-                error={hasError ? t("saveFailed") : undefined}
-                placeholder={
-                  cat.minValue != null && cat.maxValue != null
-                    ? `${cat.minValue}–${cat.maxValue}`
-                    : undefined
-                }
-              />
+        return (
+          <div key={cat.id} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-label text-foreground">{name}</Label>
+              <StatusIcon categoryId={cat.id} />
             </div>
-          );
-        }
-
-        if (cat.type === "scale") {
-          const minVal = cat.minValue ?? 1;
-          const maxVal = cat.maxValue ?? 5;
-          const stepCount = maxVal - minVal + 1;
-
-          // All scale categories use Select dropdown
-          const steps = Array.from({ length: stepCount }, (_, i) => minVal + i);
-          const getStepLabel = (step: number): string | null => {
-            if (!cat.scaleLabels) return null;
-            const label = cat.scaleLabels[String(step)];
-            if (!label) return null;
-            return locale === "en" ? label.en : label.de;
-          };
-
-          return (
-            <div key={cat.id} className="space-y-2">
-              {fieldLabel}
-              <Select
-                value={val?.numericValue != null ? String(val.numericValue) : "__none__"}
-                onValueChange={(v) => {
-                  if (v === "__none__") {
-                    setFieldValue(cat.id, null, null, "immediate");
-                  } else {
-                    const numVal = parseInt(v, 10);
-                    setFieldValue(cat.id, numVal, null, "immediate");
-                  }
-                }}
-              >
-                <SelectTrigger
-                  className={hasError ? "border-error focus-visible:ring-error" : undefined}
-                  aria-label={name}
-                >
-                  <SelectValue placeholder={t("selectValue")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__" className="text-muted-foreground">
-                    {t("noSelection")}
-                  </SelectItem>
-                  {steps.map((step) => {
-                    const label = getStepLabel(step);
-                    return (
-                      <SelectItem key={step} value={String(step)}>
-                        {label ? `${step} — ${label}` : String(step)}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-          );
-        }
-
-        if (cat.type === "text") {
-          return (
-            <div key={cat.id} className="space-y-2">
-              {fieldLabel}
-              <Textarea
+            <Textarea
                 value={val?.textValue ?? ""}
                 onChange={(e) =>
                   setFieldValue(cat.id, null, e.target.value, "debounce")
@@ -327,9 +391,6 @@ export function CheckinForm({
               )}
             </div>
           );
-        }
-
-        return null;
       })}
 
       {/* Manage categories button */}

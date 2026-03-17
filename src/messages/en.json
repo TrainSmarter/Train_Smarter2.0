@@ -1008,6 +1008,7 @@
     "saveFailed": "Error",
     "selectValue": "Select value",
     "noSelection": "No selection",
+    "macros": "Macros",
     "noCheckinYet": "No entry for this day yet",
     "pickDate": "Pick date"
   }
