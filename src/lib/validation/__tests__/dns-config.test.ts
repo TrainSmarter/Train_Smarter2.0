@@ -2,7 +2,7 @@
  * dns-config.test.ts
  *
  * Validates DNS records for train-smarter.at to prevent regressions of:
- * - BUG 5: DMARC p=quarantine on new domain (should be p=none initially)
+ * - BUG 5: DMARC policy — now p=quarantine (domain reputation established 2026-03-17)
  * - BUG 6: SPF ~all instead of -all (softfail reduces trust score)
  *
  * These tests perform live DNS lookups and should be skipped in CI.
@@ -52,7 +52,7 @@ describe.skipIf(SKIP)("DNS — SPF record (BUG 6)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// BUG 5: DMARC must NOT use p=quarantine on a new domain
+// BUG 5: DMARC — p=quarantine (reputation established), no rua (reports disabled)
 // ---------------------------------------------------------------------------
 
 describe.skipIf(SKIP)("DNS — DMARC record (BUG 5)", () => {
@@ -62,33 +62,31 @@ describe.skipIf(SKIP)("DNS — DMARC record (BUG 5)", () => {
     expect(dmarc).toBeDefined();
   });
 
-  it("DMARC policy is NOT p=quarantine (too aggressive for new domain)", async () => {
+  it("DMARC policy is p=quarantine (domain reputation established)", async () => {
     const txtRecords = await getTxtRecords(`_dmarc.${DOMAIN}`);
     const dmarc = txtRecords.find((r) => r.startsWith("v=DMARC1"));
     expect(dmarc).toBeDefined();
 
-    // Should NOT have quarantine policy on a new/young domain
-    expect(dmarc).not.toMatch(/p=quarantine/i);
+    // Domain reputation is now established — quarantine protects against spoofing
+    expect(dmarc).toMatch(/p=quarantine/i);
   });
 
-  it("DMARC policy is either p=none or p=reject (safe choices)", async () => {
+  it("DMARC does NOT have rua reporting address (reports disabled)", async () => {
     const txtRecords = await getTxtRecords(`_dmarc.${DOMAIN}`);
     const dmarc = txtRecords.find((r) => r.startsWith("v=DMARC1"));
     expect(dmarc).toBeDefined();
 
-    // p=none (monitoring) or p=reject (after DKIM/SPF confirmed) are safe
-    const hasNone = /p=none/i.test(dmarc!);
-    const hasReject = /p=reject/i.test(dmarc!);
-    expect(hasNone || hasReject).toBe(true);
+    // rua was removed to stop DMARC aggregate report emails flooding the inbox
+    expect(dmarc).not.toMatch(/rua=/i);
   });
 
-  it("DMARC has reporting address (rua)", async () => {
+  it("DMARC has relaxed alignment (aspf=r, adkim=r)", async () => {
     const txtRecords = await getTxtRecords(`_dmarc.${DOMAIN}`);
     const dmarc = txtRecords.find((r) => r.startsWith("v=DMARC1"));
     expect(dmarc).toBeDefined();
 
-    // Should have rua= for aggregate reports
-    expect(dmarc).toMatch(/rua=/i);
+    expect(dmarc).toMatch(/aspf=r/i);
+    expect(dmarc).toMatch(/adkim=r/i);
   });
 });
 
