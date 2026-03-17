@@ -1004,8 +1004,10 @@
     "weekNavigation": "Week navigation",
     "saving": "Saving...",
     "allChangesSaved": "All changes saved",
-    "saveFailed": "Save failed",
+    "saved": "Saved",
+    "saveFailed": "Error",
     "selectValue": "Select value",
+    "noSelection": "No selection",
     "noCheckinYet": "No entry for this day yet",
     "pickDate": "Pick date"
   }

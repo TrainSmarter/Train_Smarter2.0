@@ -116,15 +116,6 @@ export function NumberInput({
       ? String(lastValue)
       : placeholder;
 
-  // Compute right padding based on what's shown
-  const rightPadding = showStepper
-    ? unit
-      ? "pr-28" // unit + 2 buttons
-      : "pr-20" // 2 buttons only
-    : unit
-      ? "pr-14"
-      : undefined;
-
   return (
     <div className={cn("space-y-2", className)}>
       {label && (
@@ -137,67 +128,88 @@ export function NumberInput({
           )}
         </Label>
       )}
-      <div className="relative">
-        <Input
-          id={id}
-          type="number"
-          inputMode={isInteger ? "numeric" : "decimal"}
-          value={value ?? ""}
-          onChange={handleChange}
-          onBlur={onBlur}
-          min={min}
-          max={max}
-          step={step}
-          placeholder={effectivePlaceholder}
-          required={required}
-          disabled={disabled}
-          aria-invalid={hasError || undefined}
-          aria-describedby={hasError ? errorId : undefined}
-          className={cn(
-            rightPadding,
-            hasError && "border-error focus-visible:ring-error"
-          )}
-        />
-        {showStepper ? (
-          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-            {unit && (
-              <span className="pointer-events-none text-sm text-muted-foreground mr-1">
-                {unit}
-              </span>
+      {showStepper ? (
+        /* Compact inline group: [input] [unit] [−] [+] */
+        <div className="flex items-center gap-1.5">
+          <Input
+            id={id}
+            type="number"
+            inputMode={isInteger ? "numeric" : "decimal"}
+            value={value ?? ""}
+            onChange={handleChange}
+            onBlur={onBlur}
+            min={min}
+            max={max}
+            step={step}
+            placeholder={effectivePlaceholder}
+            required={required}
+            disabled={disabled}
+            aria-invalid={hasError || undefined}
+            aria-describedby={hasError ? errorId : undefined}
+            className={cn(
+              "w-24 shrink-0",
+              hasError && "border-error focus-visible:ring-error"
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => handleStepperClick(-1)}
-              disabled={disabled || (min != null && value != null && value <= min)}
-              aria-label={`${label ?? ""} verringern`}
-              tabIndex={-1}
-            >
-              <Minus className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => handleStepperClick(1)}
-              disabled={disabled || (max != null && value != null && value >= max)}
-              aria-label={`${label ?? ""} erhöhen`}
-              tabIndex={-1}
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ) : (
-          unit && (
+          />
+          {unit && (
+            <span className="text-sm text-muted-foreground shrink-0">
+              {unit}
+            </span>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => handleStepperClick(-1)}
+            disabled={disabled || (min != null && value != null && value <= min)}
+            aria-label={`${label ?? ""} verringern`}
+            tabIndex={-1}
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={() => handleStepperClick(1)}
+            disabled={disabled || (max != null && value != null && value >= max)}
+            aria-label={`${label ?? ""} erhöhen`}
+            tabIndex={-1}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ) : (
+        <div className="relative">
+          <Input
+            id={id}
+            type="number"
+            inputMode={isInteger ? "numeric" : "decimal"}
+            value={value ?? ""}
+            onChange={handleChange}
+            onBlur={onBlur}
+            min={min}
+            max={max}
+            step={step}
+            placeholder={effectivePlaceholder}
+            required={required}
+            disabled={disabled}
+            aria-invalid={hasError || undefined}
+            aria-describedby={hasError ? errorId : undefined}
+            className={cn(
+              unit && "pr-14",
+              hasError && "border-error focus-visible:ring-error"
+            )}
+          />
+          {unit && (
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
               {unit}
             </span>
-          )
-        )}
-      </div>
+          )}
+        </div>
+      )}
       {hasError && (
         <p id={errorId} className="text-body-sm text-error" role="alert">
           {error}

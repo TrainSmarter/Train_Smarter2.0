@@ -64,15 +64,13 @@ export function CheckinForm({
   const [values, setValues] = React.useState<
     Record<string, { numericValue: number | null; textValue: string | null }>
   >(() => computeInitialValues(existingValues));
-  const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
-  const [errorFields, setErrorFields] = React.useState<Set<string>>(new Set());
+  // Per-field save status: "saving" | "saved" | "error"
+  const [fieldStatus, setFieldStatus] = React.useState<Record<string, SaveStatus>>({});
 
   // Debounce timers per field
   const debounceTimers = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  // Track saving count for global status
-  const savingCount = React.useRef(0);
-  // Saved indicator timeout
-  const savedTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Per-field saved indicator timeouts
+  const savedTimers = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   // Track the previous date to reset values only when navigating to a different day
   const prevDateRef = React.useRef(date);
@@ -82,8 +80,7 @@ export function CheckinForm({
     if (date !== prevDateRef.current) {
       prevDateRef.current = date;
       setValues(computeInitialValues(existingValues));
-      setSaveStatus("idle");
-      setErrorFields(new Set());
+      setFieldStatus({});
     }
   }, [date, existingValues, computeInitialValues]);
 
@@ -93,8 +90,8 @@ export function CheckinForm({
       for (const timer of Object.values(debounceTimers.current)) {
         clearTimeout(timer);
       }
-      if (savedTimeout.current) {
-        clearTimeout(savedTimeout.current);
+      for (const timer of Object.values(savedTimers.current)) {
+        clearTimeout(timer);
       }
     };
   }, []);
@@ -104,46 +101,31 @@ export function CheckinForm({
     numericValue: number | null,
     textValue: string | null
   ) {
-    savingCount.current += 1;
-    setSaveStatus("saving");
-
-    // Clear any existing saved timeout
-    if (savedTimeout.current) {
-      clearTimeout(savedTimeout.current);
-      savedTimeout.current = null;
-    }
+    setFieldStatus((prev) => ({ ...prev, [categoryId]: "saving" }));
 
     try {
       const result = await autosaveCheckinField(date, categoryId, numericValue, textValue);
-      savingCount.current -= 1;
 
       if (result.success) {
-        // Remove from error fields if it was there
-        setErrorFields((prev) => {
-          const next = new Set(prev);
-          next.delete(categoryId);
-          return next;
-        });
+        setFieldStatus((prev) => ({ ...prev, [categoryId]: "saved" }));
         onFieldSaved?.(categoryId, numericValue, textValue);
 
-        if (savingCount.current === 0) {
-          setSaveStatus("saved");
-          savedTimeout.current = setTimeout(() => {
-            setSaveStatus("idle");
-          }, 3000);
+        // Clear "saved" indicator after 2s
+        if (savedTimers.current[categoryId]) {
+          clearTimeout(savedTimers.current[categoryId]);
         }
+        savedTimers.current[categoryId] = setTimeout(() => {
+          setFieldStatus((prev) => {
+            const next = { ...prev };
+            if (next[categoryId] === "saved") delete next[categoryId];
+            return next;
+          });
+        }, 2000);
       } else {
-        if (savingCount.current === 0) {
-          setSaveStatus("error");
-        }
-        setErrorFields((prev) => new Set(prev).add(categoryId));
+        setFieldStatus((prev) => ({ ...prev, [categoryId]: "error" }));
       }
     } catch {
-      savingCount.current -= 1;
-      if (savingCount.current === 0) {
-        setSaveStatus("error");
-      }
-      setErrorFields((prev) => new Set(prev).add(categoryId));
+      setFieldStatus((prev) => ({ ...prev, [categoryId]: "error" }));
     }
   }
 
@@ -214,44 +196,42 @@ export function CheckinForm({
   }
 
   return (
-    <div className="relative space-y-6">
-      {/* Save status indicator */}
-      <div className="absolute top-0 right-0 flex items-center gap-1.5">
-        {saveStatus === "saving" && (
-          <>
-            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">{t("saving")}</span>
-          </>
-        )}
-        {saveStatus === "saved" && (
-          <>
-            <Check className="h-3 w-3 text-success" />
-            <span className="text-xs text-muted-foreground">{t("allChangesSaved")}</span>
-          </>
-        )}
-        {saveStatus === "error" && (
-          <span className="text-xs text-error">{t("saveFailed")}</span>
-        )}
-      </div>
+    <div className="space-y-5">
+      {activeCategories.map((cat) => {
+        const name = locale === "en" ? cat.name.en : cat.name.de;
+        const val = values[cat.id];
+        const status = fieldStatus[cat.id];
+        const hasError = status === "error";
 
-      {/* Dynamic fields */}
-      <div className="space-y-5">
-        {activeCategories.map((cat) => {
-          const name = locale === "en" ? cat.name.en : cat.name.de;
-          const val = values[cat.id];
-          const hasError = errorFields.has(cat.id);
+        // Field label with inline save status
+        const fieldLabel = (
+          <div className="flex items-center gap-2">
+            <Label className="text-label text-foreground">{name}</Label>
+            {status === "saving" && (
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            )}
+            {status === "saved" && (
+              <span className="flex items-center gap-0.5 text-[11px] text-success">
+                <Check className="h-3 w-3" />
+                {t("saved")}
+              </span>
+            )}
+            {status === "error" && (
+              <span className="text-[11px] text-error">{t("saveFailed")}</span>
+            )}
+          </div>
+        );
 
-          if (cat.type === "number") {
-            // Only weight (kg) needs decimal input; all others are integers
-            const needsDecimals = cat.unit === "kg";
-            const inputStep = needsDecimals ? 0.1 : 1;
-            const showStepper = !!cat.unit && ["kg", "kcal", "g", "Anzahl"].includes(cat.unit);
-            const stepperIncrement = cat.unit === "kg" ? 0.1 : 1;
+        if (cat.type === "number") {
+          const needsDecimals = cat.unit === "kg";
+          const inputStep = needsDecimals ? 0.1 : 1;
+          const showStepper = !!cat.unit && ["kg", "kcal", "g", "Anzahl"].includes(cat.unit);
+          const stepperIncrement = cat.unit === "kg" ? 0.1 : 1;
 
-            return (
+          return (
+            <div key={cat.id} className="space-y-2">
+              {fieldLabel}
               <NumberInput
-                key={cat.id}
-                label={name}
                 unit={cat.unit}
                 value={val?.numericValue ?? null}
                 onChange={(v) => setFieldValue(cat.id, v, null, "blur")}
@@ -261,7 +241,6 @@ export function CheckinForm({
                 step={inputStep}
                 showStepper={showStepper}
                 stepperIncrement={stepperIncrement}
-                required={cat.isRequired}
                 error={hasError ? t("saveFailed") : undefined}
                 placeholder={
                   cat.minValue != null && cat.maxValue != null
@@ -269,147 +248,107 @@ export function CheckinForm({
                     : undefined
                 }
               />
+            </div>
+          );
+        }
+
+        if (cat.type === "scale") {
+          const minVal = cat.minValue ?? 1;
+          const maxVal = cat.maxValue ?? 5;
+          const stepCount = maxVal - minVal + 1;
+
+          // 3 or fewer steps: use SegmentedControl, 4+ steps: use Select dropdown
+          if (stepCount <= 3) {
+            return (
+              <div key={cat.id} className="space-y-2">
+                {fieldLabel}
+                <SegmentedControl
+                  min={minVal}
+                  max={maxVal}
+                  value={val?.numericValue ?? null}
+                  onChange={(v) => setFieldValue(cat.id, v, null, "immediate")}
+                  labels={cat.scaleLabels}
+                  ariaLabel={name}
+                  hasError={hasError}
+                />
+              </div>
             );
           }
 
-          if (cat.type === "scale") {
-            const minVal = cat.minValue ?? 1;
-            const maxVal = cat.maxValue ?? 5;
-            const stepCount = maxVal - minVal + 1;
+          // 4+ steps: use Select dropdown
+          const steps = Array.from({ length: stepCount }, (_, i) => minVal + i);
+          const getStepLabel = (step: number): string | null => {
+            if (!cat.scaleLabels) return null;
+            const label = cat.scaleLabels[String(step)];
+            if (!label) return null;
+            return locale === "en" ? label.en : label.de;
+          };
 
-            // 2 steps: use SegmentedControl, 3+ steps: use Select dropdown
-            if (stepCount <= 2) {
-              return (
-                <div key={cat.id} className="space-y-2">
-                  <Label className="text-label text-foreground">
-                    {name}
-                    {cat.isRequired && (
-                      <span className="ml-1 text-error" aria-hidden="true">
-                        *
-                      </span>
-                    )}
-                  </Label>
-                  <SegmentedControl
-                    min={minVal}
-                    max={maxVal}
-                    value={val?.numericValue ?? null}
-                    onChange={(v) => setFieldValue(cat.id, v, null, "immediate")}
-                    labels={cat.scaleLabels}
-                    ariaLabel={name}
-                    hasError={hasError}
-                  />
-                  {hasError && (
-                    <p className="text-body-sm text-error" role="alert">
-                      {t("saveFailed")}
-                    </p>
-                  )}
-                </div>
-              );
-            }
-
-            // 3+ steps: use Select dropdown
-            const steps = Array.from({ length: stepCount }, (_, i) => minVal + i);
-            const getStepLabel = (step: number): string | null => {
-              if (!cat.scaleLabels) return null;
-              const label = cat.scaleLabels[String(step)];
-              if (!label) return null;
-              return locale === "en" ? label.en : label.de;
-            };
-
-            const selectedStepLabel = val?.numericValue != null
-              ? (() => {
-                  const label = getStepLabel(val.numericValue);
-                  return label
-                    ? `${val.numericValue} — ${label}`
-                    : String(val.numericValue);
-                })()
-              : undefined;
-
-            return (
-              <div key={cat.id} className="space-y-2">
-                <Label className="text-label text-foreground">
-                  {name}
-                  {cat.isRequired && (
-                    <span className="ml-1 text-error" aria-hidden="true">
-                      *
-                    </span>
-                  )}
-                </Label>
-                <Select
-                  value={val?.numericValue != null ? String(val.numericValue) : undefined}
-                  onValueChange={(v) => {
+          return (
+            <div key={cat.id} className="space-y-2">
+              {fieldLabel}
+              <Select
+                value={val?.numericValue != null ? String(val.numericValue) : "__none__"}
+                onValueChange={(v) => {
+                  if (v === "__none__") {
+                    setFieldValue(cat.id, null, null, "immediate");
+                  } else {
                     const numVal = parseInt(v, 10);
                     setFieldValue(cat.id, numVal, null, "immediate");
-                  }}
-                >
-                  <SelectTrigger
-                    className={hasError ? "border-error focus-visible:ring-error" : undefined}
-                    aria-label={name}
-                  >
-                    <SelectValue placeholder={t("selectValue")}>
-                      {selectedStepLabel}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {steps.map((step) => {
-                      const label = getStepLabel(step);
-                      return (
-                        <SelectItem key={step} value={String(step)}>
-                          {label ? `${step} — ${label}` : String(step)}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                {hasError && (
-                  <p className="text-body-sm text-error" role="alert">
-                    {t("saveFailed")}
-                  </p>
-                )}
-              </div>
-            );
-          }
-
-          if (cat.type === "text") {
-            return (
-              <div key={cat.id} className="space-y-2">
-                <Label className="text-label text-foreground">
-                  {name}
-                  {cat.isRequired && (
-                    <span className="ml-1 text-error" aria-hidden="true">
-                      *
-                    </span>
-                  )}
-                </Label>
-                <Textarea
-                  value={val?.textValue ?? ""}
-                  onChange={(e) =>
-                    setFieldValue(cat.id, null, e.target.value, "debounce")
                   }
-                  onBlur={() => handleBlurSave(cat.id)}
-                  maxLength={cat.maxValue ?? 300}
-                  rows={3}
-                  placeholder={t("notePlaceholder")}
+                }}
+              >
+                <SelectTrigger
                   className={hasError ? "border-error focus-visible:ring-error" : undefined}
-                  aria-invalid={hasError || undefined}
-                />
-                {val?.textValue && (
-                  <p className="text-[11px] text-muted-foreground text-right">
-                    {val.textValue.length}/{cat.maxValue ?? 300}
-                  </p>
-                )}
-                {hasError && (
-                  <p className="text-body-sm text-error" role="alert">
-                    {t("saveFailed")}
-                  </p>
-                )}
-              </div>
-            );
-          }
+                  aria-label={name}
+                >
+                  <SelectValue placeholder={t("selectValue")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__" className="text-muted-foreground">
+                    {t("noSelection")}
+                  </SelectItem>
+                  {steps.map((step) => {
+                    const label = getStepLabel(step);
+                    return (
+                      <SelectItem key={step} value={String(step)}>
+                        {label ? `${step} — ${label}` : String(step)}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          );
+        }
 
-          return null;
-        })}
-      </div>
+        if (cat.type === "text") {
+          return (
+            <div key={cat.id} className="space-y-2">
+              {fieldLabel}
+              <Textarea
+                value={val?.textValue ?? ""}
+                onChange={(e) =>
+                  setFieldValue(cat.id, null, e.target.value, "debounce")
+                }
+                onBlur={() => handleBlurSave(cat.id)}
+                maxLength={cat.maxValue ?? 300}
+                rows={3}
+                placeholder={t("notePlaceholder")}
+                className={hasError ? "border-error focus-visible:ring-error" : undefined}
+                aria-invalid={hasError || undefined}
+              />
+              {val?.textValue && (
+                <p className="text-[11px] text-muted-foreground text-right">
+                  {val.textValue.length}/{cat.maxValue ?? 300}
+                </p>
+              )}
+            </div>
+          );
+        }
+
+        return null;
+      })}
 
       {/* Manage categories button */}
       {onManageCategories && (

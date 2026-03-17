@@ -1004,8 +1004,10 @@
     "weekNavigation": "Wochennavigation",
     "saving": "Wird gespeichert...",
     "allChangesSaved": "Alle Änderungen gespeichert",
-    "saveFailed": "Speichern fehlgeschlagen",
+    "saved": "Gespeichert",
+    "saveFailed": "Fehler",
     "selectValue": "Wert auswählen",
+    "noSelection": "Keine Auswahl",
     "noCheckinYet": "Noch kein Eintrag für diesen Tag",
     "pickDate": "Datum auswählen"
   }

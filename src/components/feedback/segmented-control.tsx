@@ -12,8 +12,8 @@ export interface SegmentedControlProps {
   max: number;
   /** Currently selected value (null = nothing selected) */
   value: number | null;
-  /** Called when a segment is selected */
-  onChange: (value: number) => void;
+  /** Called when a segment is selected (null = deselected) */
+  onChange: (value: number | null) => void;
   /** Labels for each step (localized) */
   labels?: ScaleStepLabels | null;
   /** Whether the field is disabled */
@@ -71,7 +71,7 @@ export function SegmentedControl({
               aria-label={stepLabel ? `${step} · ${stepLabel}` : String(step)}
               title={stepLabel ?? undefined}
               disabled={disabled}
-              onClick={() => onChange(step)}
+              onClick={() => onChange(isSelected ? null : step)}
               className={cn(
                 "flex min-h-[44px] items-center justify-center rounded-md text-sm font-medium transition-all",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
