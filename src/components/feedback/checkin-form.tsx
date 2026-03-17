@@ -257,25 +257,7 @@ export function CheckinForm({
           const maxVal = cat.maxValue ?? 5;
           const stepCount = maxVal - minVal + 1;
 
-          // 3 or fewer steps: use SegmentedControl, 4+ steps: use Select dropdown
-          if (stepCount <= 3) {
-            return (
-              <div key={cat.id} className="space-y-2">
-                {fieldLabel}
-                <SegmentedControl
-                  min={minVal}
-                  max={maxVal}
-                  value={val?.numericValue ?? null}
-                  onChange={(v) => setFieldValue(cat.id, v, null, "immediate")}
-                  labels={cat.scaleLabels}
-                  ariaLabel={name}
-                  hasError={hasError}
-                />
-              </div>
-            );
-          }
-
-          // 4+ steps: use Select dropdown
+          // All scale categories use Select dropdown
           const steps = Array.from({ length: stepCount }, (_, i) => minVal + i);
           const getStepLabel = (step: number): string | null => {
             if (!cat.scaleLabels) return null;
