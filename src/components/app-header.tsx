@@ -11,22 +11,14 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
-
 interface AppHeaderProps {
+  /** @deprecated No longer displayed in header */
   pageTitle?: string;
 }
 
-export function AppHeader({ pageTitle }: AppHeaderProps) {
+export function AppHeader({ pageTitle: _pageTitle }: AppHeaderProps) {
   const t = useTranslations("header");
-  const tNav = useTranslations("nav");
   const tSidebar = useTranslations("sidebar");
-  const title = pageTitle ?? tNav("dashboard");
 
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6">
@@ -41,16 +33,6 @@ export function AppHeader({ pageTitle }: AppHeaderProps) {
         </div>
         <span className="font-semibold text-sm">{tSidebar("brand")}</span>
       </div>
-      <Separator orientation="vertical" className="mx-2 h-4 lg:hidden" />
-
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbPage>{title}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       <div className="ml-auto flex items-center gap-1">
         <Tooltip>
           <TooltipTrigger asChild>

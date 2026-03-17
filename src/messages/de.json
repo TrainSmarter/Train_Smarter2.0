@@ -1006,6 +1006,7 @@
     "allChangesSaved": "Alle Änderungen gespeichert",
     "saveFailed": "Speichern fehlgeschlagen",
     "selectValue": "Wert auswählen",
-    "noCheckinYet": "Noch kein Eintrag für diesen Tag"
+    "noCheckinYet": "Noch kein Eintrag für diesen Tag",
+    "pickDate": "Datum auswählen"
   }
 }

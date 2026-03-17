@@ -119,13 +119,11 @@ export function AthleteCheckinPage({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-h1 text-foreground">{t("checkinTitle")}</h1>
-          <p className="mt-1 text-body-lg text-muted-foreground">
-            {t("checkinSubtitle")}
-          </p>
-        </div>
+      <div className="space-y-2">
+        <h1 className="text-h1 text-foreground">{t("checkinTitle")}</h1>
+        <p className="text-body-lg text-muted-foreground">
+          {t("checkinSubtitle")}
+        </p>
         {streak > 0 && <StreakBadge streak={streak} />}
       </div>
 

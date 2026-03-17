@@ -1006,6 +1006,7 @@
     "allChangesSaved": "All changes saved",
     "saveFailed": "Save failed",
     "selectValue": "Select value",
-    "noCheckinYet": "No entry for this day yet"
+    "noCheckinYet": "No entry for this day yet",
+    "pickDate": "Pick date"
   }
 }

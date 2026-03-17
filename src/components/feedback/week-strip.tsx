@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +56,7 @@ export function WeekStrip({
   const locale = useLocale();
 
   const today = toISODate(new Date());
+  const dateInputRef = React.useRef<HTMLInputElement>(null);
 
   // weekStart = Monday of the currently visible week
   const [weekStart, setWeekStart] = React.useState<Date>(() =>
@@ -113,6 +114,30 @@ export function WeekStrip({
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
+
+      {/* Date picker */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 shrink-0"
+        onClick={() => dateInputRef.current?.showPicker()}
+        aria-label={t("pickDate")}
+      >
+        <CalendarDays className="h-4 w-4" />
+      </Button>
+      <input
+        ref={dateInputRef}
+        type="date"
+        max={today}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => {
+          if (e.target.value) {
+            onSelectDate(e.target.value);
+          }
+        }}
+      />
 
       {/* Day cells */}
       <div className="flex flex-1 justify-between">

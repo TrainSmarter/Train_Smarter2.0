@@ -178,9 +178,10 @@ export const DEFAULT_CATEGORIES: FeedbackCategory[] = [
     slug: "illness",
     type: "scale",
     unit: null,
-    minValue: 1,
+    minValue: 0,
     maxValue: 2,
     scaleLabels: {
+      "0": { de: "Nicht krank", en: "Not sick" },
       "1": { de: "Leicht krank", en: "Slightly sick" },
       "2": { de: "Krank", en: "Sick" },
     },
@@ -200,9 +201,10 @@ export const DEFAULT_CATEGORIES: FeedbackCategory[] = [
     slug: "soreness",
     type: "scale",
     unit: null,
-    minValue: 1,
+    minValue: 0,
     maxValue: 2,
     scaleLabels: {
+      "0": { de: "Keiner", en: "None" },
       "1": { de: "Leicht", en: "Light" },
       "2": { de: "Stark", en: "Strong" },
     },

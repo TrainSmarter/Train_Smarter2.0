@@ -43,9 +43,27 @@ export function CheckinForm({
 }: CheckinFormProps) {
   const t = useTranslations("feedback");
   const locale = useLocale();
+
+  // Pre-fill scale categories with min=0 as default (e.g. Krankheit=0 means "healthy")
+  // This is only a visual pre-selection — NOT auto-saved until user explicitly changes a value
+  const computeInitialValues = React.useCallback(
+    (existing?: Record<string, { numericValue: number | null; textValue: string | null }>) => {
+      if (existing && Object.keys(existing).length > 0) return existing;
+
+      const defaults: Record<string, { numericValue: number | null; textValue: string | null }> = {};
+      for (const cat of categories) {
+        if (cat.isActive && cat.type === "scale" && cat.minValue === 0) {
+          defaults[cat.id] = { numericValue: 0, textValue: null };
+        }
+      }
+      return defaults;
+    },
+    [categories]
+  );
+
   const [values, setValues] = React.useState<
     Record<string, { numericValue: number | null; textValue: string | null }>
-  >(existingValues ?? {});
+  >(() => computeInitialValues(existingValues));
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
   const [errorFields, setErrorFields] = React.useState<Set<string>>(new Set());
 
@@ -56,12 +74,18 @@ export function CheckinForm({
   // Saved indicator timeout
   const savedTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reset values when date or existingValues change
+  // Track the previous date to reset values only when navigating to a different day
+  const prevDateRef = React.useRef(date);
+
+  // Reset values only when the date changes (not when existingValues update from autosave)
   React.useEffect(() => {
-    setValues(existingValues ?? {});
-    setSaveStatus("idle");
-    setErrorFields(new Set());
-  }, [date, existingValues]);
+    if (date !== prevDateRef.current) {
+      prevDateRef.current = date;
+      setValues(computeInitialValues(existingValues));
+      setSaveStatus("idle");
+      setErrorFields(new Set());
+    }
+  }, [date, existingValues, computeInitialValues]);
 
   // Cleanup timers on unmount
   React.useEffect(() => {
@@ -190,9 +214,9 @@ export function CheckinForm({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
       {/* Save status indicator */}
-      <div className="flex items-center gap-1.5 h-5">
+      <div className="absolute top-0 right-0 flex items-center gap-1.5">
         {saveStatus === "saving" && (
           <>
             <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
@@ -218,6 +242,12 @@ export function CheckinForm({
           const hasError = errorFields.has(cat.id);
 
           if (cat.type === "number") {
+            // Only weight (kg) needs decimal input; all others are integers
+            const needsDecimals = cat.unit === "kg";
+            const inputStep = needsDecimals ? 0.1 : 1;
+            const showStepper = !!cat.unit && ["kg", "kcal", "g", "Anzahl"].includes(cat.unit);
+            const stepperIncrement = cat.unit === "kg" ? 0.1 : 1;
+
             return (
               <NumberInput
                 key={cat.id}
@@ -228,6 +258,9 @@ export function CheckinForm({
                 onBlur={() => handleBlurSave(cat.id)}
                 min={cat.minValue ?? undefined}
                 max={cat.maxValue ?? undefined}
+                step={inputStep}
+                showStepper={showStepper}
+                stepperIncrement={stepperIncrement}
                 required={cat.isRequired}
                 error={hasError ? t("saveFailed") : undefined}
                 placeholder={

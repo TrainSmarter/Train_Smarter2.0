@@ -44,9 +44,8 @@ export function SegmentedControl({
     return locale === "en" ? label.en : label.de;
   };
 
-  // Show labels under first and last step only (for compact display)
-  const firstLabel = getLabel(min);
-  const lastLabel = getLabel(max);
+  // Check if any step has a label
+  const hasAnyLabel = steps.some((step) => getLabel(step) !== null);
 
   return (
     <div className="space-y-1">
@@ -69,32 +68,27 @@ export function SegmentedControl({
               type="button"
               role="radio"
               aria-checked={isSelected}
-              aria-label={stepLabel ?? String(step)}
+              aria-label={stepLabel ? `${step} · ${stepLabel}` : String(step)}
               title={stepLabel ?? undefined}
               disabled={disabled}
               onClick={() => onChange(step)}
               className={cn(
-                "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-sm font-medium transition-all",
+                "flex min-h-[44px] items-center justify-center rounded-md text-sm font-medium transition-all",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                hasAnyLabel ? "min-w-[80px] px-3" : "min-w-[44px]",
                 isSelected
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 disabled && "pointer-events-none"
               )}
             >
-              {step}
+              <span className="text-xs leading-tight text-center">
+                {stepLabel ? `${step} · ${stepLabel}` : step}
+              </span>
             </button>
           );
         })}
       </div>
-      {/* Labels under first and last */}
-      {(firstLabel || lastLabel) && (
-        <div className="flex justify-between px-1">
-          <span className="text-[11px] text-muted-foreground">{firstLabel}</span>
-          {steps.length > 2 && <span />}
-          <span className="text-[11px] text-muted-foreground">{lastLabel}</span>
-        </div>
-      )}
     </div>
   );
 }
