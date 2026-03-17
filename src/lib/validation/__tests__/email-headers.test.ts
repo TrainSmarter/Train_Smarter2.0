@@ -188,3 +188,112 @@ describe.each(EDGE_FUNCTIONS)("$name — DSGVO-compliant logging", ({ name }) =>
     expect(sources[name]).toMatch(/emailHash|to_hash|email_hash/i);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Spam Prevention — Future-Proofing
+// ---------------------------------------------------------------------------
+
+describe.each(EDGE_FUNCTIONS)("$name — Spam Prevention: Header Whitelist", ({ name }) => {
+  // Only these headers are allowed in the headers object passed to client.send()
+  const ALLOWED_HEADERS = [
+    "Message-ID",
+    "X-Entity-Ref-ID",
+    "Feedback-ID",
+    "Reply-To",
+    "Auto-Submitted",
+    "X-Mailer",
+  ];
+
+  it("headers object ONLY contains allowed headers (whitelist check)", () => {
+    expect(sources[name]).toBeDefined();
+    // Extract the headers object from client.send({ ... headers: { ... } })
+    const headersMatch = sources[name].match(
+      /headers\s*:\s*\{([^}]+)\}/
+    );
+    expect(headersMatch).not.toBeNull();
+
+    const headersBlock = headersMatch![1];
+    // Extract all quoted header names from the block
+    const headerNames = [...headersBlock.matchAll(/"([^"]+)"\s*:/g)].map(
+      (m) => m[1]
+    );
+
+    expect(headerNames.length).toBeGreaterThan(0);
+
+    for (const headerName of headerNames) {
+      expect(ALLOWED_HEADERS).toContain(headerName);
+    }
+  });
+});
+
+describe.each(EDGE_FUNCTIONS)("$name — Spam Prevention: Content-Type / multipart", ({ name }) => {
+  it("htmlToPlainText() function exists (required for multipart/alternative)", () => {
+    expect(sources[name]).toBeDefined();
+    expect(sources[name]).toContain("function htmlToPlainText");
+  });
+
+  it("client.send() includes 'content' parameter for plain-text part", () => {
+    expect(sources[name]).toBeDefined();
+    // The send() call must include content: plainText (or similar)
+    const sendMatch = sources[name].match(
+      /client\.send\(\s*\{([\s\S]*?)\}\s*\)/
+    );
+    expect(sendMatch).not.toBeNull();
+
+    const sendBlock = sendMatch![1];
+    // Must have both 'content' and 'html' keys (html may use shorthand syntax: html, instead of html: html)
+    expect(sendBlock).toMatch(/\bcontent\b\s*:/);
+    expect(sendBlock).toMatch(/\bhtml\b\s*[,:]/);
+  });
+
+  it("plainText variable is generated from htmlToPlainText() before sending", () => {
+    expect(sources[name]).toBeDefined();
+    // There should be a call like: const plainText = htmlToPlainText(html)
+    expect(sources[name]).toMatch(/plainText\s*=\s*htmlToPlainText\(/);
+  });
+});
+
+describe.each(EDGE_FUNCTIONS)("$name — Spam Prevention: From Address", ({ name }) => {
+  it("from address uses train-smarter.at domain (via smtpUser)", () => {
+    expect(sources[name]).toBeDefined();
+    // The from field in client.send() should reference smtpUser which is the SMTP_USER env var
+    // The config.toml enforces admin_email = noreply@train-smarter.at
+    // In code: from: `Train Smarter <${smtpUser}>`
+    expect(sources[name]).toMatch(/from\s*:\s*`Train Smarter\s*</);
+  });
+
+  it("from display name is 'Train Smarter' (not empty, not 'no-reply')", () => {
+    expect(sources[name]).toBeDefined();
+    // Must contain the display name "Train Smarter" in the from field
+    expect(sources[name]).toContain("Train Smarter <");
+    // Must NOT use "no-reply" or "noreply" as display name
+    expect(sources[name]).not.toMatch(/from\s*:\s*["`']no-?reply/i);
+  });
+});
+
+describe.each(EDGE_FUNCTIONS)("$name — Spam Prevention: No Tracking Pixels", ({ name }) => {
+  it("source code does NOT contain tracking pixel patterns", () => {
+    expect(sources[name]).toBeDefined();
+    const code = sources[name];
+    // No tracking pixel images
+    expect(code).not.toMatch(/<img[^>]*src="[^"]*track/i);
+    expect(code).not.toMatch(/<img[^>]*1x1/i);
+    expect(code).not.toMatch(/beacon/i);
+    expect(code).not.toMatch(/tracking[_-]?pixel/i);
+    expect(code).not.toMatch(/open[_-]?track/i);
+  });
+});
+
+describe.each(EDGE_FUNCTIONS)("$name — Spam Prevention: Footer Compliance", ({ name }) => {
+  it("templates contain a physical address (Graz or Austria/Oesterreich)", () => {
+    expect(sources[name]).toBeDefined();
+    // Must reference physical location — Graz or Österreich/Austria
+    expect(sources[name]).toMatch(/Graz/);
+    expect(sources[name]).toMatch(/sterreich|Austria/);
+  });
+
+  it("templates contain train-smarter.at domain", () => {
+    expect(sources[name]).toBeDefined();
+    expect(sources[name]).toContain("train-smarter.at");
+  });
+});
