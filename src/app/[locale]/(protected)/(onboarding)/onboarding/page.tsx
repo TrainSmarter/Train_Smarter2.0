@@ -17,7 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 import { profileSchema } from "@/lib/validations/auth";
 import { uploadAvatar } from "@/hooks/use-avatar-upload";
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 3;
 
 export default function OnboardingPage() {
   const t = useTranslations("onboarding");
@@ -46,10 +46,6 @@ export default function OnboardingPage() {
   const [selectedRole, setSelectedRole] = React.useState<RoleValue | null>(null);
   const [isInvitedAthlete, setIsInvitedAthlete] = React.useState(false);
 
-  // Step 4 state
-  const [inviteEmail, setInviteEmail] = React.useState("");
-  const [inviteCode, setInviteCode] = React.useState("");
-
   // Focus management — move focus to step heading on step change
   const stepHeadingRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -57,11 +53,6 @@ export default function OnboardingPage() {
       stepHeadingRef.current.focus();
     }
   }, [currentStep, isLoading]);
-  const [inviteFeedback, setInviteFeedback] = React.useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
-
   // Load user data and onboarding state
   React.useEffect(() => {
     async function loadUserData() {
@@ -91,7 +82,6 @@ export default function OnboardingPage() {
           if (inviteToken) {
             setIsInvitedAthlete(true);
             setSelectedRole("ATHLETE");
-            setInviteCode(inviteToken);
           }
         } catch {
           // No invite token — continue normally
@@ -127,7 +117,6 @@ export default function OnboardingPage() {
     { label: t("step1.title") },
     { label: t("step2.title") },
     { label: t("step3.title") },
-    { label: selectedRole === "TRAINER" ? t("step4.trainerTitle") : t("step4.athleteTitle") },
   ];
 
   function getInitials(): string {
@@ -269,23 +258,12 @@ export default function OnboardingPage() {
             setIsSubmitting(false);
             return;
           }
-
-          // Update onboarding_step
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase
-              .from("profiles")
-              .update({ onboarding_step: 4 })
-              .eq("id", user.id);
-          }
         } catch {
           setError(t("step3.roleSaveError"));
           setIsSubmitting(false);
           return;
         }
 
-        setCurrentStep(4);
-      } else if (currentStep === 4) {
         // Finish onboarding — set onboarding_completed in app_metadata (server-only, not bypassable)
         try {
           const { data: { user } } = await supabase.auth.getUser();
@@ -294,18 +272,18 @@ export default function OnboardingPage() {
               .from("profiles")
               .update({
                 onboarding_completed: true,
-                onboarding_step: 4,
+                onboarding_step: 3,
               })
               .eq("id", user.id);
           }
 
           // Set app_metadata.onboarding_completed via service-role key
-          const response = await fetch("/api/auth/complete-onboarding", {
+          const completeResponse = await fetch("/api/auth/complete-onboarding", {
             method: "POST",
           });
 
-          if (!response.ok) {
-            console.error("complete-onboarding failed:", await response.text());
+          if (!completeResponse.ok) {
+            console.error("complete-onboarding failed:", await completeResponse.text());
           }
 
           // Refresh session so middleware reads updated JWT before redirect
@@ -355,14 +333,11 @@ export default function OnboardingPage() {
         // Continue even if DB write fails
       }
       setCurrentStep(3);
-    } else if (currentStep === 4) {
-      // Finish onboarding when skipping step 4
-      handleNext();
     }
     // Step 1 and 3 are NOT skippable
   }
 
-  const canSkip = currentStep === 2 || currentStep === 4;
+  const canSkip = currentStep === 2;
   const canGoBack = currentStep > 1;
   const isLastStep = currentStep === TOTAL_STEPS;
 
@@ -395,19 +370,11 @@ export default function OnboardingPage() {
             {currentStep === 1 && t("step1.title")}
             {currentStep === 2 && t("step2.title")}
             {currentStep === 3 && t("step3.title")}
-            {currentStep === 4 &&
-              (selectedRole === "TRAINER"
-                ? t("step4.trainerTitle")
-                : t("step4.athleteTitle"))}
           </CardTitle>
           <CardDescription>
             {currentStep === 1 && t("step1.subtitle")}
             {currentStep === 2 && t("step2.subtitle")}
             {currentStep === 3 && t("step3.subtitle")}
-            {currentStep === 4 &&
-              (selectedRole === "TRAINER"
-                ? t("step4.trainerSubtitle")
-                : t("step4.athleteSubtitle"))}
           </CardDescription>
         </CardHeader>
 
@@ -545,67 +512,6 @@ export default function OnboardingPage() {
                 selected={selectedRole === "ATHLETE"}
                 onSelect={setSelectedRole}
               />
-            </div>
-          )}
-
-          {/* Step 4: Invite (Trainer) or Code (Athlete) */}
-          {currentStep === 4 && (
-            <div className="space-y-4">
-              {selectedRole === "TRAINER" && (
-                <>
-                  <FormField
-                    label={t("step4.inviteEmail")}
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) =>
-                      setInviteEmail((e.target as HTMLInputElement).value)
-                    }
-                    placeholder={t("step4.inviteEmailPlaceholder")}
-                    autoComplete="email"
-                  />
-                  {inviteFeedback && (
-                    <Alert
-                      variant={
-                        inviteFeedback.type === "error"
-                          ? "destructive"
-                          : "default"
-                      }
-                      role="alert"
-                    >
-                      <AlertDescription>
-                        {inviteFeedback.message}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </>
-              )}
-
-              {selectedRole === "ATHLETE" && (
-                <>
-                  <FormField
-                    label={t("step4.inviteCode")}
-                    value={inviteCode}
-                    onChange={(e) =>
-                      setInviteCode((e.target as HTMLInputElement).value)
-                    }
-                    placeholder={t("step4.inviteCodePlaceholder")}
-                  />
-                  {inviteFeedback && (
-                    <Alert
-                      variant={
-                        inviteFeedback.type === "error"
-                          ? "destructive"
-                          : "default"
-                      }
-                      role="alert"
-                    >
-                      <AlertDescription>
-                        {inviteFeedback.message}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </>
-              )}
             </div>
           )}
 
