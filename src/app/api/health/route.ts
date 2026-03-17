@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { env } from "@/lib/env";
 
 /**
  * GET /api/health
@@ -57,17 +58,7 @@ export async function GET(request: Request) {
     }
 
     // ── Create admin client with service role key ──
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-    if (!serviceRoleKey || !supabaseUrl) {
-      return NextResponse.json(
-        { error: "Server configuration error: missing Supabase credentials" },
-        { status: 500 }
-      );
-    }
-
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
+    const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
@@ -90,7 +81,7 @@ export async function GET(request: Request) {
     checks.push(await checkFkIntegrity(admin));
 
     // 6. Edge Functions deployed
-    checks.push(await checkEdgeFunctions(supabaseUrl, serviceRoleKey));
+    checks.push(await checkEdgeFunctions(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY));
 
     // 7. Feedback categories seed data
     checks.push(await checkFeedbackCategories(admin));

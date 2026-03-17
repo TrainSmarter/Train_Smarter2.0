@@ -55,6 +55,8 @@ interface AthleteDetailViewProps {
   checkinHistory: CheckinEntry[];
   hasMoreHistory: boolean;
   categories: ActiveCategory[];
+  /** Whether the athlete has granted body_wellness_data consent */
+  hasBodyWellnessConsent: boolean;
 }
 
 export function AthleteDetailView({
@@ -63,6 +65,7 @@ export function AthleteDetailView({
   checkinHistory,
   hasMoreHistory,
   categories,
+  hasBodyWellnessConsent,
 }: AthleteDetailViewProps) {
   const t = useTranslations("feedback");
   const locale = useLocale();
@@ -208,6 +211,15 @@ export function AthleteDetailView({
           {t("manageCategories")}
         </Button>
       </div>
+
+      {/* DSGVO consent warning */}
+      {!hasBodyWellnessConsent && (
+        <div className="rounded-lg border border-warning/50 bg-warning/10 p-4">
+          <p className="text-sm text-warning-foreground">
+            {t("consentRevokedTrainer")}
+          </p>
+        </div>
+      )}
 
       {/* Time Range Selector */}
       <div className="flex items-center gap-2">

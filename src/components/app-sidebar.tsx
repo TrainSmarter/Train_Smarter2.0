@@ -5,6 +5,7 @@ import { Dumbbell, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslations } from "next-intl";
 
+import { Link } from "@/i18n/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -32,6 +33,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const isCollapsed = state === "collapsed";
   const isMobile = useIsMobile();
   const t = useTranslations("sidebar");
+  const tFooter = useTranslations("footer");
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -83,6 +85,32 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
             </SidebarMenu>
             <SidebarSeparator />
           </>
+        )}
+        {/* Legal links */}
+        {!isCollapsed && (
+          <nav
+            aria-label={t("legalLinks")}
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pb-2"
+          >
+            <Link
+              href="/datenschutz"
+              className="text-xs text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors"
+            >
+              {tFooter("privacy")}
+            </Link>
+            <Link
+              href="/impressum"
+              className="text-xs text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors"
+            >
+              {tFooter("imprint")}
+            </Link>
+            <Link
+              href="/agb"
+              className="text-xs text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors"
+            >
+              {tFooter("terms")}
+            </Link>
+          </nav>
         )}
         {user && <SidebarFooterUser user={user} />}
       </SidebarFooter>

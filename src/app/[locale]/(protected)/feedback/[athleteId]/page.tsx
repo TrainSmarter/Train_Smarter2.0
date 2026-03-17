@@ -3,10 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { toAuthUser } from "@/lib/mock-session";
 import { AthleteDetailView } from "@/components/feedback/athlete-detail-view";
 import {
-  getMonitoringOverview,
   getAthleteTrendData,
   getCheckinHistory,
-  getActiveCategories,
+  getAthleteDetail,
 } from "@/lib/feedback/queries";
 import { redirect } from "@/i18n/navigation";
 
@@ -46,30 +45,29 @@ export default async function AthleteDetailPage({
     return null;
   }
 
-  // Get overview to find the athlete summary
-  const overview = await getMonitoringOverview(authUser.id);
-  const athlete = overview.athletes.find((a) => a.athleteId === athleteId);
+  // Get athlete detail with DSGVO consent check
+  const detail = await getAthleteDetail(authUser.id, athleteId);
 
-  if (!athlete) {
+  if (!detail || !detail.athlete) {
     // Athlete not found or not connected
     redirect({ href: "/feedback", locale });
     return null;
   }
 
-  // Get trend data, history, and categories
-  const [trendData, { entries: checkinHistory, hasMore }, categories] = await Promise.all([
+  // Get trend data and history (both respect DSGVO consent internally)
+  const [trendData, { entries: checkinHistory, hasMore }] = await Promise.all([
     getAthleteTrendData(athleteId, "30"),
     getCheckinHistory(athleteId, { limit: 20 }),
-    getActiveCategories(athleteId),
   ]);
 
   return (
     <AthleteDetailView
-      athlete={athlete}
+      athlete={detail.athlete}
       trendData={trendData}
       checkinHistory={checkinHistory}
       hasMoreHistory={hasMore}
-      categories={categories}
+      categories={detail.categories}
+      hasBodyWellnessConsent={detail.hasBodyWellnessConsent}
     />
   );
 }

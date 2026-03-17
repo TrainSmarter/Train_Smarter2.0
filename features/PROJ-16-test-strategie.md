@@ -811,17 +811,10 @@ Reihenfolge die den höchsten ROI liefert:
 
 ### Bugs Found
 
-#### BUG-5: env.ts is dead code -- never imported anywhere (REOPENED from BUG-1)
+#### BUG-5: env.ts is dead code -- never imported anywhere (REOPENED from BUG-1) — FIXED (2026-03-17)
 - **Severity:** High
-- **Steps to Reproduce:**
-  1. Run: `grep -r "from.*@/lib/env\|import.*env.*from" src/` -- zero results
-  2. `src/lib/env.ts` exists with correct validation, but no file imports it
-  3. `src/lib/supabase/client.ts` line 5-6 still use `process.env.NEXT_PUBLIC_SUPABASE_URL!`
-  4. `src/lib/supabase/server.ts` line 8-9 still use `process.env.NEXT_PUBLIC_SUPABASE_URL!`
-  5. `src/lib/supabase/middleware.ts` line 10-11 still use `process.env.NEXT_PUBLIC_SUPABASE_URL!`
-  6. Expected: All Supabase client files import from `@/lib/env` and use `env.NEXT_PUBLIC_SUPABASE_URL`
-  7. Actual: env.ts is unreachable code providing zero protection
-- **Priority:** Fix before deployment -- this defeats the purpose of AC-1 and AC-2
+- **Status:** FIXED
+- **Fix:** All remaining `process.env` usages in API routes (`health`, `set-role`, `delete-account`, `complete-onboarding`) replaced with `import { env } from "@/lib/env"`. Supabase client files were already migrated. The env validation module now provides runtime protection across the entire codebase.
 
 #### BUG-6: Overall test coverage far below spec targets
 - **Severity:** Medium
@@ -850,14 +843,10 @@ Reihenfolge die den höchsten ROI liefert:
   3. An attacker can bypass rate limits by hitting different instances
 - **Priority:** Nice to have -- acceptable for MVP, document for future improvement with Upstash/KV
 
-#### BUG-9: Hardcoded test credentials in source code
+#### BUG-9: Hardcoded test credentials in source code — FIXED (2026-03-17)
 - **Severity:** Medium
-- **Steps to Reproduce:**
-  1. Open `tests/e2e/fixtures/auth.setup.ts`
-  2. Lines 3-6 contain hardcoded email/password fallbacks
-  3. `TestTrainer123!` and `TestAthlete123!` are committed to git in plain text
-  4. If these are real Supabase accounts, an attacker with repo access can authenticate
-- **Priority:** Fix before deployment -- remove hardcoded password fallbacks, require env vars
+- **Status:** FIXED
+- **Fix:** Removed all hardcoded fallback credentials from `auth.setup.ts`. All 4 env vars (`E2E_TRAINER_EMAIL`, `E2E_TRAINER_PASSWORD`, `E2E_ATHLETE_EMAIL`, `E2E_ATHLETE_PASSWORD`) are now required. Missing credentials throw a clear error at module load time.
 
 #### BUG-10: CI workflow does not post coverage report as PR comment
 - **Severity:** Low
@@ -881,7 +870,7 @@ Reihenfolge die den höchsten ROI liefert:
 
 | Phase | AC Passed | AC Total | Status |
 |-------|-----------|----------|--------|
-| Phase 1: Sofort-Massnahmen | 5 | 6 | BUG-5 blocks AC-2 |
+| Phase 1: Sofort-Massnahmen | 6 | 6 | BUG-5 FIXED (2026-03-17) |
 | Phase 2: Unit Tests | 3 | 4 | Coverage breadth below target |
 | Phase 3: E2E Tests | 4 | 4 | Complete |
 | Phase 4: CI/CD + Email Tests | 5 | 7 | Branch protection missing, secrets unverifiable |

@@ -2,7 +2,7 @@
 
 ## Status: Deployed
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-15
+**Last Updated:** 2026-03-17 (BUG-1 sidebar links fixed)
 
 ## Dependencies
 - Requires: PROJ-1 (Design System Foundation)
@@ -224,7 +224,7 @@ Append-only: keine UPDATE-Operationen auf bestehende Zeilen
 - [x] Datenschutzerklaerung documents: data categories, purpose, legal basis, storage duration, processors (Supabase/Vercel EU-DPA), rights, contact DSB -- all present in de.json
 - [x] All three pages statically rendered (SSG) -- no DB calls, server components with getTranslations only
 - [x] Middleware correctly identifies /datenschutz, /impressum, /agb as PUBLIC_ROUTES -- no auth redirect
-- [ ] BUG-1: No footer links to legal pages in the **main app sidebar/shell** for logged-in users (spec says "App-Footer")
+- [x] ~~BUG-1:~~ **FIXED (2026-03-17):** Legal links (Datenschutz, Impressum, AGB) added to sidebar footer for logged-in users
 
 #### AC-2: Einwilligungs-Management (Onboarding -- PROJ-4 Integration)
 - [x] New mandatory step in onboarding wizard: Step 1 is consents
@@ -377,13 +377,10 @@ Since these are primarily server-rendered legal pages and a standard form-based 
 
 ### Bugs Found
 
-#### BUG-1: No legal links in main app footer/sidebar
+#### BUG-1: No legal links in main app footer/sidebar — FIXED (2026-03-17)
 - **Severity:** Low
-- **Steps to Reproduce:**
-  1. Log in and navigate to any protected page (e.g., /dashboard)
-  2. Expected: Footer or sidebar contains links to Datenschutz, Impressum, AGB
-  3. Actual: No legal links visible in the main app shell (only in auth and legal layouts)
-- **Priority:** Fix in next sprint (DSGVO recommends easy access to privacy policy from all pages)
+- **Status:** FIXED
+- **Fix:** Legal links (Datenschutz, Impressum, AGB) added to app-sidebar.tsx footer using locale-aware Link from @/i18n/navigation
 
 #### BUG-2: Onboarding consent links miss locale prefix
 - **Severity:** Medium
@@ -556,7 +553,7 @@ Die folgenden Punkte sind nicht deployment-blockierend, müssen aber nachgearbei
 #### Eigene Aufgaben (PROJ-11 Scope)
 - [x] ~~**BUG-11 (High):**~~ **FIXED (2026-03-16):** cleanup_pending_deletions() + pg_cron job deployed
 - [ ] **BUG-14 (Low):** Policy-Version Re-Consent — Mechanismus der bei Policy-Update (v1.0 → v2.0) beim nächsten Login zur erneuten Zustimmung auffordert
-- [ ] **BUG-1 (Low):** Footer mit Legal-Links auch im geschützten App-Shell (Sidebar oder Footer) — nicht nur in Auth/Legal Layouts
+- [x] ~~**BUG-1 (Low):**~~ **FIXED (2026-03-17):** Footer mit Legal-Links im Sidebar implementiert
 - [ ] **BUG-6 (Low):** README.txt im Export ergänzen, die die Datenstruktur erklärt
 - [ ] **BUG-10 (Low):** Aktive JWT-Sessions explizit invalidieren bei Account-Löschung (aktuell nur Ban → Token läuft natürlich ab)
 - [ ] **BUG-16/17 (Low):** Rate-Limiting auf `/api/gdpr/consents` und `/api/gdpr/delete-account` (Vercel KV oder Supabase-basiert)
