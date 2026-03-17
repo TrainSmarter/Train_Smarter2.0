@@ -299,6 +299,7 @@
       "genericError": "Ein Fehler ist aufgetreten. Bitte versuche es erneut.",
       "networkError": "Verbindung fehlgeschlagen. Bitte prüfe deine Internetverbindung.",
       "rateLimited": "Zu viele Anmeldeversuche. Bitte warte eine Minute.",
+      "userBanned": "Dein Konto wurde gesperrt. Bitte kontaktiere den Support.",
       "emailConfirmed": "Deine E-Mail-Adresse wurde erfolgreich bestätigt. Du kannst dich jetzt anmelden."
     },
     "register": {
@@ -324,6 +325,7 @@
       "passwordNumber": "Mind. 1 Zahl erforderlich.",
       "invalidName": "Bitte gib einen gültigen Namen ein.",
       "genericError": "Die Registrierung ist fehlgeschlagen. Bitte versuche es erneut.",
+      "weakPassword": "Das Passwort ist zu schwach. Verwende mind. 8 Zeichen, 1 Großbuchstabe und 1 Zahl.",
       "rateLimited": "Zu viele Anfragen. Bitte warte eine Minute und versuche es erneut.",
       "success": "Registrierung erfolgreich! Bitte prüfe dein E-Mail-Postfach."
     },
@@ -354,6 +356,8 @@
       "passwordsMustMatch": "Passwörter stimmen nicht überein.",
       "success": "Passwort erfolgreich zurückgesetzt. Du wirst zum Login weitergeleitet.",
       "genericError": "Ein Fehler ist aufgetreten. Bitte versuche es erneut.",
+      "samePasswordError": "Das neue Passwort darf nicht mit dem aktuellen übereinstimmen.",
+      "weakPasswordError": "Das Passwort ist zu schwach. Verwende mind. 8 Zeichen, 1 Großbuchstabe und 1 Zahl.",
       "linkExpired": "Dieser Link ist abgelaufen.",
       "linkExpiredAction": "Neuen Link anfordern",
       "processing": "Wird verarbeitet...",

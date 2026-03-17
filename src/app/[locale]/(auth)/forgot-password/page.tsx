@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
 
       if (authError) {
         // Rate limit: show specific error (safe to reveal — not account-specific)
-        if (authError.code === "over_email_send_rate_limit" || authError.message?.includes("rate")) {
+        if (authError.code === "over_email_send_rate_limit" || authError.code === "too_many_requests" || authError.message?.includes("rate")) {
           setError(t("rateLimited"));
           setIsSubmitting(false);
           return;

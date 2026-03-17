@@ -83,11 +83,13 @@ export default function RegisterPage() {
       });
 
       if (authError) {
-        if (authError.code === "over_email_send_rate_limit" || authError.message?.includes("rate")) {
+        if (authError.code === "over_email_send_rate_limit" || authError.code === "too_many_requests" || authError.message?.includes("rate")) {
           // The confirmation email was already sent — redirect to verify-email
           // so the user can check their inbox or resend from there
           window.location.href = `/${currentLocale}/verify-email?email=${encodeURIComponent(data.email)}`;
           return;
+        } else if (authError.code === "weak_password" || authError.message?.includes("weak")) {
+          setError(t("weakPassword"));
         } else {
           setError(t("genericError"));
         }

@@ -299,6 +299,7 @@
       "genericError": "An error occurred. Please try again.",
       "networkError": "Connection failed. Please check your internet connection.",
       "rateLimited": "Too many sign-in attempts. Please wait a minute.",
+      "userBanned": "Your account has been suspended. Please contact support.",
       "emailConfirmed": "Your email address has been confirmed successfully. You can now sign in."
     },
     "register": {
@@ -324,6 +325,7 @@
       "passwordNumber": "At least 1 number required.",
       "invalidName": "Please enter a valid name.",
       "genericError": "Registration failed. Please try again.",
+      "weakPassword": "Password is too weak. Use at least 8 characters, 1 uppercase letter and 1 number.",
       "rateLimited": "Too many requests. Please wait a minute and try again.",
       "success": "Registration successful! Please check your inbox."
     },
@@ -354,6 +356,8 @@
       "passwordsMustMatch": "Passwords do not match.",
       "success": "Password successfully reset. Redirecting to login.",
       "genericError": "An error occurred. Please try again.",
+      "samePasswordError": "The new password must be different from your current password.",
+      "weakPasswordError": "Password is too weak. Use at least 8 characters, 1 uppercase letter and 1 number.",
       "linkExpired": "This link has expired.",
       "linkExpiredAction": "Request new link",
       "processing": "Processing...",

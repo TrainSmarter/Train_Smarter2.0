@@ -65,9 +65,11 @@ export default function LoginPage() {
           return;
         }
 
-        if (authError.message === "Invalid login credentials") {
+        if (authError.code === "user_banned") {
+          setError(t("userBanned"));
+        } else if (authError.message === "Invalid login credentials") {
           setError(t("invalidCredentials"));
-        } else if (authError.code === "over_request_rate_limit" || authError.message?.includes("rate")) {
+        } else if (authError.code === "over_request_rate_limit" || authError.code === "too_many_requests" || authError.message?.includes("rate")) {
           setError(t("rateLimited"));
         } else {
           setError(t("genericError"));

@@ -41,7 +41,7 @@ export default function VerifyEmailPage() {
     });
 
     if (error) {
-      if (error.message?.includes("rate") || error.code === "over_email_send_rate_limit") {
+      if (error.message?.includes("rate") || error.code === "over_email_send_rate_limit" || error.code === "too_many_requests") {
         setFeedback({ type: "error", message: t("rateLimitedCheckSpam") });
       } else {
         setFeedback({ type: "error", message: t("resendError") });

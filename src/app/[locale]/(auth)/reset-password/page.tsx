@@ -131,7 +131,14 @@ export default function ResetPasswordPage() {
       });
 
       if (updateError) {
-        setError(t("genericError"));
+        const code = (updateError as unknown as { code?: string }).code;
+        if (code === "same_password") {
+          setError(t("samePasswordError"));
+        } else if (code === "weak_password" || updateError.message?.includes("weak")) {
+          setError(t("weakPasswordError"));
+        } else {
+          setError(t("genericError"));
+        }
         setIsSubmitting(false);
         return;
       }
