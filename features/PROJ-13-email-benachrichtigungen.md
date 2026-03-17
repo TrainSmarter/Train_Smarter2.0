@@ -2,14 +2,70 @@
 
 ## Status: Deployed
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-16 (Hotfix: send-auth-email 500-Fehler bei Registrierung)
+**Last Updated:** 2026-03-17 (Major: Email Deliverability Fix — Gmail Inbox, DKIM pass, Spam-Headers entfernt)
 
 ## Deployment
 - **Production URL:** https://www.train-smarter.at
-- **Deployed:** 2026-03-15 (initial), 2026-03-16 (hotfix v11)
-- **Edge Function:** `send-auth-email` deployed to Supabase (v11, ACTIVE — inline templates)
-- **Edge Function:** `send-invitation-email` deployed to Supabase (v5, ACTIVE — inline templates)
+- **Deployed:** 2026-03-15 (initial), 2026-03-16 (hotfixes v11-v20), 2026-03-17 (deliverability fix v23)
+- **Edge Function:** `send-auth-email` deployed to Supabase (v23, ACTIVE — via MCP deploy)
+- **Edge Function:** `send-invitation-email` deployed to Supabase (v15, ACTIVE — via MCP deploy)
 - **Vercel:** Auto-deployed from main branch
+- **WICHTIG:** Edge Functions MÜSSEN über Supabase MCP deployed werden, NICHT via CLI auf Windows (siehe Hotfix 2026-03-17)
+
+## Hotfix 2026-03-17: Email Deliverability — Gmail Inbox, kein Spam mehr
+
+**Problem:** Emails landeten bei GMX im Spam, bei Gmail kamen sie zeitweise gar nicht an. Mail-Tester Score war niedrig.
+
+**Root Causes (7 Bugs identifiziert und behoben):**
+
+### BUG 1: Fake Microsoft Outlook Headers (KRITISCHSTER SPAM-TRIGGER)
+- Die `denomailer@1.6.0` Library injiziert automatisch fake Headers:
+  - `X-Mailer: Microsoft Outlook 16.0`
+  - `Thread-Index: ...` (Outlook-spezifisch)
+  - `X-OlkEid: ...` (Outlook-spezifisch)
+- **Auswirkung:** Phishing-Erkennung bei Spam-Filtern — Email behauptet von Outlook zu kommen, wird aber von einem Server gesendet
+- **Fix:** `X-Mailer` wird mit `Train Smarter Mailer 1.0` überschrieben
+
+### BUG 2: List-Unsubscribe auf Transaktions-Emails
+- `List-Unsubscribe` und `List-Unsubscribe-Post` Headers waren auf Confirmation/Recovery/etc. gesetzt
+- **Auswirkung:** Signalisiert "Marketing-Email" → Spam-Filter stuft als Bulk-Mail ein
+- **Fix:** Beide Headers entfernt, stattdessen `Auto-Submitted: auto-generated` gesetzt
+
+### BUG 3: Config Push überschreibt Produktions-Secrets
+- `npx supabase config push` ohne gesetzte Env-Vars (`SEND_EMAIL_HOOK_SECRET`, `SMTP_PASS`) überschreibt die echten Secrets mit Platzhaltern
+- **Auswirkung:** Auth Hook wird deaktiviert (Secret ungültig), SMTP-Passwort kaputt → KEINE Emails mehr
+- **Fix:** Validierungs-Scripts (`scripts/validate-config.sh`), Tests in `email-config.test.ts`, Deployment-Rules in `.claude/rules/email-deployment.md`
+- **REGEL:** NIEMALS `config push` ohne SEND_EMAIL_HOOK_SECRET und SMTP_PASS Env-Vars!
+
+### BUG 4: Windows CLI Deployment erzeugt ungültige Pfade
+- `npx supabase functions deploy` von Windows erstellt Entrypoint-Pfade mit Backslashes (`c:\\tmp\\...`)
+- Supabase Runtime ist Linux → Datei wird nicht gefunden → Edge Function crasht beim Boot
+- **Auswirkung:** Edge Function wird aufgerufen aber crasht sofort → Auth Hook bekommt 500 → keine Emails
+- **Fix:** Deployment NUR über Supabase MCP `deploy_edge_function` Tool (erzeugt korrekte `file:///tmp/.../index.ts` Pfade)
+- **REGEL:** NIEMALS Edge Functions via CLI auf Windows deployen — IMMER MCP verwenden!
+
+### BUG 5: DMARC p=quarantine auf neuer Domain
+- `p=quarantine` bei einer frischen Domain ohne etablierte Reputation → sofortige Spam-Klassifizierung
+- **Fix:** DNS geändert zu `p=none` bis Reputation aufgebaut ist
+- **Aktueller DMARC:** `v=DMARC1; p=none; rua=mailto:office@train-smarter.at; aspf=r; adkim=r;`
+
+### BUG 6: SPF ~all statt -all
+- `~all` (Softfail) statt `-all` (Hardfail) reduziert Trust-Score
+- **Fix:** DNS geändert zu `v=spf1 include:webgo.de mx -all`
+
+### BUG 7: max_frequency zu aggressiv
+- `max_frequency = "1s"` erlaubte Rapid-Fire Emails → IP-Reputation beschädigt
+- `max_frequency = "60s"` verursachte UX-Probleme bei wiederholten Registrierungsversuchen
+- **Fix:** `max_frequency = "30s"` als Kompromiss (in config.toml)
+
+**Ergebnis nach Fix:**
+- **Gmail:** `dkim=pass`, `spf=pass`, `dmarc=pass (p=NONE)` → **INBOX** (kein Spam!)
+- **GMX:** `dkim=pass` → temporär noch Spam (Domain-Reputation braucht 24-48h)
+- **Mail-Tester Score:** 8/10
+
+**Test-Absicherung:** 54 Tests in 3 Dateien + 3 Deployment-Safeguard-Scripts (Commit `58b539b`)
+
+---
 
 ## Hotfix 2026-03-16: Signup 500-Fehler behoben
 
@@ -69,11 +125,15 @@ Vollständige E-Mail-Infrastruktur für alle Transaktions-Mails der App. Umfasst
 ## Acceptance Criteria
 
 ### E-Mail-Infrastruktur Setup
-- [ ] Supabase Custom SMTP konfiguriert: Webgo SMTP-Server, Port 587 (TLS), noreply@train-smarter.at
-- [ ] SPF-Eintrag für train-smarter.at DNS gesetzt (verhindert Spam-Klassifizierung)
-- [ ] DKIM-Signatur konfiguriert (Webgo Hosting Panel → E-Mail-Authentifizierung)
-- [ ] Test-E-Mail erfolgreich zugestellt (kein Spam-Ordner)
-- [ ] Alle E-Mails haben korrekte Headers: From, Reply-To, List-Unsubscribe (für transaktionale Mails optional)
+- [x] Supabase Custom SMTP konfiguriert: Webgo SMTP-Server `s306.goserver.host`, Port 465 (TLS), `noreply@train-smarter.at`
+- [x] SPF-Eintrag gesetzt: `v=spf1 include:webgo.de mx -all` (Hardfail)
+- [x] DKIM-Signatur konfiguriert und verifiziert: `dkim=pass header.i=@train-smarter.at` (bestätigt durch Gmail + GMX)
+- [x] DMARC konfiguriert: `v=DMARC1; p=none; rua=mailto:office@train-smarter.at; aspf=r; adkim=r;`
+- [x] Test-E-Mail erfolgreich zugestellt: Gmail INBOX (kein Spam), Mail-Tester Score 8/10
+- [x] Korrekte Headers: `From`, `Reply-To`, `Auto-Submitted: auto-generated`, `X-Mailer: Train Smarter Mailer 1.0`, `Feedback-ID`
+- [x] KEINE Marketing-Headers auf Transaktions-Mails: kein `List-Unsubscribe`, kein `List-Unsubscribe-Post`, kein `Precedence: bulk`
+- [x] Auth Hook Secret und SMTP-Passwort korrekt in Supabase Auth Config + Edge Function Secrets
+- [x] 54 automatisierte Tests sichern Email-Deliverability ab (Header-Validierung, Config-Checks, DNS-Prüfung)
 
 ### Supabase Auth E-Mails (via Custom SMTP)
 - [ ] **Registrierung / E-Mail-Bestätigung:** Betreff „Bitte bestätige deine E-Mail-Adresse — Train Smarter", Absender noreply@train-smarter.at
@@ -132,13 +192,20 @@ Vollständige E-Mail-Infrastruktur für alle Transaktions-Mails der App. Umfasst
 - E-Mail-Versand für gelöschten Account → Systemprüfung: keine E-Mail an bereits gelöschte Adressen
 
 ## Technical Requirements
-- Infrastructure: Webgo SMTP (train-smarter.at Hosting) als primärer Mail-Provider
-- Integration: Supabase Custom SMTP für alle Auth-E-Mails (Registrierung, Passwort-Reset, E-Mail-Änderung)
-- Integration: Supabase Edge Function für App-Events-E-Mails (Einladungen, Export, Verbindungen)
-- Security: SMTP-Credentials als Umgebungsvariablen (nie im Code), in Supabase Secrets + Vercel Env gespeichert
-- Deliverability: SPF + DKIM konfiguriert für train-smarter.at
-- Logging: Alle versandten E-Mails werden mit Timestamp, Empfänger-Hash (kein Klartext), Typ und Erfolg/Fehler geloggt
-- Rate-Limiting: Supabase Auth hat built-in Rate-Limits für Auth-E-Mails; App-E-Mails haben eigenes Rate-Limit pro User pro Event-Typ
+- **Infrastructure:** Webgo SMTP (`s306.goserver.host:465`, TLS) als primärer Mail-Provider
+- **Auth-Emails:** Supabase Auth Hook (`send_email`) ruft Edge Function `send-auth-email` auf → SMTP-Versand
+- **App-Emails:** Edge Function `send-invitation-email` für Athleten-Einladungen → SMTP-Versand
+- **Security:** SMTP-Credentials als Supabase Secrets (nie im Code), Hook-Secret als `env(SEND_EMAIL_HOOK_SECRET)` in config.toml
+- **Deliverability (verifiziert 2026-03-17):**
+  - SPF: `v=spf1 include:webgo.de mx -all` (Hardfail) → `spf=pass`
+  - DKIM: `dkim._domainkey.train-smarter.at` via Webgo → `dkim=pass`
+  - DMARC: `p=none` (neue Domain, Reputation aufbauen) → `dmarc=pass`
+  - X-Mailer: `Train Smarter Mailer 1.0` (denomailer Default MUSS überschrieben werden!)
+  - Keine Marketing-Headers (List-Unsubscribe) auf Transaktions-Mails
+- **Logging:** DSGVO-konform — SHA-256 Hash des Empfängers, kein Klartext, Typ + Locale + Erfolg/Fehler
+- **Rate-Limiting:** `max_frequency = "30s"` in Supabase Auth Config
+- **Deployment:** Edge Functions NUR über Supabase MCP deployen (Windows CLI erzeugt ungültige Pfade!)
+- **Tests:** 54 automatisierte Tests (email-config, email-headers, dns-config) + 3 Deployment-Safeguard-Scripts
 
 ## E-Mail-Übersicht (alle Templates)
 
@@ -226,15 +293,22 @@ Vollständige E-Mail-Infrastruktur für alle Transaktions-Mails der App. Umfasst
 - Wählt Template + Betreff in der richtigen Sprache
 - Versendet via SMTP
 
-**Template-Struktur:**
+**Template-Struktur (INLINE — kein Dateisystem in Edge Functions!):**
 ```
-supabase/templates/
-├── confirmation_de.html / confirmation_en.html
-├── recovery_de.html / recovery_en.html
-├── invite_de.html / invite_en.html
-├── magic_link_de.html / magic_link_en.html
-└── email_change_de.html / email_change_en.html
+supabase/functions/send-auth-email/index.ts
+  └── TEMPLATES Record mit Inline-HTML:
+      ├── confirmation_de / confirmation_en
+      ├── recovery_de / recovery_en
+      ├── invite_de / invite_en
+      ├── magic_link_de / magic_link_en
+      └── email_change_de / email_change_en
+
+supabase/functions/send-invitation-email/index.ts
+  └── TEMPLATES Record mit Inline-HTML:
+      ├── de (Athleten-Einladung)
+      └── en (Athlete Invitation)
 ```
+**REGEL:** Deno.readTextFile() funktioniert NICHT in deployed Edge Functions — Templates IMMER inline!
 
 **Ablauf:** Registrierung (URL-Locale) → `profiles.locale` → Auth Hook liest locale → Template-Auswahl → SMTP-Versand
 
