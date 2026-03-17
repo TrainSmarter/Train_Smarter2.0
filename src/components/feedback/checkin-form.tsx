@@ -196,14 +196,8 @@ export function CheckinForm({
     );
   }
 
-  // Separate categories by type for grouped rendering
+  // Separate categories by type
   const numberCategories = activeCategories.filter((c) => c.type === "number");
-  const macroSlugs = new Set(["carbs", "protein", "fat", "kohlenhydrate", "eiweiss", "fett"]);
-  const macroCategories = numberCategories.filter(
-    (c) => c.unit === "g" && (macroSlugs.has(c.slug) || c.slug === "carbs" || c.slug === "protein" || c.slug === "fat")
-  );
-  const macroCatIds = new Set(macroCategories.map((c) => c.id));
-  const mainNumberCategories = numberCategories.filter((c) => !macroCatIds.has(c.id));
   const scaleCategories = activeCategories.filter((c) => c.type === "scale");
   const textCategories = activeCategories.filter((c) => c.type === "text");
 
@@ -219,9 +213,9 @@ export function CheckinForm({
   return (
     <div className="space-y-4">
       {/* Number fields — compact inline strips in a shared card */}
-      {mainNumberCategories.length > 0 && (
+      {numberCategories.length > 0 && (
         <div className="rounded-xl border border-border/50 bg-card overflow-hidden divide-y divide-border/30">
-          {mainNumberCategories.map((cat) => {
+          {numberCategories.map((cat) => {
             const name = locale === "en" ? cat.name.en : cat.name.de;
             const val = values[cat.id];
             const needsDecimals = cat.unit === "kg";
@@ -229,7 +223,7 @@ export function CheckinForm({
 
             return (
               <div key={cat.id} className="flex items-center justify-between px-4 py-3 transition-colors focus-within:bg-muted/30">
-                <div className="flex items-center gap-1.5 shrink-0 mr-3">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-sm font-medium text-muted-foreground">{name}</span>
                   <StatusIcon categoryId={cat.id} />
                 </div>
@@ -247,59 +241,6 @@ export function CheckinForm({
               </div>
             );
           })}
-
-          {/* Macros row inside the same card */}
-          {macroCategories.length > 0 && (
-            <div className="px-4 py-3">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2.5 block">
-                {t("macros")}
-              </span>
-              <div className={`grid grid-cols-${Math.min(macroCategories.length, 3)} gap-2`}>
-                {macroCategories.map((cat) => {
-                  const name = locale === "en" ? cat.name.en : cat.name.de;
-                  const val = values[cat.id];
-                  return (
-                    <div key={cat.id} className="rounded-lg bg-muted/20 px-2.5 py-2 text-center focus-within:bg-muted/40 transition-colors">
-                      <div className="flex items-center justify-center gap-1 mb-1">
-                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                          {name}
-                        </span>
-                        <StatusIcon categoryId={cat.id} />
-                      </div>
-                      <div className="flex items-baseline justify-center gap-0.5">
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          value={val?.numericValue ?? ""}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            if (raw === "") {
-                              setFieldValue(cat.id, null, null, "blur");
-                            } else {
-                              const num = parseFloat(raw);
-                              if (!isNaN(num)) setFieldValue(cat.id, num, null, "blur");
-                            }
-                          }}
-                          onBlur={() => handleBlurSave(cat.id)}
-                          min={cat.minValue ?? undefined}
-                          max={cat.maxValue ?? undefined}
-                          step={1}
-                          className={cn(
-                            "w-[5ch] bg-transparent text-center text-base font-semibold",
-                            "tabular-nums text-foreground",
-                            "border-none outline-none focus:outline-none",
-                            "placeholder:text-muted-foreground/30",
-                            "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          )}
-                        />
-                        <span className="text-[10px] text-muted-foreground">g</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
