@@ -51,6 +51,54 @@ function isLookupRateLimited(trainerId: string): boolean {
   return false;
 }
 
+// ── Add Athlete (Blind-Invite: DSGVO-compliant unified flow) ────
+// The client NEVER learns whether the email belongs to an existing account.
+// Internally routes to inviteAthlete (new user) or sendConnectionRequest (existing).
+
+export async function addAthlete(data: {
+  email: string;
+  message?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  const parsed = inviteSchema.safeParse(data);
+  if (!parsed.success) {
+    return { success: false, error: "INVALID_INPUT" };
+  }
+
+  const normalizedEmail = parsed.data.email.toLowerCase().trim();
+
+  // Self-invite check
+  if (normalizedEmail === user.email?.toLowerCase()) {
+    return { success: false, error: "SELF_INVITE" };
+  }
+
+  // Check if athlete account exists (server-side only — result NOT exposed to client)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, role")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (profile && profile.role !== "TRAINER") {
+    // Existing athlete → send connection request
+    return sendConnectionRequest(data);
+  }
+
+  // No account or is a trainer → send normal invite
+  // (IS_TRAINER error will be caught by inviteAthlete's own checks if needed,
+  //  but we intentionally don't reveal account existence to the client)
+  return inviteAthlete(data);
+}
+
 // ── Invite Athlete ──────────────────────────────────────────────
 
 export async function inviteAthlete(data: {
