@@ -4,7 +4,6 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { Settings2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,10 +11,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CheckinForm } from "./checkin-form";
-import { CheckinSummary } from "./checkin-summary";
+import { WeekStrip } from "./week-strip";
 import { TrendChart } from "./trend-chart";
 import { StreakBadge } from "./streak-badge";
 import { CategoryManager } from "./category-manager";
+import { loadWeekCheckins } from "@/lib/feedback/actions";
 import type {
   ActiveCategory,
   CheckinEntry,
@@ -25,8 +25,8 @@ import type {
 interface AthleteCheckinPageProps {
   /** Active categories for this athlete */
   categories: ActiveCategory[];
-  /** Today's check-in if already filled */
-  todayCheckin: CheckinEntry | null;
+  /** Check-ins for the initial week, keyed by date (ISO string) */
+  weekCheckins: Record<string, CheckinEntry>;
   /** Whether the athlete can see their analysis charts */
   canSeeAnalysis: boolean;
   /** Current streak */
@@ -37,38 +37,84 @@ interface AthleteCheckinPageProps {
   backfillDays: number;
   /** Whether athlete has body_wellness_data consent */
   hasBodyWellnessConsent: boolean;
+  /** ISO date of the Monday of the initial week */
+  initialWeekStart: string;
 }
 
 export function AthleteCheckinPage({
   categories,
-  todayCheckin,
+  weekCheckins,
   canSeeAnalysis,
   streak,
   trendData,
   backfillDays,
   hasBodyWellnessConsent,
+  initialWeekStart,
 }: AthleteCheckinPageProps) {
   const t = useTranslations("feedback");
-  const [isEditing, setIsEditing] = React.useState(false);
   const [showCategoryManager, setShowCategoryManager] = React.useState(false);
-  const [checkin, setCheckin] = React.useState(todayCheckin);
 
+  // Today's date
   const today = new Date().toISOString().split("T")[0];
 
-  function handleSaved(savedValues?: Record<string, { numericValue: number | null; textValue: string | null }>) {
-    setIsEditing(false);
-    if (savedValues) {
-      setCheckin({
-        id: checkin?.id ?? crypto.randomUUID(),
-        date: today,
-        values: savedValues,
-        createdAt: checkin?.createdAt ?? new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+  // Selected date: default to today
+  const [selectedDate, setSelectedDate] = React.useState(today);
+
+  // Local cache of all loaded check-ins (date -> CheckinEntry)
+  const [checkins, setCheckins] = React.useState<Record<string, CheckinEntry>>(
+    weekCheckins
+  );
+
+  // Track which weeks have been loaded to avoid re-fetching
+  const loadedWeeks = React.useRef<Set<string>>(new Set([initialWeekStart]));
+
+  // Derived: set of dates that have data (for WeekStrip dots)
+  const filledDates = React.useMemo(
+    () => new Set(Object.keys(checkins)),
+    [checkins]
+  );
+
+  // Current check-in for selected date
+  const currentCheckin = checkins[selectedDate] ?? null;
+
+  // Handle week navigation — load new week's check-ins if not already cached
+  async function handleWeekChange(startDate: string, endDate: string) {
+    if (loadedWeeks.current.has(startDate)) return;
+
+    try {
+      const newCheckins = await loadWeekCheckins(startDate, endDate);
+      loadedWeeks.current.add(startDate);
+      setCheckins((prev) => ({ ...prev, ...newCheckins }));
+    } catch (err) {
+      console.error("Failed to load week check-ins:", err);
     }
   }
 
-  const showForm = !checkin || isEditing;
+  // Handle field saved — update local cache
+  function handleFieldSaved(
+    categoryId: string,
+    numericValue: number | null,
+    textValue: string | null
+  ) {
+    setCheckins((prev) => {
+      const existing = prev[selectedDate];
+      const updatedValues = {
+        ...(existing?.values ?? {}),
+        [categoryId]: { numericValue, textValue },
+      };
+
+      return {
+        ...prev,
+        [selectedDate]: {
+          id: existing?.id ?? crypto.randomUUID(),
+          date: selectedDate,
+          values: updatedValues,
+          createdAt: existing?.createdAt ?? new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -92,27 +138,29 @@ export function AthleteCheckinPage({
         </div>
       )}
 
-      {/* Check-in Form or Summary */}
-      {hasBodyWellnessConsent && showForm ? (
+      {/* Week Strip Navigation */}
+      {hasBodyWellnessConsent && (
+        <WeekStrip
+          selectedDate={selectedDate}
+          filledDates={filledDates}
+          onSelectDate={setSelectedDate}
+          onWeekChange={handleWeekChange}
+        />
+      )}
+
+      {/* Check-in Form (always visible for selected date) */}
+      {hasBodyWellnessConsent && (
         <div className="rounded-lg border bg-card p-5">
           <CheckinForm
+            key={selectedDate}
             categories={categories}
-            date={today}
-            existingValues={isEditing && checkin ? checkin.values : undefined}
-            backfillDays={backfillDays}
-            onSaved={handleSaved}
+            date={selectedDate}
+            existingValues={currentCheckin?.values}
+            onFieldSaved={handleFieldSaved}
             onManageCategories={() => setShowCategoryManager(true)}
           />
         </div>
-      ) : hasBodyWellnessConsent ? (
-        checkin && (
-          <CheckinSummary
-            checkin={checkin}
-            categories={categories}
-            onEdit={() => setIsEditing(true)}
-          />
-        )
-      ) : null}
+      )}
 
       {/* Analysis Charts (if trainer enabled) */}
       {canSeeAnalysis && trendData.length > 0 && (

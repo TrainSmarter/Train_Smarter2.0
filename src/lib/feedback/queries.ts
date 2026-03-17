@@ -294,6 +294,19 @@ export async function getMonitoringOverview(
 
   if (athleteIds.length === 0) return empty;
 
+  // DSGVO consent check — check which athletes have body_wellness_data consent
+  const { data: consents } = await supabase
+    .from("user_consents")
+    .select("user_id, granted")
+    .eq("consent_type", "body_wellness_data")
+    .in("user_id", athleteIds);
+
+  // Build consent map (latest consent per user — query returns all, we trust RLS + latest)
+  const consentMap = new Map<string, boolean>();
+  for (const c of consents ?? []) {
+    consentMap.set(c.user_id, c.granted === true);
+  }
+
   // Fetch monitoring summaries from the view
   const { data: summaries } = await supabase
     .from("v_athlete_monitoring_summary")
@@ -326,6 +339,9 @@ export async function getMonitoringOverview(
     const summary = summaryMap.get(athleteId);
     const teamInfo = teamMap.get(athleteId);
 
+    // DSGVO: check if this athlete has body_wellness_data consent
+    const athleteHasConsent = consentMap.get(athleteId) === true;
+
     const lastCheckinDate = summary?.last_checkin_date
       ? String(summary.last_checkin_date)
       : null;
@@ -337,7 +353,9 @@ export async function getMonitoringOverview(
 
     const compliance = Number(summary?.compliance_rate ?? 0);
     const streak = Number(summary?.streak ?? 0);
-    const weightTrend = summary?.weight_trend != null
+
+    // Exclude body data (weight) when athlete has revoked consent
+    const weightTrend = athleteHasConsent && summary?.weight_trend != null
       ? Number(summary.weight_trend)
       : null;
 
@@ -371,7 +389,7 @@ export async function getMonitoringOverview(
       streak,
       complianceRate: Math.round(compliance),
       weightTrend,
-      latestWeight: summary?.latest_weight != null
+      latestWeight: athleteHasConsent && summary?.latest_weight != null
         ? Number(summary.latest_weight)
         : null,
       canSeeAnalysis: conn.can_see_analysis,
@@ -488,6 +506,11 @@ export async function getAthleteTrendData(
 
   if (!user) return [];
 
+  // DSGVO consent check — if trainer viewing athlete data, check athlete's consent
+  const consentUserId = athleteId === user.id ? user.id : athleteId;
+  const hasConsent = await hasBodyWellnessConsent(supabase, consentUserId);
+  if (!hasConsent) return [];
+
   const days = parseInt(range) || 30;
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
@@ -552,6 +575,65 @@ export async function getAthleteTrendData(
   }));
 }
 
+/** Get check-ins for a date range (used for week strip navigation) */
+export async function getCheckinsByDateRange(
+  athleteId: string,
+  startDate: string, // ISO date YYYY-MM-DD
+  endDate: string // ISO date YYYY-MM-DD
+): Promise<Map<string, CheckinEntry>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return new Map();
+
+  // DSGVO consent check
+  const consentUserId = athleteId === user.id ? user.id : athleteId;
+  const hasConsent = await hasBodyWellnessConsent(supabase, consentUserId);
+  if (!hasConsent) return new Map();
+
+  const { data, error } = await supabase
+    .from("v_athlete_checkin_history")
+    .select("*")
+    .eq("athlete_id", athleteId)
+    .gte("date", startDate)
+    .lte("date", endDate)
+    .order("date", { ascending: true });
+
+  if (error) {
+    console.error("Failed to fetch checkins by date range:", error);
+    return new Map();
+  }
+
+  const result = new Map<string, CheckinEntry>();
+
+  for (const row of data ?? []) {
+    const valuesObj = (row.values ?? {}) as Record<
+      string,
+      { numeric_value: number | null; text_value: string | null }
+    >;
+
+    const values: Record<string, { numericValue: number | null; textValue: string | null }> = {};
+    for (const [categoryId, v] of Object.entries(valuesObj)) {
+      values[categoryId] = {
+        numericValue: v.numeric_value,
+        textValue: v.text_value,
+      };
+    }
+
+    result.set(row.date, {
+      id: row.checkin_id,
+      date: row.date,
+      values,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    });
+  }
+
+  return result;
+}
+
 /** Get connection info for an athlete (canSeeAnalysis, backfillDays, streak) */
 export async function getAthleteConnectionInfo(
   athleteId: string
@@ -601,8 +683,12 @@ export async function getAthleteDetail(
   athlete: MonitoringAthleteSummary | null;
   categories: ActiveCategory[];
   connectionId: string | null;
+  hasBodyWellnessConsent: boolean;
 } | null> {
   const supabase = await createClient();
+
+  // DSGVO consent check — check athlete's body_wellness_data consent
+  const athleteConsent = await hasBodyWellnessConsent(supabase, athleteId);
 
   // Verify trainer is connected to this athlete
   const { data: connection, error: connError } = await supabase
@@ -692,5 +778,6 @@ export async function getAthleteDetail(
     athlete: athleteSummary,
     categories,
     connectionId: connection.id,
+    hasBodyWellnessConsent: athleteConsent,
   };
 }

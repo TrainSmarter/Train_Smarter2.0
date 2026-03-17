@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { toAuthUser } from "@/lib/mock-session";
 import { MonitoringDashboard } from "@/components/feedback/monitoring-dashboard";
 import { AthleteCheckinPage } from "@/components/feedback/athlete-checkin-page";
-import { getActiveCategories, getCheckin, getMonitoringOverview, getAthleteTrendData, getAthleteConnectionInfo } from "@/lib/feedback/queries";
+import { getActiveCategories, getCheckinsByDateRange, getMonitoringOverview, getAthleteTrendData, getAthleteConnectionInfo } from "@/lib/feedback/queries";
 
 export async function generateMetadata({
   params,
@@ -31,7 +31,6 @@ export default async function FeedbackPage() {
   const authUser = toAuthUser(user);
   const role = authUser.app_metadata.roles[0];
   const isTrainer = role === "TRAINER";
-  const today = new Date().toISOString().split("T")[0];
 
   if (isTrainer) {
     // Trainer: Monitoring Dashboard
@@ -41,7 +40,24 @@ export default async function FeedbackPage() {
 
   // Athlete: Check-in Page
   const categories = await getActiveCategories(authUser.id);
-  const todayCheckin = await getCheckin(authUser.id, today);
+
+  // Calculate current week range (Monday through today)
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon...
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - mondayOffset);
+  const startDate = formatDate(monday);
+  const endDate = formatDate(today);
+
+  // Load all check-ins for this week
+  const weekCheckinsMap = await getCheckinsByDateRange(authUser.id, startDate, endDate);
+
+  // Convert Map to plain object for serialization
+  const weekCheckins: Record<string, { id: string; date: string; values: Record<string, { numericValue: number | null; textValue: string | null }>; createdAt: string; updatedAt: string }> = {};
+  for (const [date, entry] of weekCheckinsMap) {
+    weekCheckins[date] = entry;
+  }
 
   // Check DSGVO consent for body/wellness data
   const { data: consentData } = await supabase
@@ -66,12 +82,21 @@ export default async function FeedbackPage() {
   return (
     <AthleteCheckinPage
       categories={categories}
-      todayCheckin={todayCheckin}
+      weekCheckins={weekCheckins}
       canSeeAnalysis={canSeeAnalysis}
       streak={streak}
       trendData={trendData}
       backfillDays={backfillDays}
       hasBodyWellnessConsent={hasBodyWellnessConsent}
+      initialWeekStart={startDate}
     />
   );
+}
+
+/** Format a Date to YYYY-MM-DD (local time) */
+function formatDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }

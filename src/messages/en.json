@@ -21,7 +21,8 @@
     "brand": "Train Smarter",
     "version": "",
     "navigation": "Navigation",
-    "navigationAriaLabel": "Main navigation"
+    "navigationAriaLabel": "Main navigation",
+    "legalLinks": "Legal links"
   },
   "header": {
     "notifications": "Notifications"
@@ -996,6 +997,15 @@
     "categoryPreview": "Preview",
     "categoryPreviewEmpty": "Enter a name to see the preview.",
     "cancel": "Cancel",
-    "consentRevoked": "You have revoked consent for body & wellness data. Check-ins are currently disabled."
+    "consentRevoked": "You have revoked consent for body & wellness data. Check-ins are currently disabled.",
+    "consentRevokedTrainer": "This athlete has revoked consent for body & wellness data. Trends and history data are not available.",
+    "previousWeek": "Previous week",
+    "nextWeek": "Next week",
+    "weekNavigation": "Week navigation",
+    "saving": "Saving...",
+    "allChangesSaved": "All changes saved",
+    "saveFailed": "Save failed",
+    "selectValue": "Select value",
+    "noCheckinYet": "No entry for this day yet"
   }
 }

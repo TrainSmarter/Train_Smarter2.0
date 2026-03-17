@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { CalendarDays, Check, Settings2 } from "lucide-react";
-import { toast } from "sonner";
+import { Check, Loader2, Settings2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { SegmentedControl } from "./segmented-control";
 import { NumberInput } from "./number-input";
-import { saveCheckin } from "@/lib/feedback/actions";
+import { autosaveCheckinField } from "@/lib/feedback/actions";
 import type { ActiveCategory } from "@/lib/feedback/types";
 
 interface CheckinFormProps {
@@ -25,139 +24,147 @@ interface CheckinFormProps {
   categories: ActiveCategory[];
   /** Date for which the check-in is being filled */
   date: string;
-  /** Pre-existing values if editing */
+  /** Pre-existing values if viewing/editing an existing check-in */
   existingValues?: Record<string, { numericValue: number | null; textValue: string | null }>;
-  /** Maximum days back allowed for backfill */
-  backfillDays: number;
-  /** Callback after successful save, receives the saved values */
-  onSaved?: (savedValues: Record<string, { numericValue: number | null; textValue: string | null }>) => void;
+  /** Callback after a field is successfully saved */
+  onFieldSaved?: (categoryId: string, numericValue: number | null, textValue: string | null) => void;
   /** Link/callback to open category manager */
   onManageCategories?: () => void;
 }
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export function CheckinForm({
   categories,
   date,
   existingValues,
-  backfillDays,
-  onSaved,
+  onFieldSaved,
   onManageCategories,
 }: CheckinFormProps) {
   const t = useTranslations("feedback");
   const locale = useLocale();
-  const [saving, setSaving] = React.useState(false);
-  const [selectedDate, setSelectedDate] = React.useState(date);
   const [values, setValues] = React.useState<
     Record<string, { numericValue: number | null; textValue: string | null }>
   >(existingValues ?? {});
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
+  const [errorFields, setErrorFields] = React.useState<Set<string>>(new Set());
 
-  const isEditing = !!existingValues;
+  // Debounce timers per field
+  const debounceTimers = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // Track saving count for global status
+  const savingCount = React.useRef(0);
+  // Saved indicator timeout
+  const savedTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Generate date options for backfill
-  const dateOptions = React.useMemo(() => {
-    const options: { value: string; label: string }[] = [];
-    const today = new Date();
-    for (let i = 0; i <= backfillDays; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const iso = d.toISOString().split("T")[0];
-      const label =
-        i === 0
-          ? t("today")
-          : i === 1
-            ? t("yesterday")
-            : d.toLocaleDateString(locale === "en" ? "en-US" : "de-AT", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-              });
-      options.push({ value: iso, label });
+  // Reset values when date or existingValues change
+  React.useEffect(() => {
+    setValues(existingValues ?? {});
+    setSaveStatus("idle");
+    setErrorFields(new Set());
+  }, [date, existingValues]);
+
+  // Cleanup timers on unmount
+  React.useEffect(() => {
+    return () => {
+      for (const timer of Object.values(debounceTimers.current)) {
+        clearTimeout(timer);
+      }
+      if (savedTimeout.current) {
+        clearTimeout(savedTimeout.current);
+      }
+    };
+  }, []);
+
+  async function doSave(
+    categoryId: string,
+    numericValue: number | null,
+    textValue: string | null
+  ) {
+    savingCount.current += 1;
+    setSaveStatus("saving");
+
+    // Clear any existing saved timeout
+    if (savedTimeout.current) {
+      clearTimeout(savedTimeout.current);
+      savedTimeout.current = null;
     }
-    return options;
-  }, [backfillDays, locale, t]);
+
+    try {
+      const result = await autosaveCheckinField(date, categoryId, numericValue, textValue);
+      savingCount.current -= 1;
+
+      if (result.success) {
+        // Remove from error fields if it was there
+        setErrorFields((prev) => {
+          const next = new Set(prev);
+          next.delete(categoryId);
+          return next;
+        });
+        onFieldSaved?.(categoryId, numericValue, textValue);
+
+        if (savingCount.current === 0) {
+          setSaveStatus("saved");
+          savedTimeout.current = setTimeout(() => {
+            setSaveStatus("idle");
+          }, 3000);
+        }
+      } else {
+        if (savingCount.current === 0) {
+          setSaveStatus("error");
+        }
+        setErrorFields((prev) => new Set(prev).add(categoryId));
+      }
+    } catch {
+      savingCount.current -= 1;
+      if (savingCount.current === 0) {
+        setSaveStatus("error");
+      }
+      setErrorFields((prev) => new Set(prev).add(categoryId));
+    }
+  }
+
+  function scheduleTextSave(
+    categoryId: string,
+    numericValue: number | null,
+    textValue: string | null
+  ) {
+    // Clear existing timer for this field
+    if (debounceTimers.current[categoryId]) {
+      clearTimeout(debounceTimers.current[categoryId]);
+    }
+    debounceTimers.current[categoryId] = setTimeout(() => {
+      doSave(categoryId, numericValue, textValue);
+    }, 1500);
+  }
 
   function setFieldValue(
     categoryId: string,
     numericValue: number | null,
-    textValue: string | null
+    textValue: string | null,
+    saveMode: "immediate" | "blur" | "debounce"
   ) {
     setValues((prev) => ({
       ...prev,
       [categoryId]: { numericValue, textValue },
     }));
-    // Clear error on change
-    if (errors[categoryId]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[categoryId];
-        return next;
-      });
+
+    if (saveMode === "immediate") {
+      doSave(categoryId, numericValue, textValue);
+    } else if (saveMode === "debounce") {
+      scheduleTextSave(categoryId, numericValue, textValue);
     }
+    // "blur" mode: save will be triggered by onBlur handler
   }
 
-  function validate(): boolean {
-    const newErrors: Record<string, string> = {};
-
-    for (const cat of categories) {
-      if (!cat.isActive) continue;
-      const val = values[cat.id];
-
-      if (cat.isRequired) {
-        if (cat.type === "number" && (val?.numericValue == null)) {
-          newErrors[cat.id] = t("errorRequired");
-        } else if (cat.type === "scale" && (val?.numericValue == null)) {
-          newErrors[cat.id] = t("errorRequired");
-        } else if (cat.type === "text" && (!val?.textValue?.trim())) {
-          newErrors[cat.id] = t("errorRequired");
-        }
-      }
-
-      if (cat.type === "number" && val?.numericValue != null) {
-        if (cat.minValue != null && val.numericValue < cat.minValue) {
-          newErrors[cat.id] = t("errorMin", { min: cat.minValue });
-        }
-        if (cat.maxValue != null && val.numericValue > cat.maxValue) {
-          newErrors[cat.id] = t("errorMax", { max: cat.maxValue });
-        }
-      }
-
-      if (cat.type === "text" && val?.textValue) {
-        if (cat.maxValue != null && val.textValue.length > cat.maxValue) {
-          newErrors[cat.id] = t("errorMaxLength", { max: cat.maxValue });
-        }
-      }
+  function handleBlurSave(categoryId: string) {
+    // Clear any pending debounce for this field
+    if (debounceTimers.current[categoryId]) {
+      clearTimeout(debounceTimers.current[categoryId]);
+      delete debounceTimers.current[categoryId];
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!validate()) return;
-
-    setSaving(true);
-    try {
-      const payload = Object.entries(values)
-        .filter(([, v]) => v.numericValue != null || v.textValue != null)
-        .map(([categoryId, v]) => ({
-          categoryId,
-          numericValue: v.numericValue ?? undefined,
-          textValue: v.textValue ?? undefined,
-        }));
-
-      const result = await saveCheckin(selectedDate, payload);
-      if (result.success) {
-        toast.success(t("checkinSaved"));
-        onSaved?.(values);
-      } else {
-        toast.error(t("checkinError"));
-      }
-    } catch {
-      toast.error(t("checkinError"));
-    } finally {
-      setSaving(false);
+    const val = values[categoryId];
+    if (val && (val.numericValue != null || val.textValue != null)) {
+      doSave(categoryId, val.numericValue, val.textValue);
     }
   }
 
@@ -183,22 +190,24 @@ export function CheckinForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Date selector (for backfill) */}
-      <div className="flex items-center gap-3">
-        <CalendarDays className="h-4 w-4 text-muted-foreground" />
-        <Select value={selectedDate} onValueChange={setSelectedDate}>
-          <SelectTrigger className="w-[200px]" aria-label={t("selectDate")}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {dateOptions.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div className="space-y-6">
+      {/* Save status indicator */}
+      <div className="flex items-center gap-1.5 h-5">
+        {saveStatus === "saving" && (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{t("saving")}</span>
+          </>
+        )}
+        {saveStatus === "saved" && (
+          <>
+            <Check className="h-3 w-3 text-success" />
+            <span className="text-xs text-muted-foreground">{t("allChangesSaved")}</span>
+          </>
+        )}
+        {saveStatus === "error" && (
+          <span className="text-xs text-error">{t("saveFailed")}</span>
+        )}
       </div>
 
       {/* Dynamic fields */}
@@ -206,7 +215,7 @@ export function CheckinForm({
         {activeCategories.map((cat) => {
           const name = locale === "en" ? cat.name.en : cat.name.de;
           const val = values[cat.id];
-          const error = errors[cat.id];
+          const hasError = errorFields.has(cat.id);
 
           if (cat.type === "number") {
             return (
@@ -215,11 +224,12 @@ export function CheckinForm({
                 label={name}
                 unit={cat.unit}
                 value={val?.numericValue ?? null}
-                onChange={(v) => setFieldValue(cat.id, v, null)}
+                onChange={(v) => setFieldValue(cat.id, v, null, "blur")}
+                onBlur={() => handleBlurSave(cat.id)}
                 min={cat.minValue ?? undefined}
                 max={cat.maxValue ?? undefined}
                 required={cat.isRequired}
-                error={error}
+                error={hasError ? t("saveFailed") : undefined}
                 placeholder={
                   cat.minValue != null && cat.maxValue != null
                     ? `${cat.minValue}–${cat.maxValue}`
@@ -230,6 +240,58 @@ export function CheckinForm({
           }
 
           if (cat.type === "scale") {
+            const minVal = cat.minValue ?? 1;
+            const maxVal = cat.maxValue ?? 5;
+            const stepCount = maxVal - minVal + 1;
+
+            // 2 steps: use SegmentedControl, 3+ steps: use Select dropdown
+            if (stepCount <= 2) {
+              return (
+                <div key={cat.id} className="space-y-2">
+                  <Label className="text-label text-foreground">
+                    {name}
+                    {cat.isRequired && (
+                      <span className="ml-1 text-error" aria-hidden="true">
+                        *
+                      </span>
+                    )}
+                  </Label>
+                  <SegmentedControl
+                    min={minVal}
+                    max={maxVal}
+                    value={val?.numericValue ?? null}
+                    onChange={(v) => setFieldValue(cat.id, v, null, "immediate")}
+                    labels={cat.scaleLabels}
+                    ariaLabel={name}
+                    hasError={hasError}
+                  />
+                  {hasError && (
+                    <p className="text-body-sm text-error" role="alert">
+                      {t("saveFailed")}
+                    </p>
+                  )}
+                </div>
+              );
+            }
+
+            // 3+ steps: use Select dropdown
+            const steps = Array.from({ length: stepCount }, (_, i) => minVal + i);
+            const getStepLabel = (step: number): string | null => {
+              if (!cat.scaleLabels) return null;
+              const label = cat.scaleLabels[String(step)];
+              if (!label) return null;
+              return locale === "en" ? label.en : label.de;
+            };
+
+            const selectedStepLabel = val?.numericValue != null
+              ? (() => {
+                  const label = getStepLabel(val.numericValue);
+                  return label
+                    ? `${val.numericValue} — ${label}`
+                    : String(val.numericValue);
+                })()
+              : undefined;
+
             return (
               <div key={cat.id} className="space-y-2">
                 <Label className="text-label text-foreground">
@@ -240,18 +302,35 @@ export function CheckinForm({
                     </span>
                   )}
                 </Label>
-                <SegmentedControl
-                  min={cat.minValue ?? 1}
-                  max={cat.maxValue ?? 5}
-                  value={val?.numericValue ?? null}
-                  onChange={(v) => setFieldValue(cat.id, v, null)}
-                  labels={cat.scaleLabels}
-                  ariaLabel={name}
-                  hasError={!!error}
-                />
-                {error && (
+                <Select
+                  value={val?.numericValue != null ? String(val.numericValue) : undefined}
+                  onValueChange={(v) => {
+                    const numVal = parseInt(v, 10);
+                    setFieldValue(cat.id, numVal, null, "immediate");
+                  }}
+                >
+                  <SelectTrigger
+                    className={hasError ? "border-error focus-visible:ring-error" : undefined}
+                    aria-label={name}
+                  >
+                    <SelectValue placeholder={t("selectValue")}>
+                      {selectedStepLabel}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {steps.map((step) => {
+                      const label = getStepLabel(step);
+                      return (
+                        <SelectItem key={step} value={String(step)}>
+                          {label ? `${step} — ${label}` : String(step)}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {hasError && (
                   <p className="text-body-sm text-error" role="alert">
-                    {error}
+                    {t("saveFailed")}
                   </p>
                 )}
               </div>
@@ -271,21 +350,24 @@ export function CheckinForm({
                 </Label>
                 <Textarea
                   value={val?.textValue ?? ""}
-                  onChange={(e) => setFieldValue(cat.id, null, e.target.value)}
+                  onChange={(e) =>
+                    setFieldValue(cat.id, null, e.target.value, "debounce")
+                  }
+                  onBlur={() => handleBlurSave(cat.id)}
                   maxLength={cat.maxValue ?? 300}
                   rows={3}
                   placeholder={t("notePlaceholder")}
-                  className={error ? "border-error focus-visible:ring-error" : undefined}
-                  aria-invalid={!!error || undefined}
+                  className={hasError ? "border-error focus-visible:ring-error" : undefined}
+                  aria-invalid={hasError || undefined}
                 />
                 {val?.textValue && (
                   <p className="text-[11px] text-muted-foreground text-right">
                     {val.textValue.length}/{cat.maxValue ?? 300}
                   </p>
                 )}
-                {error && (
+                {hasError && (
                   <p className="text-body-sm text-error" role="alert">
-                    {error}
+                    {t("saveFailed")}
                   </p>
                 )}
               </div>
@@ -296,9 +378,9 @@ export function CheckinForm({
         })}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center justify-between pt-2">
-        {onManageCategories && (
+      {/* Manage categories button */}
+      {onManageCategories && (
+        <div className="pt-2">
           <Button
             type="button"
             variant="ghost"
@@ -308,16 +390,8 @@ export function CheckinForm({
           >
             {t("manageCategories")}
           </Button>
-        )}
-        <Button
-          type="submit"
-          loading={saving}
-          iconLeft={<Check className="h-4 w-4" />}
-          className="ml-auto"
-        >
-          {isEditing ? t("updateCheckin") : t("saveCheckin")}
-        </Button>
-      </div>
-    </form>
+        </div>
+      )}
+    </div>
   );
 }

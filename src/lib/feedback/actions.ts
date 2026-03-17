@@ -182,6 +182,129 @@ export async function saveCheckin(
   return { success: true };
 }
 
+// ── Autosave Single Check-in Field ──────────────────────────────
+
+const autosaveFieldSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  categoryId: z.string().uuid(),
+  numericValue: z.number().nullable(),
+  textValue: z.string().max(300).nullable(),
+});
+
+export async function autosaveCheckinField(
+  date: string,
+  categoryId: string,
+  numericValue: number | null,
+  textValue: string | null
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  // Validate input
+  const parsed = autosaveFieldSchema.safeParse({
+    date,
+    categoryId,
+    numericValue,
+    textValue,
+  });
+  if (!parsed.success) {
+    return { success: false, error: "INVALID_INPUT" };
+  }
+
+  const {
+    date: checkinDate,
+    categoryId: catId,
+    numericValue: numVal,
+    textValue: txtVal,
+  } = parsed.data;
+
+  // Check DSGVO consent for body_wellness_data
+  const { data: consent } = await supabase
+    .from("user_consents")
+    .select("granted")
+    .eq("user_id", user.id)
+    .eq("consent_type", "body_wellness_data")
+    .order("granted_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!consent || !consent.granted) {
+    return { success: false, error: "CONSENT_REQUIRED" };
+  }
+
+  // Check backfill limit
+  const today = new Date().toISOString().split("T")[0];
+  if (checkinDate !== today) {
+    const { data: connection } = await supabase
+      .from("trainer_athlete_connections")
+      .select("feedback_backfill_days")
+      .eq("athlete_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    const backfillDays = connection?.feedback_backfill_days ?? 3;
+
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() - backfillDays);
+    const minDateStr = minDate.toISOString().split("T")[0];
+
+    if (checkinDate < minDateStr) {
+      return { success: false, error: "BACKFILL_LIMIT_EXCEEDED" };
+    }
+
+    if (checkinDate > today) {
+      return { success: false, error: "FUTURE_DATE" };
+    }
+  }
+
+  // UPSERT checkin header
+  const { data: checkin, error: checkinError } = await supabase
+    .from("feedback_checkins")
+    .upsert(
+      {
+        athlete_id: user.id,
+        date: checkinDate,
+      },
+      { onConflict: "athlete_id,date" }
+    )
+    .select("id")
+    .single();
+
+  if (checkinError || !checkin) {
+    console.error("Failed to upsert checkin:", checkinError);
+    return { success: false, error: "CHECKIN_FAILED" };
+  }
+
+  // UPSERT the single value
+  const { error: valueError } = await supabase
+    .from("feedback_checkin_values")
+    .upsert(
+      {
+        checkin_id: checkin.id,
+        category_id: catId,
+        athlete_id: user.id,
+        numeric_value: numVal,
+        text_value: txtVal,
+      },
+      { onConflict: "checkin_id,category_id" }
+    );
+
+  if (valueError) {
+    console.error("Failed to upsert checkin value:", valueError);
+    return { success: false, error: "VALUE_FAILED" };
+  }
+
+  // No revalidatePath — autosave should be silent, no full page refresh
+  return { success: true };
+}
+
 // ── Toggle Analysis Visibility ──────────────────────────────────
 
 export async function toggleAnalysisVisibility(
@@ -458,6 +581,40 @@ export async function updateCategory(data: {
 
   revalidatePath("/feedback");
   return { success: true };
+}
+
+// ── Load Week Check-ins (for WeekStrip navigation) ──────────
+
+export async function loadWeekCheckins(
+  startDate: string,
+  endDate: string
+): Promise<Record<string, { id: string; date: string; values: Record<string, { numericValue: number | null; textValue: string | null }>; createdAt: string; updatedAt: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return {};
+  }
+
+  // Validate date format
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+    return {};
+  }
+
+  const { getCheckinsByDateRange } = await import("@/lib/feedback/queries");
+  const checkinMap = await getCheckinsByDateRange(user.id, startDate, endDate);
+
+  // Convert Map to plain object for serialization
+  const result: Record<string, { id: string; date: string; values: Record<string, { numericValue: number | null; textValue: string | null }>; createdAt: string; updatedAt: string }> = {};
+  for (const [date, entry] of checkinMap) {
+    result[date] = entry;
+  }
+
+  return result;
 }
 
 // ── Archive Category (Soft Delete) ──────────────────────────────

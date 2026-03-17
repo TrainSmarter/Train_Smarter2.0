@@ -30,6 +30,8 @@ export interface NumberInputProps {
   disabled?: boolean;
   /** Error message */
   error?: string;
+  /** Called when the input loses focus */
+  onBlur?: () => void;
   /** Additional classes for the wrapper */
   className?: string;
 }
@@ -46,6 +48,7 @@ export function NumberInput({
   placeholder,
   required = false,
   disabled = false,
+  onBlur,
   error,
   className,
 }: NumberInputProps) {
@@ -85,6 +88,7 @@ export function NumberInput({
           inputMode="decimal"
           value={value ?? ""}
           onChange={handleChange}
+          onBlur={onBlur}
           min={min}
           max={max}
           step={step}

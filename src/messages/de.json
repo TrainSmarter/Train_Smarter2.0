@@ -21,7 +21,8 @@
     "brand": "Train Smarter",
     "version": "",
     "navigation": "Navigation",
-    "navigationAriaLabel": "Hauptnavigation"
+    "navigationAriaLabel": "Hauptnavigation",
+    "legalLinks": "Rechtliche Links"
   },
   "header": {
     "notifications": "Benachrichtigungen"
@@ -996,6 +997,15 @@
     "categoryPreview": "Vorschau",
     "categoryPreviewEmpty": "Gib einen Namen ein, um die Vorschau zu sehen.",
     "cancel": "Abbrechen",
-    "consentRevoked": "Du hast die Einwilligung für Körper- & Wellnessdaten widerrufen. Check-ins sind derzeit deaktiviert."
+    "consentRevoked": "Du hast die Einwilligung für Körper- & Wellnessdaten widerrufen. Check-ins sind derzeit deaktiviert.",
+    "consentRevokedTrainer": "Dieser Athlet hat die Einwilligung für Körper- & Wellnessdaten widerrufen. Trends und Verlaufsdaten sind nicht verfügbar.",
+    "previousWeek": "Vorherige Woche",
+    "nextWeek": "Nächste Woche",
+    "weekNavigation": "Wochennavigation",
+    "saving": "Wird gespeichert...",
+    "allChangesSaved": "Alle Änderungen gespeichert",
+    "saveFailed": "Speichern fehlgeschlagen",
+    "selectValue": "Wert auswählen",
+    "noCheckinYet": "Noch kein Eintrag für diesen Tag"
   }
 }
