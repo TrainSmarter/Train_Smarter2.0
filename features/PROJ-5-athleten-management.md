@@ -2,7 +2,7 @@
 
 ## Status: Deployed
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-16 (Enhancement 2: Withdraw-Button in Unified View)
+**Last Updated:** 2026-03-17 (Enhancement 3: Athleten-Verbindung — Connect Existing Athletes)
 
 ## Dependencies
 - Requires: PROJ-1 (Design System Foundation)
@@ -11,7 +11,7 @@
 - Requires: PROJ-4 (Authentication) — User-Session, Rollen
 
 ## Übersicht
-Trainer können Athleten einladen, verwalten und deren Profile einsehen. Athleten sehen ihr eigenes Profil und das ihres Trainers. Die Funktion umfasst: Einladungssystem per E-Mail, Athleten-Übersicht, Profil-Detailansicht und Verbindung trennen.
+Trainer können Athleten einladen, verwalten und deren Profile einsehen. Athleten sehen ihr eigenes Profil und das ihres Trainers. Die Funktion umfasst: Einladungssystem per E-Mail, Athleten-Übersicht, Profil-Detailansicht, Verbindung trennen und **Verbindungsanfrage an bestehende Athleten-Accounts** (ohne erneute Einladung/Registrierung).
 
 ## User Stories
 - Als Trainer möchte ich Athleten per E-Mail einladen, damit sie meinem Team beitreten können
@@ -22,6 +22,10 @@ Trainer können Athleten einladen, verwalten und deren Profile einsehen. Athlete
 - Als Athlet möchte ich sehen wer mein Trainer ist und kann die Verbindung trennen
 - Als Trainer möchte ich sehen wann ich eine Einladung gesendet habe, damit ich weiß ob ich nachfassen muss
 - Als Trainer möchte ich eine ausstehende Einladung zurückziehen, falls ich die falsche Person eingeladen habe
+- Als Trainer möchte ich im InviteModal automatisch erkennen ob ein Athlet bereits ein Konto hat, damit ich den richtigen Flow bekomme (Verbindungsanfrage statt Einladung)
+- Als Trainer möchte ich einem bestehenden Athleten eine Verbindungsanfrage senden, damit er meinem Team beitreten kann ohne sich neu registrieren zu müssen
+- Als Athlet möchte ich Verbindungsanfragen von Trainern in meinem Dashboard sehen, damit ich entscheiden kann ob ich sie annehme
+- Als Athlet möchte ich eine E-Mail-Benachrichtigung erhalten wenn ein Trainer sich mit mir verbinden möchte, damit ich keine Anfrage verpasse
 
 ## Acceptance Criteria
 
@@ -70,6 +74,60 @@ Trainer können Athleten einladen, verwalten und deren Profile einsehen. Athlete
   - Nur Status `pending` darf gelöscht werden (nicht `active` oder `rejected`)
   - RLS Policy: Trainer kann nur eigene Connections löschen
 
+### Enhancement 3: Athleten-Verbindung (Connect Existing Athletes)
+
+Das InviteModal erkennt automatisch, ob zu der eingegebenen E-Mail bereits ein Account existiert, und wechselt in den Verbindungsanfrage-Modus. Kein separater Button nötig — ein Modal, zwei Flows.
+
+#### InviteModal — Automatische Account-Erkennung
+- [ ] Nach E-Mail-Eingabe prüft das Modal serverseitig ob ein Account mit dieser E-Mail existiert (Debounce: 500ms nach Tippen)
+- [ ] **Account existiert (Athlet):** Modal wechselt in den "Verbindungsanfrage"-Modus:
+  - Profil-Preview: Avatar (Initialen), Name des Athleten (Vorname + erster Buchstabe Nachname, z.B. "Max M.")
+  - Hinweistext: "Dieser Athlet hat bereits ein Konto. Sende eine Verbindungsanfrage."
+  - Button-Text wechselt von "Einladen" zu "Anfrage senden"
+  - Optionale persönliche Nachricht bleibt verfügbar (wie bei Einladung)
+- [ ] **Account existiert nicht:** Normaler Einladungsflow wie bisher
+- [ ] **Account ist Trainer-Rolle:** Fehlermeldung "Dieser Account gehört einem Trainer. Nur Athleten können verbunden werden."
+- [ ] **Athlet bereits verbunden (eigenes Team):** Fehlermeldung "Dieser Athlet ist bereits in deinem Team" (wie bisher)
+- [ ] **Athlet hat bereits einen anderen Trainer:** Fehlermeldung "Dieser Athlet ist bereits mit einem anderen Trainer verbunden"
+- [ ] **Anfrage bereits ausstehend:** Fehlermeldung "Du hast diesem Athleten bereits eine Anfrage gesendet"
+- [ ] E-Mail-Lookup darf keine Details über fremde Nutzer preisgeben außer: existiert/existiert nicht + Anzeigename (Datenschutz)
+
+#### Verbindungsanfrage senden (Trainer)
+- [ ] Server Action: `sendConnectionRequest(athleteEmail: string, message?: string)`
+- [ ] Erstellt einen Eintrag in `trainer_athlete_connections` mit:
+  - `status: 'pending'`
+  - `athlete_id`: direkt gesetzt (nicht NULL wie bei Einladung, da Athlet bekannt)
+  - `athlete_email`: E-Mail des bestehenden Athleten
+  - `connection_type: 'request'` (neues Feld, unterscheidet von `'invite'`)
+- [ ] Sendet E-Mail an Athleten: "Trainer [Name] möchte sich mit dir verbinden" (PROJ-13 Template)
+- [ ] Success-Toast: "Verbindungsanfrage an [Name] gesendet"
+- [ ] Athlet erscheint in der Pending-Section mit Badge "Anfrage gesendet" (statt "Einladung gesendet")
+
+#### Verbindungsanfrage empfangen (Athlet)
+- [ ] Banner im Athleten-Dashboard: "Trainer [Name] möchte sich mit dir verbinden"
+  - Trainer-Info: Name, E-Mail, optional persönliche Nachricht
+  - Buttons: "Annehmen" (primary) + "Ablehnen" (ghost/danger)
+- [ ] Nutzung des bestehenden InvitationBanner-Systems (gleiche UI, anderer Text)
+- [ ] Annehmen: Connection-Status wird `active`, `connected_at` gesetzt
+  - Athlet erscheint sofort in Trainer's Athleten-Liste (Realtime via Supabase)
+  - Success-Toast beim Athleten: "Du bist jetzt mit Trainer [Name] verbunden"
+- [ ] Ablehnen: ConfirmDialog → Connection-Status wird `rejected`, `rejected_at` gesetzt
+  - Trainer sieht: Card verschwindet aus Pending-Section
+  - Kein expliziter Hinweis an Trainer dass abgelehnt wurde (Datenschutz)
+
+#### E-Mail-Benachrichtigung (PROJ-13 Integration)
+- [ ] Neues E-Mail-Template: `connection-request`
+  - Betreff: "[Trainer-Name] möchte sich mit dir auf Train Smarter verbinden"
+  - Inhalt: Trainer-Name, optionale persönliche Nachricht, CTA-Button "Anfrage ansehen"
+  - CTA-Link führt zum Athleten-Dashboard (wo das Banner sichtbar ist)
+- [ ] E-Mail wird über bestehende PROJ-13 Edge Function gesendet
+- [ ] Rate-Limit: Max 1 Anfrage pro Trainer-Athlet-Kombination (keine Spam-Wiederholung)
+
+#### Zurückziehen (Trainer)
+- [ ] Trainer kann ausstehende Verbindungsanfragen zurückziehen (wie bei Einladungen)
+- [ ] Bestehende `withdrawInvitation()` Action funktioniert auch für Connection Requests
+- [ ] ConfirmDialog-Text passt sich an: "Verbindungsanfrage zurückziehen?" (statt "Einladung zurückziehen?")
+
 ### Athlet-Profil Detailseite (Trainer)
 - [ ] Route: `/organisation/athletes/[id]`
 - [ ] Header: Avatar, Name, E-Mail, Verbindungsdatum, Status
@@ -100,6 +158,12 @@ Trainer können Athleten einladen, verwalten und deren Profile einsehen. Athlete
 - Trainer-Account gelöscht während Einladung ausstehend → Einladungs-Link zeigt Fehlermeldung
 - Athlet entfernt sich aus Team während Trainer offline → Trainer sieht Athlet beim nächsten Laden nicht mehr
 - Profilbild Upload: Nur JPG/PNG/WebP, max 5MB, wird auf 400×400px skaliert (serverseitig)
+- **Athlet ändert E-Mail nach Verbindungsanfrage:** Connection bleibt bestehen da `athlete_id` gesetzt ist (nicht E-Mail-basiert wie bei Invite)
+- **Trainer sendet Einladung, Athlet registriert sich in der Zwischenzeit:** Bestehender Einladungsflow bleibt — Athlet klickt Einladungslink und wird verbunden. Verbindungsanfrage-Flow greift nur wenn Trainer _nach_ Registrierung des Athleten die E-Mail eingibt
+- **Abgelehnter Athlet erneut anfragen:** Trainer kann nach Ablehnung eine neue Anfrage senden (kein permanenter Block). Alte Connection bleibt als `rejected` bestehen, neue wird erstellt
+- **E-Mail-Lookup Timing-Attack:** Lookup-Response-Zeit muss konstant sein (gleiche Dauer ob Account existiert oder nicht) um Account-Enumeration zu verhindern
+- **Account ist Trainer-Rolle:** Fehlermeldung, keine Verbindungsanfrage möglich
+- **Athlet hat ausstehende Einladung + Trainer sendet Verbindungsanfrage:** Nicht möglich — gleiche `(trainer_id, athlete_email) WHERE status = 'pending'` Unique-Constraint verhindert Duplikate
 
 ## Technical Requirements
 - Security: RLS (Row Level Security) in Supabase — Trainer kann nur seine eigenen Athleten sehen
@@ -108,6 +172,13 @@ Trainer können Athleten einladen, verwalten und deren Profile einsehen. Athlete
 - Security: Alle User-Input-Felder (Name, E-Mail-Suche) validiert via Zod — kein roher SQL-String; Supabase parametrisierte Queries verhindern SQL-Injection
 - Performance: Athleten-Liste lädt in < 500ms (Pagination bei > 50 Athleten)
 - Realtime: Einladungs-Annahme reflektiert sich ohne Page-Reload beim Trainer (Supabase Realtime)
+- Security: E-Mail-Lookup nur für authentifizierte Trainer (RLS + Middleware)
+- Security: Lookup gibt nur minimale Daten zurück: `{ exists: boolean, displayName?: string, avatarInitials?: string }` — keine vollständige E-Mail, keine Profile-ID
+- Security: Rate-Limit auf E-Mail-Lookup: Max 20 Anfragen pro Minute pro Trainer (Brute-Force-Schutz)
+- Security: Connection Request nur möglich wenn Ziel-Account Rolle `ATHLETE` hat
+- Performance: E-Mail-Lookup < 200ms (Index auf `profiles.email`)
+- DSGVO: Athlet muss aktiv zustimmen (Annehmen-Button). Keine automatische Verbindung
+- Datenbankänderung: Neues Feld `connection_type` in `trainer_athlete_connections`: `'invite'` (default, Bestand) | `'request'` (neu, Verbindungsanfrage)
 
 ## Datenbankschema: trainer_athlete_connections (Phase 2)
 
@@ -126,6 +197,7 @@ trainer_athlete_connections
 ├── connected_at: timestamptz | null
 ├── rejected_at: timestamptz | null
 ├── disconnected_at: timestamptz | null
+├── connection_type: "invite" | "request" (default: "invite") — invite = neuer Account, request = bestehender Account
 │
 │  — Granulare Datensichtbarkeit (Athlet kontrolliert diese) —
 ├── can_see_body_data: boolean (default: true)   → Körpermaße, Gewicht
@@ -228,6 +300,112 @@ Neue Tabelle `trainer_athlete_connections`:
 ### Pakete
 Keine neuen — `@supabase/ssr`, `zod`, `sonner` bereits installiert.
 
+### Enhancement 3: Athleten-Verbindung — Tech Design (2026-03-17)
+
+#### Datenfluss
+
+```
+Trainer tippt E-Mail ins InviteModal
+        │
+        ▼ (Debounce 500ms)
+  Server Action: lookupAthleteByEmail
+        │
+        ├── Kein Account → Normaler Einladungsflow (inviteAthlete, wie bisher)
+        │
+        └── Account gefunden (Athlet-Rolle)
+            ├── Modal zeigt Profil-Preview (Name, Initialen)
+            ├── Button-Text: "Anfrage senden"
+            └── Server Action: sendConnectionRequest
+                  ├── DB: trainer_athlete_connections (athlete_id direkt gesetzt, connection_type='request')
+                  └── Edge Function: send-connection-request-email
+                        └── Athlet sieht Banner im Dashboard (bestehende InvitationBanner-Komponente)
+```
+
+#### Komponentenbaum (Änderungen)
+
+```
+InviteModal (ERWEITERT — src/components/invite-modal.tsx)
+├── E-Mail-Feld (besteht)
+├── MX-Validierung (besteht)
+├── NEU: Account-Lookup-Status
+│   ├── Ladezustand (Spinner neben E-Mail-Feld)
+│   └── Profil-Preview Box
+│       ├── Avatar (Initialen)
+│       ├── Anzeigename ("Max M.")
+│       └── Hinweistext
+├── Persönliche Nachricht (besteht)
+└── Footer: Button "Einladen" ODER "Anfrage senden" (dynamisch)
+
+InvitationBanner (ERWEITERT — src/components/invitation-banner.tsx)
+├── Bestehend: "Du hast eine Einladung von [Trainer]"
+└── NEU: "Trainer [Name] möchte sich mit dir verbinden"
+    (unterschieden via connection_type)
+```
+
+#### Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `src/components/invite-modal.tsx` | Account-Lookup + Modus-Wechsel (Einladung vs. Anfrage) |
+| `src/components/invitation-banner.tsx` | Text-Unterscheidung invite/request via `connection_type` |
+| `src/lib/athletes/actions.ts` | +`lookupAthleteByEmail`, +`sendConnectionRequest` |
+| `src/lib/athletes/queries.ts` | `fetchPendingInvitations` gibt `connection_type` mit |
+| `src/lib/athletes/types.ts` | +`ConnectionType`, +`LookupResult`, `PendingInvitation` erweitert |
+| `src/messages/de.json` / `en.json` | Neue Übersetzungsschlüssel für Verbindungsanfrage |
+
+#### Neue Dateien
+
+| Datei | Zweck |
+|-------|-------|
+| `supabase/migrations/XXXXXX_proj5_connection_type.sql` | Neues Feld `connection_type` |
+| `supabase/functions/send-connection-request-email/index.ts` | E-Mail-Template für Verbindungsanfragen |
+
+#### Datenmodell: E-Mail-Lookup
+
+```
+Eingabe: E-Mail-Adresse (string)
+Ausgabe (minimale Daten, Datenschutz):
+├── exists: boolean
+├── displayName: "Max M." (Vorname + Anfangsbuchstabe Nachname)
+├── avatarInitials: "MM"
+└── error: SELF_INVITE | IS_TRAINER | ALREADY_CONNECTED | ALREADY_PENDING | ALREADY_HAS_OTHER_TRAINER | null
+```
+
+Keine Profile-ID, keine vollständige E-Mail, kein Avatar-URL.
+
+#### Unterschiede: Invite vs. Request
+
+| Aspekt | Invite (besteht) | Request (neu) |
+|--------|------------------|---------------|
+| Athlet hat Account? | Nein | Ja |
+| `athlete_id` bei Erstellung | NULL | Direkt gesetzt |
+| `connection_type` | `'invite'` | `'request'` |
+| E-Mail an Athlet | "Registriere dich" | "Anfrage ansehen" |
+| CTA-Link führt zu | /register | /dashboard |
+| Badge in Pending-Section | "Einladung gesendet" | "Anfrage gesendet" |
+| Ablauf (7 Tage) | Ja | Nein (kein Ablauf nötig) |
+
+#### Datenbankänderung
+
+Neues Feld in `trainer_athlete_connections`:
+- `connection_type` — text, NOT NULL, DEFAULT `'invite'`
+- Werte: `'invite'` (bestehender Flow) | `'request'` (neuer Flow)
+- Bestehende Daten: alle bekommen `'invite'` (Default) — kein Breaking Change
+
+#### Sicherheitsmaßnahmen
+
+- E-Mail-Lookup: Nur authentifizierte Trainer, Rate-Limit 20/min, konstante Response-Zeit
+- Connection Request: Ziel muss ATHLETE-Rolle haben, 1-Trainer-Regel erzwungen
+- Bestehende RLS-Policies greifen unverändert
+
+#### Was NICHT geändert wird
+
+- Keine neuen Routen/Pages
+- Keine neuen shadcn/ui Komponenten
+- Keine Änderung an bestehenden DB-Indexes oder RLS-Policies
+- `withdrawInvitation()`, `acceptInvitation()`, `rejectInvitation()` funktionieren unverändert
+- Keine neuen NPM-Pakete
+
 ## Frontend Implementation Notes
 
 **Implemented by /frontend on 2026-03-13.**
@@ -260,6 +438,24 @@ Keine neuen — `@supabase/ssr`, `zod`, `sonner` bereits installiert.
 - Server Actions for all mutations (invite, accept, reject, disconnect, resend)
 - Supabase join queries use `as unknown as Record<string, unknown>` to handle Supabase's generated types
 - InvitationBanner component is prepared but not yet embedded in the dashboard (needs backend tables first)
+
+### Enhancement 3: Athleten-Verbindung Frontend (2026-03-17)
+
+**Implemented by /frontend on 2026-03-17.**
+
+Modified files:
+- `src/lib/athletes/types.ts` — Added `ConnectionType`, `LookupResult`, `connectionType` field to `AthleteListItem` and `PendingInvitation`
+- `src/lib/athletes/actions.ts` — Added `lookupAthleteByEmail` (debounced account detection) and `sendConnectionRequest` (create connection request to existing athlete)
+- `src/lib/athletes/queries.ts` — All athlete/invitation queries now return `connection_type` field (defaults to `'invite'` for backward compatibility)
+- `src/components/invite-modal.tsx` — Complete rewrite: auto-detects existing accounts via email lookup (500ms debounce), shows profile preview (avatar initials + display name), switches between invite and connection request modes, inline error display for lookup errors
+- `src/components/invitation-banner.tsx` — Differentiates invite vs. request: different text, connection requests don't expire
+- `src/components/athlete-card.tsx` — Shows "Anfrage gesendet" badge for requests (vs. "Einladung ausstehend" for invites), requests don't show expiry
+- `src/components/draggable-athlete-card.tsx` — Same badge differentiation as athlete-card
+- `src/components/table-view.tsx` — Same badge differentiation in table rows
+- `src/components/athletes-list.tsx` — Withdraw dialog text adapts for requests vs. invites
+- `src/messages/de.json` + `src/messages/en.json` — 16 new i18n keys for connection request flow
+
+**Backend dependency:** Requires `connection_type` column in `trainer_athlete_connections` table (migration not yet created). Frontend defaults to `'invite'` when field is missing for backward compatibility.
 
 ### Frontend Bug Fixes (2026-03-13, second pass)
 - **BUG-11 FIXED:** All `toLocaleDateString()` calls now pass the app locale from `useLocale()` instead of `undefined`. Affected files: `athlete-card.tsx`, `athlete-detail-view.tsx`, `invitation-banner.tsx`, `profile-view.tsx`. Dates now format consistently based on the selected app language (e.g., `13.03.2026` for `de`, `03/13/2026` for `en`).
@@ -1679,3 +1875,115 @@ Two CRITICAL bugs must be fixed before this feature can be considered functional
   - Edge Function 401: `verify_jwt` disabled (invoked from server action, not client)
   - Edge Function 500: Templates inlined in Edge Function code (deployed EFs cannot read filesystem)
   - `=20` encoding: Fixed by using UTF-8 characters directly instead of HTML entities
+
+---
+
+## Enhancement 3 QA Verification Audit (2026-03-17)
+
+### Bug Fix Verification
+
+#### BUG-13 (CRITICAL): Missing `connection_type` DB migration -- PASS
+- File exists: `supabase/migrations/20260317000000_proj5_connection_type.sql`
+- Adds `connection_type text NOT NULL DEFAULT 'invite'` column
+- CHECK constraint: `connection_type IN ('invite', 'request')`
+- Conditional index on `connection_type WHERE status = 'pending'`
+- Existing rows receive `'invite'` via DEFAULT (correct, all prior connections were invite-based)
+
+#### BUG-15 (CRITICAL): `connectionType` missing from queries -- PASS
+- `fetchAthletes()`: SELECTs `connection_type`, maps to `connectionType` (line 46/81)
+- `fetchAllAthletes()`: SELECTs `connection_type`, maps to `connectionType` (line 112/145)
+- `fetchAthleteDetail()`: SELECTs `connection_type`, maps to `connectionType` (line 174/207)
+- `fetchPendingInvitations()`: SELECTs `connection_type`, maps to `connectionType` (line 285/317)
+- All 4 functions verified. Type-safe cast to `"invite" | "request"` with fallback to `"invite"`.
+
+#### BUG-14 (HIGH): Missing Edge Function -- PASS
+- File exists: `supabase/functions/send-connection-request-email/index.ts`
+- Different subject lines per locale:
+  - DE: `"[Name] moechte sich mit dir auf Train Smarter verbinden"`
+  - EN: `"[Name] wants to connect with you on Train Smarter"`
+- CTA links to `/dashboard` (not `/register`) -- correct for existing users
+- No expiry shown in template (correct: connection requests don't expire like invites)
+- Templates are fully inline (no `Deno.readTextFile` usage) -- confirmed via grep
+- Auth check: Bearer token extracted, `supabase.auth.getUser()` verified (lines 315-335)
+- TRAINER role check: `roles.includes("TRAINER")` with 403 response (lines 338-344)
+- SMTP setup: denomailer SMTPClient with TLS, env vars validated (lines 208-229)
+- HTML escaping on `trainerName` and `personalMessage` via `escapeHtml()` -- prevents injection
+- DSGVO-compliant logging with hashed email (lines 370-373)
+
+#### BUG-17 (MEDIUM): Rate limiting on lookupAthleteByEmail -- PASS
+- In-memory rate limiter at lines 35-52 of `actions.ts`
+- `MAX_LOOKUPS_PER_MINUTE = 20` (line 29)
+- `LOOKUP_WINDOW_MS = 60_000` (line 30)
+- Sliding window: prunes entries older than 60s, rejects if 20+ recent entries
+- Called at line 225 before any DB queries
+- Rate-limited requests return `{ exists: false, error: null }` (no information leak)
+
+#### BUG-18 (MEDIUM): Timing attack protection -- PASS
+- `enforceMinDelay()` function at lines 311-317
+- `LOOKUP_MIN_DELAY_MS = 150` (line 31)
+- Enforced on ALL code paths:
+  - Invalid Zod input (line 203)
+  - Unauthenticated (line 213)
+  - Non-TRAINER role (line 220)
+  - Rate-limited (line 227)
+  - Self-invite (line 235)
+  - Profile not found (line 255) -- also runs a dummy connection query to equalize DB calls
+  - IS_TRAINER (line 262)
+  - ALREADY_CONNECTED (line 283)
+  - ALREADY_PENDING (line 288)
+  - ALREADY_HAS_OTHER_TRAINER (line 302)
+  - Success (line 306)
+- Dummy query when profile not found (lines 247-253) prevents timing difference from DB call count
+
+#### BUG-19 (LOW): Zod validation on lookup email -- PASS
+- `lookupEmailSchema = z.string().email().max(255)` at line 23
+- Validated at lines 199-204 before any processing
+- Invalid input returns `{ exists: false, error: null }` with enforced delay
+
+#### BUG-20 (MEDIUM): TRAINER role check -- PASS
+- `lookupAthleteByEmail`: Role check at lines 218-221 (`app_metadata.roles` includes "TRAINER")
+- `sendConnectionRequest`: Role check at lines 341-344 with "UNAUTHORIZED" error response
+- Both functions properly guard against non-trainer access
+
+### Build & Lint
+
+- `npm run build`: PASS (0 errors, all routes compiled successfully)
+- `npm run lint`: PASS (0 errors, 1 pre-existing warning in login page -- unrelated React Compiler advisory)
+
+### Regression Check (Existing PROJ-5 Functions)
+
+- `inviteAthlete()`: Intact at lines 56-176. Input validation, MX check, rate limit, duplicate check, insert, email sending all present. No changes from Enhancement 3.
+- `acceptInvitation()`: Intact at lines 477-541. UUID validation, auth, ownership check, 1-trainer rule, status update all present.
+- `rejectInvitation()`: Intact at lines 545-596. UUID validation, auth, ownership check, status update all present.
+- `withdrawInvitation()`: Intact at lines 655-709. Trainer ownership check, pending-only guard, hard delete all present.
+- `resendInvitation()`: Intact at lines 713-804. Rate limit (1x/24h), timestamp update, email resend all present.
+- `disconnectAthlete()`: Intact at lines 600-651. Both trainer and athlete can disconnect, status update to "disconnected".
+
+### i18n Verification
+
+- No hardcoded user-facing strings found in Enhancement 3 components
+- All new i18n keys present in both `de.json` and `en.json`:
+  - `connectionRequestDescription`, `connectionRequestHint`, `sendConnectionRequest`
+  - `connectionRequestSent`, `connectionRequestFromTrainer`, `connectionRequestAccepted`
+  - `connectionRequestRejected`, `rejectConnectionDialogTitle`, `rejectConnectionDialogMessage`
+  - `errorIsTrainer`, `errorAlreadyHasOtherTrainer`
+- German umlauts correct: "moechte" uses proper unicode in JSON (verified)
+- All UI text goes through `useTranslations("athletes")` or `useTranslations("common")`
+
+### Security Audit (Red-Team Perspective)
+
+1. **Auth bypass on Edge Function**: SECURE -- Bearer token validated via `supabase.auth.getUser()`, TRAINER role check returns 403
+2. **Email enumeration via lookup**: MITIGATED -- constant-time floor (150ms min), dummy DB query on miss, identical response shape for all paths
+3. **Rate limiting bypass**: LOW RISK -- in-memory rate limiter resets on server restart. For production scale, consider Redis-based limiter. Current implementation is acceptable for the user base.
+4. **HTML injection in email**: SECURE -- `escapeHtml()` applied to trainerName and personalMessage in Edge Function templates
+5. **URL injection in dashboardLink**: SECURE -- validated with `new URL()` and protocol check (`http:` or `https:` only) in Edge Function
+6. **IDOR on sendConnectionRequest**: SECURE -- looks up athlete by email (not by ID from client), trainer_id comes from authenticated session
+7. **Connection request spam**: MITIGATED -- 20/day rate limit on connection creation (shared with invites), 20/min on lookups
+8. **Data leakage in lookup response**: MINIMAL -- only returns `exists`, `displayName` (first name + initial), `avatarInitials`. No email, no profile ID, no full name.
+9. **Zod validation**: All inputs validated before processing (email, connectionId as UUID, message max 500 chars)
+
+### Final Verdict
+
+**Enhancement 3 is READY TO DEPLOY.**
+
+All 7 bugs (BUG-13, BUG-14, BUG-15, BUG-17, BUG-18, BUG-19, BUG-20) are verified as FIXED. Build passes, lint is clean, existing functionality is not regressed, i18n is complete, and security posture is sound.

@@ -437,23 +437,6 @@
       "lockedByInvite": "Pre-selected by your invitation.",
       "roleRequired": "Please select a role.",
       "roleSaveError": "Could not save role. Please try again."
-    },
-    "step4": {
-      "trainerTitle": "Invite your first athlete",
-      "trainerSubtitle": "Invite your first athlete via email. You can also skip this step.",
-      "athleteTitle": "Coach invitation code",
-      "athleteSubtitle": "Do you have an invitation code from your coach? You can also skip this step.",
-      "inviteEmail": "Athlete's email address",
-      "inviteEmailPlaceholder": "athlete@example.com",
-      "inviteCode": "Invitation code",
-      "inviteCodePlaceholder": "Enter code",
-      "sendInvite": "Send invitation",
-      "sendingInvite": "Sending...",
-      "inviteSent": "Invitation sent!",
-      "inviteError": "Could not send invitation.",
-      "invalidCode": "Invalid or expired invitation code.",
-      "codeAccepted": "Invitation code accepted!",
-      "verifyingCode": "Verifying..."
     }
   },
   "athletes": {
@@ -525,7 +508,21 @@
     "withdrawDialogTitle": "Withdraw invitation?",
     "withdrawDialogMessage": "{email} will no longer have access via the existing invitation link.",
     "withdrawSuccess": "Invitation to {email} has been withdrawn.",
-    "withdrawError": "Could not withdraw invitation. Please try again."
+    "withdrawError": "Could not withdraw invitation. Please try again.",
+    "requestPending": "Request sent",
+    "connectionRequestDescription": "This athlete already has an account. Send a connection request.",
+    "connectionRequestHint": "This athlete already has an account. Send a connection request.",
+    "sendConnectionRequest": "Send request",
+    "connectionRequestSent": "Connection request sent to {name}.",
+    "connectionRequestFromTrainer": "Coach {trainer} wants to connect with you",
+    "connectionRequestAccepted": "You are now connected with Coach {trainer}!",
+    "connectionRequestRejected": "Connection request declined.",
+    "rejectConnectionDialogTitle": "Decline connection request?",
+    "rejectConnectionDialogMessage": "Do you really want to decline the connection request from {trainer}?",
+    "withdrawRequestDialogTitle": "Withdraw connection request?",
+    "withdrawRequestDialogMessage": "{email} will no longer receive a connection request.",
+    "errorIsTrainer": "This account belongs to a coach. Only athletes can be connected.",
+    "errorAlreadyHasOtherTrainer": "This athlete is already connected to another coach."
   },
   "profile": {
     "title": "My Profile",

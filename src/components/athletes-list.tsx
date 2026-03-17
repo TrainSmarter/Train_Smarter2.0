@@ -72,7 +72,8 @@ export function AthletesList({ athletes, currentPage, totalCount, hasMore }: Ath
     open: boolean;
     connectionId: string;
     email: string;
-  }>({ open: false, connectionId: "", email: "" });
+    isRequest: boolean;
+  }>({ open: false, connectionId: "", email: "", isRequest: false });
 
   // Separate pending and active
   const pending = athletes.filter((a) => a.status === "pending");
@@ -127,6 +128,7 @@ export function AthletesList({ athletes, currentPage, totalCount, hasMore }: Ath
       open: true,
       connectionId,
       email: athlete.email,
+      isRequest: athlete.connectionType === "request",
     });
   }
 
@@ -144,7 +146,7 @@ export function AthletesList({ athletes, currentPage, totalCount, hasMore }: Ath
       toast.error(t("withdrawError"));
     } finally {
       setWithdrawingId(null);
-      setWithdrawConfirm({ open: false, connectionId: "", email: "" });
+      setWithdrawConfirm({ open: false, connectionId: "", email: "", isRequest: false });
     }
   }
 
@@ -316,8 +318,8 @@ export function AthletesList({ athletes, currentPage, totalCount, hasMore }: Ath
           setWithdrawConfirm((prev) => ({ ...prev, open }))
         }
         variant="danger"
-        title={t("withdrawDialogTitle")}
-        message={t("withdrawDialogMessage", { email: withdrawConfirm.email })}
+        title={withdrawConfirm.isRequest ? t("withdrawRequestDialogTitle") : t("withdrawDialogTitle")}
+        message={withdrawConfirm.isRequest ? t("withdrawRequestDialogMessage", { email: withdrawConfirm.email }) : t("withdrawDialogMessage", { email: withdrawConfirm.email })}
         confirmLabel={t("withdraw")}
         cancelLabel={tCommon("cancel")}
         onConfirm={handleWithdrawConfirm}

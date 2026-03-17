@@ -43,8 +43,9 @@ function DraggableAthleteRow({
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
   const isPending = athlete.status === "pending";
+  const isRequest = athlete.connectionType === "request";
   const isExpired =
-    isPending && new Date(athlete.invitationExpiresAt) < new Date();
+    isPending && !isRequest && new Date(athlete.invitationExpiresAt) < new Date();
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -125,7 +126,11 @@ function DraggableAthleteRow({
           {isPending ? (
             <>
               <Badge variant={isExpired ? "error" : "warning"} size="sm">
-                {isExpired ? tAthletes("invitationExpired") : tAthletes("invitationPending")}
+                {isExpired
+                  ? tAthletes("invitationExpired")
+                  : isRequest
+                    ? tAthletes("requestPending")
+                    : tAthletes("invitationPending")}
               </Badge>
               {!isExpired && onResendInvite && (
                 <Button

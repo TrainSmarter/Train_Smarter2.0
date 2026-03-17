@@ -6,6 +6,22 @@
 
 export type ConnectionStatus = "pending" | "active" | "rejected" | "disconnected";
 
+export type ConnectionType = "invite" | "request";
+
+/** Result of an email lookup in the InviteModal */
+export interface LookupResult {
+  exists: boolean;
+  displayName?: string;
+  avatarInitials?: string;
+  error:
+    | "SELF_INVITE"
+    | "IS_TRAINER"
+    | "ALREADY_CONNECTED"
+    | "ALREADY_PENDING"
+    | "ALREADY_HAS_OTHER_TRAINER"
+    | null;
+}
+
 export interface TrainerAthleteConnection {
   id: string;
   trainer_id: string;
@@ -34,6 +50,7 @@ export interface AthleteListItem {
   email: string;
   avatarUrl: string | null;
   status: ConnectionStatus;
+  connectionType: ConnectionType;
   connectedAt: string | null;
   invitedAt: string;
   invitationExpiresAt: string;
@@ -72,6 +89,7 @@ export interface PendingInvitation {
   invitedAt: string;
   invitationExpiresAt: string;
   invitationMessage: string | null;
+  connectionType: ConnectionType;
   isExpired: boolean;
 }
 

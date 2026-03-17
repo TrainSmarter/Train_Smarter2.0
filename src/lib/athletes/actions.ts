@@ -20,9 +20,36 @@ const inviteSchema = z.object({
 
 const connectionIdSchema = z.string().uuid();
 
+const lookupEmailSchema = z.string().email().max(255);
+
 // ── Constants ───────────────────────────────────────────────────
 
 const MAX_INVITES_PER_DAY = 20;
+const MAX_LOOKUPS_PER_MINUTE = 20;
+const LOOKUP_WINDOW_MS = 60_000;
+const LOOKUP_MIN_DELAY_MS = 150; // Constant-time floor to prevent timing attacks
+
+// ── In-Memory Rate Limiter for Email Lookups (BUG-17) ───────────
+// Resets on server restart — acceptable for rate limiting purposes.
+
+const lookupTimestamps = new Map<string, number[]>();
+
+function isLookupRateLimited(trainerId: string): boolean {
+  const now = Date.now();
+  const timestamps = lookupTimestamps.get(trainerId) ?? [];
+
+  // Prune entries older than the window
+  const recent = timestamps.filter((ts) => now - ts < LOOKUP_WINDOW_MS);
+
+  if (recent.length >= MAX_LOOKUPS_PER_MINUTE) {
+    lookupTimestamps.set(trainerId, recent);
+    return true;
+  }
+
+  recent.push(now);
+  lookupTimestamps.set(trainerId, recent);
+  return false;
+}
 
 // ── Invite Athlete ──────────────────────────────────────────────
 
@@ -142,6 +169,303 @@ export async function inviteAthlete(data: {
   } catch (emailError) {
     // Email failure should NOT prevent the invitation from being created
     console.error("Failed to send invitation email:", emailError);
+  }
+
+  revalidatePath("/organisation/athletes", "page");
+  return { success: true };
+}
+
+// ── Lookup Athlete by Email (for InviteModal auto-detection) ────
+
+export interface LookupAthleteResult {
+  exists: boolean;
+  displayName?: string;
+  avatarInitials?: string;
+  error:
+    | "SELF_INVITE"
+    | "IS_TRAINER"
+    | "ALREADY_CONNECTED"
+    | "ALREADY_PENDING"
+    | "ALREADY_HAS_OTHER_TRAINER"
+    | null;
+}
+
+export async function lookupAthleteByEmail(
+  email: string
+): Promise<LookupAthleteResult> {
+  const startTime = Date.now();
+
+  // BUG-19: Zod validation on email input
+  const emailParsed = lookupEmailSchema.safeParse(email);
+  if (!emailParsed.success) {
+    // Still enforce constant-time delay even for invalid input
+    await enforceMinDelay(startTime);
+    return { exists: false, error: null };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    await enforceMinDelay(startTime);
+    return { exists: false, error: null };
+  }
+
+  // BUG-20: TRAINER role check
+  const roles = (user.app_metadata?.roles as string[]) ?? [];
+  if (!roles.includes("TRAINER")) {
+    await enforceMinDelay(startTime);
+    return { exists: false, error: null };
+  }
+
+  // BUG-17: Rate limiting — max lookups per minute per trainer
+  if (isLookupRateLimited(user.id)) {
+    await enforceMinDelay(startTime);
+    return { exists: false, error: null };
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Self-invite check
+  if (normalizedEmail === user.email?.toLowerCase()) {
+    await enforceMinDelay(startTime);
+    return { exists: false, error: "SELF_INVITE" };
+  }
+
+  // Look up profile by email
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name, role")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (!profile) {
+    // BUG-18: Still run the same number of queries to prevent timing attacks
+    await supabase
+      .from("trainer_athlete_connections")
+      .select("id, status")
+      .eq("trainer_id", user.id)
+      .eq("athlete_email", normalizedEmail)
+      .in("status", ["pending", "active"])
+      .maybeSingle();
+
+    await enforceMinDelay(startTime);
+    return { exists: false, error: null };
+  }
+
+  // Check if the account is a trainer
+  if (profile.role === "TRAINER") {
+    await enforceMinDelay(startTime);
+    return { exists: true, error: "IS_TRAINER" };
+  }
+
+  // Build display name: "Max M."
+  const firstName = (profile.first_name as string) ?? "";
+  const lastName = (profile.last_name as string) ?? "";
+  const displayName = lastName
+    ? `${firstName} ${lastName.charAt(0)}.`
+    : firstName;
+  const avatarInitials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+
+  // Check if already connected to this trainer
+  const { data: existingConnection } = await supabase
+    .from("trainer_athlete_connections")
+    .select("id, status")
+    .eq("trainer_id", user.id)
+    .eq("athlete_email", normalizedEmail)
+    .in("status", ["pending", "active"])
+    .maybeSingle();
+
+  if (existingConnection?.status === "active") {
+    await enforceMinDelay(startTime);
+    return { exists: true, displayName, avatarInitials, error: "ALREADY_CONNECTED" };
+  }
+
+  if (existingConnection?.status === "pending") {
+    await enforceMinDelay(startTime);
+    return { exists: true, displayName, avatarInitials, error: "ALREADY_PENDING" };
+  }
+
+  // Check if athlete already has another active trainer (1-trainer rule)
+  const { data: otherTrainer } = await supabase
+    .from("trainer_athlete_connections")
+    .select("id")
+    .eq("athlete_id", profile.id)
+    .eq("status", "active")
+    .neq("trainer_id", user.id)
+    .maybeSingle();
+
+  if (otherTrainer) {
+    await enforceMinDelay(startTime);
+    return { exists: true, displayName, avatarInitials, error: "ALREADY_HAS_OTHER_TRAINER" };
+  }
+
+  await enforceMinDelay(startTime);
+  return { exists: true, displayName, avatarInitials, error: null };
+}
+
+// BUG-18: Constant-time floor to prevent timing attacks on email lookups
+async function enforceMinDelay(startTime: number): Promise<void> {
+  const elapsed = Date.now() - startTime;
+  const remaining = LOOKUP_MIN_DELAY_MS - elapsed;
+  if (remaining > 0) {
+    await new Promise((resolve) => setTimeout(resolve, remaining));
+  }
+}
+
+// ── Send Connection Request (existing athlete) ─────────────────
+
+const connectionRequestSchema = z.object({
+  email: z.string().email().max(255),
+  message: z.string().max(500).optional(),
+});
+
+export async function sendConnectionRequest(data: {
+  email: string;
+  message?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  // BUG-20: TRAINER role check
+  const roles = (user.app_metadata?.roles as string[]) ?? [];
+  if (!roles.includes("TRAINER")) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  const parsed = connectionRequestSchema.safeParse(data);
+  if (!parsed.success) {
+    return { success: false, error: "INVALID_INPUT" };
+  }
+
+  const { email, message } = parsed.data;
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Self-invite check
+  if (normalizedEmail === user.email?.toLowerCase()) {
+    return { success: false, error: "SELF_INVITE" };
+  }
+
+  // Rate limit check (shared with invites)
+  const dayAgo = new Date();
+  dayAgo.setHours(dayAgo.getHours() - 24);
+
+  const { count: recentCount } = await supabase
+    .from("trainer_athlete_connections")
+    .select("id", { count: "exact", head: true })
+    .eq("trainer_id", user.id)
+    .gte("invited_at", dayAgo.toISOString());
+
+  if ((recentCount ?? 0) >= MAX_INVITES_PER_DAY) {
+    return { success: false, error: "RATE_LIMITED" };
+  }
+
+  // Look up athlete profile
+  const { data: athleteProfile } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name, role")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (!athleteProfile) {
+    return { success: false, error: "ACCOUNT_NOT_FOUND" };
+  }
+
+  if (athleteProfile.role === "TRAINER") {
+    return { success: false, error: "IS_TRAINER" };
+  }
+
+  // Check if already connected or pending
+  const { data: existing } = await supabase
+    .from("trainer_athlete_connections")
+    .select("id, status")
+    .eq("trainer_id", user.id)
+    .eq("athlete_email", normalizedEmail)
+    .in("status", ["pending", "active"])
+    .maybeSingle();
+
+  if (existing?.status === "active") {
+    return { success: false, error: "ALREADY_CONNECTED" };
+  }
+
+  if (existing?.status === "pending") {
+    return { success: false, error: "ALREADY_PENDING" };
+  }
+
+  // Check 1-trainer rule
+  const { data: otherTrainer } = await supabase
+    .from("trainer_athlete_connections")
+    .select("id")
+    .eq("athlete_id", athleteProfile.id)
+    .eq("status", "active")
+    .neq("trainer_id", user.id)
+    .maybeSingle();
+
+  if (otherTrainer) {
+    return { success: false, error: "ALREADY_HAS_OTHER_TRAINER" };
+  }
+
+  // Create connection request (athlete_id set directly, no expiry for requests)
+  const { error: insertError } = await supabase
+    .from("trainer_athlete_connections")
+    .insert({
+      trainer_id: user.id,
+      athlete_id: athleteProfile.id,
+      athlete_email: normalizedEmail,
+      status: "pending",
+      connection_type: "request",
+      invited_at: new Date().toISOString(),
+      invitation_message: message || null,
+      // No expiry for connection requests (only invites expire)
+      invitation_expires_at: new Date(
+        Date.now() + 365 * 24 * 60 * 60 * 1000
+      ).toISOString(),
+    });
+
+  if (insertError) {
+    console.error("Failed to create connection request:", insertError);
+    return { success: false, error: "INSERT_FAILED" };
+  }
+
+  // Send connection request email via Edge Function
+  try {
+    const { data: trainerProfile } = await supabase
+      .from("profiles")
+      .select("first_name, last_name")
+      .eq("id", user.id)
+      .single();
+
+    const trainerName = trainerProfile
+      ? `${trainerProfile.first_name ?? ""} ${trainerProfile.last_name ?? ""}`.trim()
+      : user.email ?? "Trainer";
+
+    const locale =
+      (user.user_metadata?.locale as string) === "en" ? "en" : "de";
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.train-smarter.at";
+
+    await supabase.functions.invoke("send-connection-request-email", {
+      body: {
+        recipientEmail: normalizedEmail,
+        trainerName,
+        personalMessage: message || undefined,
+        dashboardLink: `${siteUrl}/${locale}/dashboard`,
+        locale,
+      },
+    });
+  } catch (emailError) {
+    // Email failure should NOT prevent the request from being created
+    console.error("Failed to send connection request email:", emailError);
   }
 
   revalidatePath("/organisation/athletes", "page");

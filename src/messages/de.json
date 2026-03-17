@@ -437,23 +437,6 @@
       "lockedByInvite": "Durch deine Einladung vorausgewählt.",
       "roleRequired": "Bitte wähle eine Rolle aus.",
       "roleSaveError": "Rolle konnte nicht gespeichert werden. Bitte versuche es erneut."
-    },
-    "step4": {
-      "trainerTitle": "Ersten Athleten einladen",
-      "trainerSubtitle": "Lade deinen ersten Athleten per E-Mail ein. Du kannst diesen Schritt auch überspringen.",
-      "athleteTitle": "Trainer-Einladungscode",
-      "athleteSubtitle": "Hast du einen Einladungscode von deinem Trainer erhalten? Du kannst diesen Schritt auch überspringen.",
-      "inviteEmail": "E-Mail-Adresse des Athleten",
-      "inviteEmailPlaceholder": "athlet@beispiel.de",
-      "inviteCode": "Einladungscode",
-      "inviteCodePlaceholder": "Code eingeben",
-      "sendInvite": "Einladung senden",
-      "sendingInvite": "Wird gesendet...",
-      "inviteSent": "Einladung wurde gesendet!",
-      "inviteError": "Einladung konnte nicht gesendet werden.",
-      "invalidCode": "Ungültiger oder abgelaufener Einladungscode.",
-      "codeAccepted": "Einladungscode akzeptiert!",
-      "verifyingCode": "Wird überprüft..."
     }
   },
   "athletes": {
@@ -525,7 +508,21 @@
     "withdrawDialogTitle": "Einladung zurückziehen?",
     "withdrawDialogMessage": "{email} erhält keinen Zugang mehr über den bestehenden Einladungslink.",
     "withdrawSuccess": "Einladung an {email} wurde zurückgezogen.",
-    "withdrawError": "Einladung konnte nicht zurückgezogen werden. Bitte versuche es erneut."
+    "withdrawError": "Einladung konnte nicht zurückgezogen werden. Bitte versuche es erneut.",
+    "requestPending": "Anfrage gesendet",
+    "connectionRequestDescription": "Dieser Athlet hat bereits ein Konto. Sende eine Verbindungsanfrage.",
+    "connectionRequestHint": "Dieser Athlet hat bereits ein Konto. Sende eine Verbindungsanfrage.",
+    "sendConnectionRequest": "Anfrage senden",
+    "connectionRequestSent": "Verbindungsanfrage an {name} gesendet.",
+    "connectionRequestFromTrainer": "Trainer {trainer} möchte sich mit dir verbinden",
+    "connectionRequestAccepted": "Du bist jetzt mit Trainer {trainer} verbunden!",
+    "connectionRequestRejected": "Verbindungsanfrage abgelehnt.",
+    "rejectConnectionDialogTitle": "Verbindungsanfrage ablehnen?",
+    "rejectConnectionDialogMessage": "Möchtest du die Verbindungsanfrage von {trainer} wirklich ablehnen?",
+    "withdrawRequestDialogTitle": "Verbindungsanfrage zurückziehen?",
+    "withdrawRequestDialogMessage": "{email} erhält keine Verbindungsanfrage mehr.",
+    "errorIsTrainer": "Dieser Account gehört einem Trainer. Nur Athleten können verbunden werden.",
+    "errorAlreadyHasOtherTrainer": "Dieser Athlet ist bereits mit einem anderen Trainer verbunden."
   },
   "profile": {
     "title": "Mein Profil",

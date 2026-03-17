@@ -29,13 +29,18 @@ export function InvitationBanner({ invitation }: InvitationBannerProps) {
 
   const trainerName = `${invitation.trainerFirstName} ${invitation.trainerLastName}`.trim();
   const initials = `${invitation.trainerFirstName.charAt(0)}${invitation.trainerLastName.charAt(0)}`.toUpperCase();
+  const isRequest = invitation.connectionType === "request";
 
   async function handleAccept() {
     setIsAccepting(true);
     try {
       const result = await acceptInvitation(invitation.connectionId);
       if (result.success) {
-        toast.success(t("invitationAccepted"));
+        toast.success(
+          isRequest
+            ? t("connectionRequestAccepted", { trainer: trainerName })
+            : t("invitationAccepted")
+        );
         setDismissed(true);
       } else if (result.error === "ALREADY_HAS_TRAINER") {
         toast.error(t("errorAlreadyHasTrainer"));
@@ -54,7 +59,11 @@ export function InvitationBanner({ invitation }: InvitationBannerProps) {
     try {
       const result = await rejectInvitation(invitation.connectionId);
       if (result.success) {
-        toast.success(t("invitationRejected"));
+        toast.success(
+          isRequest
+            ? t("connectionRequestRejected")
+            : t("invitationRejected")
+        );
         setDismissed(true);
       } else {
         toast.error(t("errorGeneric"));
@@ -67,12 +76,15 @@ export function InvitationBanner({ invitation }: InvitationBannerProps) {
     }
   }
 
+  // Connection requests don't expire
+  const showExpired = !isRequest && invitation.isExpired;
+
   return (
     <>
       <div
         className={cn(
           "rounded-lg border p-4",
-          invitation.isExpired
+          showExpired
             ? "border-muted bg-muted/50"
             : "border-primary/30 bg-primary/5"
         )}
@@ -93,16 +105,20 @@ export function InvitationBanner({ invitation }: InvitationBannerProps) {
             </Avatar>
 
             <div className="min-w-0">
-              {invitation.isExpired ? (
+              {showExpired ? (
                 <p className="text-body text-muted-foreground">
                   {t("invitationExpiredBanner", { trainer: trainerName })}
+                </p>
+              ) : isRequest ? (
+                <p className="text-body text-foreground">
+                  {t("connectionRequestFromTrainer", { trainer: trainerName })}
                 </p>
               ) : (
                 <p className="text-body text-foreground">
                   {t("invitationFromTrainer", { trainer: trainerName })}
                 </p>
               )}
-              {invitation.invitationMessage && !invitation.isExpired && (
+              {invitation.invitationMessage && !showExpired && (
                 <p className="mt-1 text-body-sm text-muted-foreground italic">
                   &ldquo;{invitation.invitationMessage}&rdquo;
                 </p>
@@ -116,7 +132,7 @@ export function InvitationBanner({ invitation }: InvitationBannerProps) {
             </div>
           </div>
 
-          {!invitation.isExpired && (
+          {!showExpired && (
             <div className="flex gap-2 shrink-0">
               <Button
                 variant="outline"
@@ -142,8 +158,16 @@ export function InvitationBanner({ invitation }: InvitationBannerProps) {
         open={showRejectDialog}
         onOpenChange={setShowRejectDialog}
         variant="danger"
-        title={t("rejectDialogTitle")}
-        message={t("rejectDialogMessage", { trainer: trainerName })}
+        title={
+          isRequest
+            ? t("rejectConnectionDialogTitle")
+            : t("rejectDialogTitle")
+        }
+        message={
+          isRequest
+            ? t("rejectConnectionDialogMessage", { trainer: trainerName })
+            : t("rejectDialogMessage", { trainer: trainerName })
+        }
         confirmLabel={t("decline")}
         cancelLabel={tCommon("cancel")}
         onConfirm={handleReject}
