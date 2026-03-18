@@ -37,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TrendChart } from "./trend-chart";
+import { UnifiedTrendChart } from "./unified-trend-chart";
 import { StreakBadge } from "./streak-badge";
 import { CategoryManager } from "./category-manager";
 import { toggleAnalysisVisibility, updateBackfillDays, loadMoreCheckinHistory } from "@/lib/feedback/actions";
@@ -239,14 +239,8 @@ export function AthleteDetailView({
         </Select>
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {trendData.map((td) => (
-          <div key={td.categoryId} className="rounded-lg border bg-card p-4">
-            <TrendChart data={td} height={220} />
-          </div>
-        ))}
-      </div>
+      {/* Unified Trend Chart */}
+      <UnifiedTrendChart trendData={trendData} />
 
       {/* Check-in History Table — dynamic columns from categories */}
       <div>

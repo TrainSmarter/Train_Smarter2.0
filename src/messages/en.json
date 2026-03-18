@@ -1011,6 +1011,8 @@
     "macros": "Macros",
     "noCheckinYet": "No entry for this day yet",
     "pickDate": "Pick date",
-    "swipeForMore": "Swipe for more"
+    "swipeForMore": "Swipe for more",
+    "noTrendData": "No data available yet",
+    "selectCategories": "Select categories to show trends"
   }
 }
