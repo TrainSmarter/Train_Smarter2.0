@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { AthleteTrendData } from "@/lib/feedback/types";
 
-/** Chart color palette from design system (--chart-1 through --chart-8) */
+/** Chart color palette from design system */
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
   "hsl(var(--chart-2))",
@@ -32,9 +32,7 @@ const CHART_COLORS = [
 const MAX_ACTIVE = 4;
 
 interface UnifiedTrendChartProps {
-  /** All available trend data */
   trendData: AthleteTrendData[];
-  /** Additional classes */
   className?: string;
 }
 
@@ -46,7 +44,6 @@ export function UnifiedTrendChart({
   const locale = useLocale();
   const isMobile = useIsMobile();
 
-  // Track which categories are toggled on (default: first 2)
   const [activeIds, setActiveIds] = React.useState<Set<string>>(() => {
     const initial = new Set<string>();
     for (let i = 0; i < Math.min(trendData.length, 2); i++) {
@@ -67,7 +64,7 @@ export function UnifiedTrendChart({
     });
   }
 
-  // Stable color assignment per category
+  // Stable color assignment
   const colorMap = React.useMemo(() => {
     const map = new Map<string, string>();
     trendData.forEach((td, i) => {
@@ -79,10 +76,8 @@ export function UnifiedTrendChart({
   const getName = (td: AthleteTrendData) =>
     locale === "en" ? td.categoryName.en : td.categoryName.de;
 
-  // Active trends in selection order (for axis assignment)
   const activeTrends = React.useMemo(() => {
     const ordered: AthleteTrendData[] = [];
-    // Preserve insertion order from the Set
     for (const id of activeIds) {
       const td = trendData.find((t) => t.categoryId === id);
       if (td) ordered.push(td);
@@ -90,7 +85,7 @@ export function UnifiedTrendChart({
     return ordered;
   }, [activeIds, trendData]);
 
-  // Build unified chart data: merge all active categories by date
+  // Build unified chart data
   const chartData = React.useMemo(() => {
     const dateMap = new Map<string, Record<string, number | null>>();
     for (const trend of activeTrends) {
@@ -113,50 +108,12 @@ export function UnifiedTrendChart({
       }));
   }, [activeTrends, locale]);
 
-  // Assign axes: first 2 active → left side, next 2 → right side
-  // Each category gets its own yAxisId for independent scaling
-  const axisConfig = React.useMemo(() => {
-    const config: Array<{
-      td: AthleteTrendData;
-      yAxisId: string;
-      orientation: "left" | "right";
-      color: string;
-      axisIndex: number; // 0-based position on its side
-    }> = [];
+  // Two shared axes: "number" (left) and "scale" (right)
+  const hasNumberAxis = activeTrends.some((td) => td.categoryType === "number");
+  const hasScaleAxis = activeTrends.some((td) => td.categoryType === "scale");
 
-    let leftCount = 0;
-    let rightCount = 0;
-
-    activeTrends.forEach((td, i) => {
-      const color = colorMap.get(td.categoryId)!;
-      if (i < 2) {
-        config.push({
-          td,
-          yAxisId: `axis-${td.categoryId}`,
-          orientation: "left",
-          color,
-          axisIndex: leftCount++,
-        });
-      } else {
-        config.push({
-          td,
-          yAxisId: `axis-${td.categoryId}`,
-          orientation: "right",
-          color,
-          axisIndex: rightCount++,
-        });
-      }
-    });
-
-    return config;
-  }, [activeTrends, colorMap]);
-
-  const chartHeight = isMobile ? 260 : 380;
-
-  // Count axes per side
-  const hasRightAxes = axisConfig.some((a) => a.orientation === "right");
-  const leftAxisCount = axisConfig.filter((a) => a.orientation === "left").length;
-  const rightAxisCount = axisConfig.filter((a) => a.orientation === "right").length;
+  const chartHeight = isMobile ? 240 : 360;
+  const isSparse = chartData.length < 3;
 
   if (trendData.length === 0) {
     return (
@@ -168,8 +125,8 @@ export function UnifiedTrendChart({
 
   return (
     <div className={cn("space-y-3", className)}>
-      {/* Toggle chips */}
-      <div className="flex flex-wrap gap-1.5">
+      {/* Toggle chips — single scrollable row */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none" style={{ scrollbarWidth: "none" }}>
         {trendData.map((td) => {
           const isActive = activeIds.has(td.categoryId);
           const color = colorMap.get(td.categoryId)!;
@@ -183,7 +140,7 @@ export function UnifiedTrendChart({
               onClick={() => toggleCategory(td.categoryId)}
               disabled={isFull}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all",
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all shrink-0",
                 "border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 isActive
                   ? "border-transparent text-white shadow-sm"
@@ -194,45 +151,58 @@ export function UnifiedTrendChart({
               style={isActive ? { backgroundColor: color } : undefined}
               aria-pressed={isActive}
             >
-              {!isActive && (
-                <span
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: isFull ? undefined : color, opacity: isFull ? 0.3 : 1 }}
-                />
-              )}
+              <span
+                className="h-2 w-2 rounded-full shrink-0"
+                style={{
+                  backgroundColor: isActive ? "rgba(255,255,255,0.6)" : isFull ? "transparent" : color,
+                  opacity: isFull ? 0.3 : 1,
+                }}
+              />
               {name}
-              {td.unit && !isActive && (
-                <span className="text-muted-foreground/60">({td.unit})</span>
-              )}
             </button>
           );
         })}
-        {activeIds.size >= MAX_ACTIVE && (
-          <span className="text-[11px] text-muted-foreground self-center ml-1">
-            {t("maxCategories", { max: MAX_ACTIVE })}
-          </span>
-        )}
       </div>
 
-      {/* Chart */}
+      {/* No categories selected */}
       {activeTrends.length === 0 ? (
         <div className="flex items-center justify-center rounded-lg border border-dashed p-12">
           <p className="text-sm text-muted-foreground">{t("selectCategories")}</p>
         </div>
-      ) : chartData.length === 0 ? (
-        <div className="flex items-center justify-center rounded-lg border border-dashed p-12">
-          <p className="text-sm text-muted-foreground">{t("noTrendData")}</p>
+      ) : isSparse ? (
+        /* Too few data points — show values as summary instead of empty chart */
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-xs text-muted-foreground mb-3">{t("tooFewDataPoints")}</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {activeTrends.map((td) => {
+              const color = colorMap.get(td.categoryId)!;
+              const name = getName(td);
+              const lastPoint = td.data.filter((d) => d.value !== null).at(-1);
+              return (
+                <div key={td.categoryId} className="text-center">
+                  <span className="text-[11px] text-muted-foreground block">{name}</span>
+                  <span className="text-xl font-semibold tabular-nums" style={{ color }}>
+                    {lastPoint?.value ?? "–"}
+                  </span>
+                  {td.unit && (
+                    <span className="text-xs text-muted-foreground ml-1">{td.unit}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : (
+        /* Chart with data */
         <div className="rounded-lg border bg-card p-3 sm:p-4">
           <ResponsiveContainer width="100%" height={chartHeight}>
             <ComposedChart
               data={chartData}
               margin={{
                 top: 8,
-                right: hasRightAxes ? 8 : 16,
+                right: hasScaleAxis ? 4 : 12,
                 bottom: isMobile ? 4 : 8,
-                left: 4,
+                left: 0,
               }}
             >
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -242,55 +212,37 @@ export function UnifiedTrendChart({
                 tick={{ fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
-                interval={isMobile ? "preserveStartEnd" : 0}
-                angle={isMobile ? -30 : 0}
-                textAnchor={isMobile ? "end" : "middle"}
-                height={isMobile ? 40 : 30}
+                interval={isMobile ? "preserveStartEnd" : "preserveEnd"}
+                angle={chartData.length > 14 && isMobile ? -30 : 0}
+                textAnchor={chartData.length > 14 && isMobile ? "end" : "middle"}
+                height={chartData.length > 14 && isMobile ? 40 : 30}
               />
 
-              {/* Individual Y-axes — each category gets its own scale */}
-              {axisConfig.map((axis) => {
-                const isScale = axis.td.categoryType === "scale";
-                // Offset axes on the same side so they don't overlap
-                const axisWidth = isMobile ? 35 : 45;
-                const offset = axis.axisIndex * (axisWidth + 4);
-                const sameCount = axis.orientation === "left" ? leftAxisCount : rightAxisCount;
+              {/* Left Y-axis: numeric values (shared for all number types) */}
+              {hasNumberAxis && (
+                <YAxis
+                  yAxisId="number"
+                  tick={{ fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={38}
+                  domain={["auto", "auto"]}
+                />
+              )}
 
-                return (
-                  <YAxis
-                    key={axis.yAxisId}
-                    yAxisId={axis.yAxisId}
-                    orientation={axis.orientation}
-                    tick={{
-                      fontSize: 10,
-                      fill: axis.color,
-                    }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={axisWidth}
-                    domain={isScale ? [0, "auto"] : ["auto", "auto"]}
-                    allowDecimals={!isScale}
-                    // Offset second axis on each side
-                    {...(sameCount > 1 && axis.axisIndex > 0
-                      ? {
-                          mirror: true,
-                          tickMargin: offset,
-                        }
-                      : {})}
-                    label={
-                      axis.td.unit && !isMobile
-                        ? {
-                            value: axis.td.unit,
-                            angle: axis.orientation === "left" ? -90 : 90,
-                            position: axis.orientation === "left" ? "insideLeft" : "insideRight",
-                            offset: -5,
-                            style: { fontSize: 10, fill: axis.color, textAnchor: "middle" },
-                          }
-                        : undefined
-                    }
-                  />
-                );
-              })}
+              {/* Right Y-axis: scale values (shared, 0-based) */}
+              {hasScaleAxis && (
+                <YAxis
+                  yAxisId="scale"
+                  orientation="right"
+                  tick={{ fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={28}
+                  domain={[0, "dataMax + 1"]}
+                  allowDecimals={false}
+                />
+              )}
 
               <Tooltip
                 contentStyle={{
@@ -301,21 +253,15 @@ export function UnifiedTrendChart({
                   padding: "8px 12px",
                 }}
                 labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-                formatter={(value: number, name: string) => {
-                  // Find the matching trend to get the unit
-                  const td = activeTrends.find(
-                    (t) => `${getName(t)}${t.unit ? ` (${t.unit})` : ""}` === name
-                  );
-                  const unit = td?.unit ?? "";
-                  return [`${value} ${unit}`.trim(), name];
-                }}
               />
 
-              {/* Render series — each with its own yAxisId */}
-              {axisConfig.map((axis) => {
-                const { td, yAxisId, color } = axis;
+              {/* Series */}
+              {activeTrends.map((td) => {
+                const color = colorMap.get(td.categoryId)!;
+                const yAxisId = td.categoryType === "scale" ? "scale" : "number";
                 const name = getName(td);
                 const label = td.unit ? `${name} (${td.unit})` : name;
+                const dotSize = chartData.length < 7 ? 4 : isMobile ? 2 : 3;
 
                 if (td.categoryType === "scale") {
                   return (
@@ -325,11 +271,11 @@ export function UnifiedTrendChart({
                       yAxisId={yAxisId}
                       name={label}
                       fill={color}
-                      fillOpacity={0.3}
+                      fillOpacity={0.25}
                       stroke={color}
                       strokeWidth={1}
                       radius={[3, 3, 0, 0]}
-                      maxBarSize={16}
+                      maxBarSize={20}
                     />
                   );
                 }
@@ -343,14 +289,14 @@ export function UnifiedTrendChart({
                     name={label}
                     stroke={color}
                     strokeWidth={2}
-                    dot={{ r: isMobile ? 2 : 3 }}
-                    activeDot={{ r: 5 }}
+                    dot={{ r: dotSize, fill: color }}
+                    activeDot={{ r: 6 }}
                     connectNulls
                   />
                 );
               })}
 
-              {/* Brush for time-range zoom (desktop only) */}
+              {/* Brush zoom (desktop, >14 points) */}
               {!isMobile && chartData.length > 14 && (
                 <Brush
                   dataKey="label"
@@ -362,6 +308,22 @@ export function UnifiedTrendChart({
               )}
             </ComposedChart>
           </ResponsiveContainer>
+
+          {/* Color legend below chart */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 px-1">
+            {activeTrends.map((td) => {
+              const color = colorMap.get(td.categoryId)!;
+              const name = getName(td);
+              return (
+                <div key={td.categoryId} className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: color }} />
+                  <span className="text-[11px] text-muted-foreground">
+                    {name}{td.unit ? ` (${td.unit})` : ""}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

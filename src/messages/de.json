@@ -1014,6 +1014,7 @@
     "swipeForMore": "Wischen für mehr",
     "noTrendData": "Noch keine Daten vorhanden",
     "selectCategories": "Wähle Kategorien aus um Trends anzuzeigen",
-    "maxCategories": "Max. {max} gleichzeitig"
+    "maxCategories": "Max. {max} gleichzeitig",
+    "tooFewDataPoints": "Mindestens 3 Einträge für eine Trendanzeige nötig"
   }
 }
