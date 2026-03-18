@@ -244,7 +244,11 @@ export function CheckinForm({
         </div>
       )}
 
-      {/* Scale fields — dropdowns */}
+      {/* Scale fields — dropdowns, 2-col grid on md+ */}
+      {scaleCategories.length > 0 && (
+      <div className={cn(
+        scaleCategories.length > 1 ? "grid gap-4 md:grid-cols-2" : "space-y-4"
+      )}>
       {scaleCategories.map((cat) => {
         const name = locale === "en" ? cat.name.en : cat.name.de;
         const val = values[cat.id];
@@ -300,6 +304,8 @@ export function CheckinForm({
           </div>
         );
       })}
+      </div>
+      )}
 
       {/* Text fields */}
       {textCategories.map((cat) => {

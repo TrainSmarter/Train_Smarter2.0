@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { CheckinForm } from "./checkin-form";
 import { WeekStrip } from "./week-strip";
 import { TrendChart } from "./trend-chart";
@@ -116,15 +117,19 @@ export function AthleteCheckinPage({
     });
   }
 
+  const showTrends = canSeeAnalysis && trendData.length > 0;
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-h1 text-foreground">{t("checkinTitle")}</h1>
-        <p className="text-body-lg text-muted-foreground">
-          {t("checkinSubtitle")}
-        </p>
-        {streak > 0 && <StreakBadge streak={streak} />}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="space-y-1">
+          <h1 className="text-h1 text-foreground">{t("checkinTitle")}</h1>
+          <p className="text-body-lg text-muted-foreground">
+            {t("checkinSubtitle")}
+          </p>
+        </div>
+        {streak > 0 && <StreakBadge streak={streak} className="mt-1" />}
       </div>
 
       {/* DSGVO consent warning */}
@@ -136,7 +141,7 @@ export function AthleteCheckinPage({
         </div>
       )}
 
-      {/* Week Strip Navigation */}
+      {/* Week Strip Navigation — full width on all breakpoints */}
       {hasBodyWellnessConsent && (
         <WeekStrip
           selectedDate={selectedDate}
@@ -146,34 +151,44 @@ export function AthleteCheckinPage({
         />
       )}
 
-      {/* Check-in Form (always visible for selected date) */}
+      {/* Main content: 2-column on desktop when trends are visible */}
       {hasBodyWellnessConsent && (
-        <div className="rounded-lg border bg-card p-5">
-          <CheckinForm
-            key={selectedDate}
-            categories={categories}
-            date={selectedDate}
-            existingValues={currentCheckin?.values}
-            onFieldSaved={handleFieldSaved}
-            onManageCategories={() => setShowCategoryManager(true)}
-          />
-        </div>
-      )}
-
-      {/* Analysis Charts (if trainer enabled) */}
-      {canSeeAnalysis && trendData.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-h3 text-foreground">{t("myTrends")}</h2>
-          <div className="grid gap-6 lg:grid-cols-2">
-            {trendData.map((td) => (
-              <div
-                key={td.categoryId}
-                className="rounded-lg border bg-card p-4"
-              >
-                <TrendChart data={td} height={200} />
-              </div>
-            ))}
+        <div
+          className={cn(
+            "gap-6",
+            showTrends
+              ? "lg:grid lg:grid-cols-[1fr_1fr] xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
+              : ""
+          )}
+        >
+          {/* Left column: Check-in Form */}
+          <div className="rounded-lg border bg-card p-5">
+            <CheckinForm
+              key={selectedDate}
+              categories={categories}
+              date={selectedDate}
+              existingValues={currentCheckin?.values}
+              onFieldSaved={handleFieldSaved}
+              onManageCategories={() => setShowCategoryManager(true)}
+            />
           </div>
+
+          {/* Right column: Trend Charts */}
+          {showTrends && (
+            <div className="mt-6 space-y-4 lg:mt-0">
+              <h2 className="text-h3 text-foreground">{t("myTrends")}</h2>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                {trendData.map((td) => (
+                  <div
+                    key={td.categoryId}
+                    className="rounded-lg border bg-card p-4"
+                  >
+                    <TrendChart data={td} height={200} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
