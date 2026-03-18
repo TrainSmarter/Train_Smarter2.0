@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { CheckinForm } from "./checkin-form";
 import { WeekStrip } from "./week-strip";
 import { TrendChart } from "./trend-chart";
+import { TrendCarousel } from "./trend-carousel";
 import { StreakBadge } from "./streak-badge";
 import { CategoryManager } from "./category-manager";
 import { loadWeekCheckins } from "@/lib/feedback/actions";
@@ -175,9 +176,14 @@ export function AthleteCheckinPage({
 
           {/* Right column: Trend Charts */}
           {showTrends && (
-            <div className="mt-6 space-y-4 lg:mt-0">
+            <div className="mt-6 space-y-3 lg:mt-0">
               <h2 className="text-h3 text-foreground">{t("myTrends")}</h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+
+              {/* Mobile: horizontal swipe carousel */}
+              <TrendCarousel trendData={trendData} />
+
+              {/* Desktop: grid layout */}
+              <div className="hidden md:grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                 {trendData.map((td) => (
                   <div
                     key={td.categoryId}

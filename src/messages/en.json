@@ -1010,6 +1010,7 @@
     "noSelection": "No selection",
     "macros": "Macros",
     "noCheckinYet": "No entry for this day yet",
-    "pickDate": "Pick date"
+    "pickDate": "Pick date",
+    "swipeForMore": "Swipe for more"
   }
 }
