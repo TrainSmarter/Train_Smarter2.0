@@ -12,7 +12,6 @@ import {
   Tooltip,
   CartesianGrid,
   Brush,
-  Legend,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -30,6 +29,8 @@ const CHART_COLORS = [
   "hsl(var(--chart-8))",
 ];
 
+const MAX_ACTIVE = 4;
+
 interface UnifiedTrendChartProps {
   /** All available trend data */
   trendData: AthleteTrendData[];
@@ -45,37 +46,53 @@ export function UnifiedTrendChart({
   const locale = useLocale();
   const isMobile = useIsMobile();
 
-  // Track which categories are toggled on (default: first 2, max 3 on mobile)
+  // Track which categories are toggled on (default: first 2)
   const [activeIds, setActiveIds] = React.useState<Set<string>>(() => {
     const initial = new Set<string>();
-    const maxDefault = 2;
-    for (let i = 0; i < Math.min(trendData.length, maxDefault); i++) {
+    for (let i = 0; i < Math.min(trendData.length, 2); i++) {
       initial.add(trendData[i].categoryId);
     }
     return initial;
   });
-
-  const maxActive = isMobile ? 3 : 6;
 
   function toggleCategory(id: string) {
     setActiveIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-      } else if (next.size < maxActive) {
+      } else if (next.size < MAX_ACTIVE) {
         next.add(id);
       }
       return next;
     });
   }
 
+  // Stable color assignment per category
+  const colorMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    trendData.forEach((td, i) => {
+      map.set(td.categoryId, CHART_COLORS[i % CHART_COLORS.length]);
+    });
+    return map;
+  }, [trendData]);
+
+  const getName = (td: AthleteTrendData) =>
+    locale === "en" ? td.categoryName.en : td.categoryName.de;
+
+  // Active trends in selection order (for axis assignment)
+  const activeTrends = React.useMemo(() => {
+    const ordered: AthleteTrendData[] = [];
+    // Preserve insertion order from the Set
+    for (const id of activeIds) {
+      const td = trendData.find((t) => t.categoryId === id);
+      if (td) ordered.push(td);
+    }
+    return ordered;
+  }, [activeIds, trendData]);
+
   // Build unified chart data: merge all active categories by date
-  const activeTrends = trendData.filter((td) => activeIds.has(td.categoryId));
-
   const chartData = React.useMemo(() => {
-    // Collect all dates across active trends
     const dateMap = new Map<string, Record<string, number | null>>();
-
     for (const trend of activeTrends) {
       for (const point of trend.data) {
         if (!dateMap.has(point.date)) {
@@ -84,8 +101,6 @@ export function UnifiedTrendChart({
         dateMap.get(point.date)![trend.categoryId] = point.value;
       }
     }
-
-    // Sort by date and add formatted label
     return Array.from(dateMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, values]) => ({
@@ -98,25 +113,50 @@ export function UnifiedTrendChart({
       }));
   }, [activeTrends, locale]);
 
-  // Determine which categories need which Y-axis
-  // Left axis: number types (kg, kcal, g, etc.)
-  // Right axis: scale types (1-5, 1-2, etc.)
-  const hasNumberAxis = activeTrends.some((td) => td.categoryType === "number");
-  const hasScaleAxis = activeTrends.some((td) => td.categoryType === "scale");
+  // Assign axes: first 2 active → left side, next 2 → right side
+  // Each category gets its own yAxisId for independent scaling
+  const axisConfig = React.useMemo(() => {
+    const config: Array<{
+      td: AthleteTrendData;
+      yAxisId: string;
+      orientation: "left" | "right";
+      color: string;
+      axisIndex: number; // 0-based position on its side
+    }> = [];
 
-  // Assign colors to categories (stable mapping)
-  const colorMap = React.useMemo(() => {
-    const map = new Map<string, string>();
-    trendData.forEach((td, i) => {
-      map.set(td.categoryId, CHART_COLORS[i % CHART_COLORS.length]);
+    let leftCount = 0;
+    let rightCount = 0;
+
+    activeTrends.forEach((td, i) => {
+      const color = colorMap.get(td.categoryId)!;
+      if (i < 2) {
+        config.push({
+          td,
+          yAxisId: `axis-${td.categoryId}`,
+          orientation: "left",
+          color,
+          axisIndex: leftCount++,
+        });
+      } else {
+        config.push({
+          td,
+          yAxisId: `axis-${td.categoryId}`,
+          orientation: "right",
+          color,
+          axisIndex: rightCount++,
+        });
+      }
     });
-    return map;
-  }, [trendData]);
 
-  const getName = (td: AthleteTrendData) =>
-    locale === "en" ? td.categoryName.en : td.categoryName.de;
+    return config;
+  }, [activeTrends, colorMap]);
 
-  const chartHeight = isMobile ? 240 : 380;
+  const chartHeight = isMobile ? 260 : 380;
+
+  // Count axes per side
+  const hasRightAxes = axisConfig.some((a) => a.orientation === "right");
+  const leftAxisCount = axisConfig.filter((a) => a.orientation === "left").length;
+  const rightAxisCount = axisConfig.filter((a) => a.orientation === "right").length;
 
   if (trendData.length === 0) {
     return (
@@ -134,18 +174,22 @@ export function UnifiedTrendChart({
           const isActive = activeIds.has(td.categoryId);
           const color = colorMap.get(td.categoryId)!;
           const name = getName(td);
+          const isFull = !isActive && activeIds.size >= MAX_ACTIVE;
 
           return (
             <button
               key={td.categoryId}
               type="button"
               onClick={() => toggleCategory(td.categoryId)}
+              disabled={isFull}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all",
                 "border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 isActive
                   ? "border-transparent text-white shadow-sm"
-                  : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  : isFull
+                    ? "border-border text-muted-foreground/40 cursor-not-allowed"
+                    : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
               style={isActive ? { backgroundColor: color } : undefined}
               aria-pressed={isActive}
@@ -153,7 +197,7 @@ export function UnifiedTrendChart({
               {!isActive && (
                 <span
                   className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: color }}
+                  style={{ backgroundColor: isFull ? undefined : color, opacity: isFull ? 0.3 : 1 }}
                 />
               )}
               {name}
@@ -163,6 +207,11 @@ export function UnifiedTrendChart({
             </button>
           );
         })}
+        {activeIds.size >= MAX_ACTIVE && (
+          <span className="text-[11px] text-muted-foreground self-center ml-1">
+            {t("maxCategories", { max: MAX_ACTIVE })}
+          </span>
+        )}
       </div>
 
       {/* Chart */}
@@ -181,7 +230,7 @@ export function UnifiedTrendChart({
               data={chartData}
               margin={{
                 top: 8,
-                right: hasScaleAxis ? 8 : 16,
+                right: hasRightAxes ? 8 : 16,
                 bottom: isMobile ? 4 : 8,
                 left: 4,
               }}
@@ -199,31 +248,49 @@ export function UnifiedTrendChart({
                 height={isMobile ? 40 : 30}
               />
 
-              {/* Left Y-axis: number values (kg, kcal, g) */}
-              {hasNumberAxis && (
-                <YAxis
-                  yAxisId="number"
-                  tick={{ fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={40}
-                  domain={["auto", "auto"]}
-                />
-              )}
+              {/* Individual Y-axes — each category gets its own scale */}
+              {axisConfig.map((axis) => {
+                const isScale = axis.td.categoryType === "scale";
+                // Offset axes on the same side so they don't overlap
+                const axisWidth = isMobile ? 35 : 45;
+                const offset = axis.axisIndex * (axisWidth + 4);
+                const sameCount = axis.orientation === "left" ? leftAxisCount : rightAxisCount;
 
-              {/* Right Y-axis: scale values (0-5, 0-2) */}
-              {hasScaleAxis && (
-                <YAxis
-                  yAxisId="scale"
-                  orientation="right"
-                  tick={{ fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={30}
-                  domain={[0, "auto"]}
-                  allowDecimals={false}
-                />
-              )}
+                return (
+                  <YAxis
+                    key={axis.yAxisId}
+                    yAxisId={axis.yAxisId}
+                    orientation={axis.orientation}
+                    tick={{
+                      fontSize: 10,
+                      fill: axis.color,
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={axisWidth}
+                    domain={isScale ? [0, "auto"] : ["auto", "auto"]}
+                    allowDecimals={!isScale}
+                    // Offset second axis on each side
+                    {...(sameCount > 1 && axis.axisIndex > 0
+                      ? {
+                          mirror: true,
+                          tickMargin: offset,
+                        }
+                      : {})}
+                    label={
+                      axis.td.unit && !isMobile
+                        ? {
+                            value: axis.td.unit,
+                            angle: axis.orientation === "left" ? -90 : 90,
+                            position: axis.orientation === "left" ? "insideLeft" : "insideRight",
+                            offset: -5,
+                            style: { fontSize: 10, fill: axis.color, textAnchor: "middle" },
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
 
               <Tooltip
                 contentStyle={{
@@ -234,14 +301,19 @@ export function UnifiedTrendChart({
                   padding: "8px 12px",
                 }}
                 labelStyle={{ fontWeight: 600, marginBottom: 4 }}
+                formatter={(value: number, name: string) => {
+                  // Find the matching trend to get the unit
+                  const td = activeTrends.find(
+                    (t) => `${getName(t)}${t.unit ? ` (${t.unit})` : ""}` === name
+                  );
+                  const unit = td?.unit ?? "";
+                  return [`${value} ${unit}`.trim(), name];
+                }}
               />
 
-              {!isMobile && <Legend wrapperStyle={{ fontSize: 12 }} />}
-
-              {/* Render series */}
-              {activeTrends.map((td) => {
-                const color = colorMap.get(td.categoryId)!;
-                const yAxisId = td.categoryType === "scale" ? "scale" : "number";
+              {/* Render series — each with its own yAxisId */}
+              {axisConfig.map((axis) => {
+                const { td, yAxisId, color } = axis;
                 const name = getName(td);
                 const label = td.unit ? `${name} (${td.unit})` : name;
 

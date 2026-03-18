@@ -1013,6 +1013,7 @@
     "pickDate": "Pick date",
     "swipeForMore": "Swipe for more",
     "noTrendData": "No data available yet",
-    "selectCategories": "Select categories to show trends"
+    "selectCategories": "Select categories to show trends",
+    "maxCategories": "Max. {max} at once"
   }
 }
