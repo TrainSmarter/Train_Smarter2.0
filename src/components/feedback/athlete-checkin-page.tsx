@@ -66,6 +66,10 @@ export function AthleteCheckinPage({
     weekCheckins
   );
 
+  // Local trend data state — updated optimistically on save
+  const [localTrendData, setLocalTrendData] =
+    React.useState<AthleteTrendData[]>(trendData);
+
   // Track which weeks have been loaded to avoid re-fetching
   const loadedWeeks = React.useRef<Set<string>>(new Set([initialWeekStart]));
 
@@ -91,7 +95,7 @@ export function AthleteCheckinPage({
     }
   }
 
-  // Handle field saved — update local cache
+  // Handle field saved — update local cache + trend chart
   function handleFieldSaved(
     categoryId: string,
     numericValue: number | null,
@@ -115,9 +119,32 @@ export function AthleteCheckinPage({
         },
       };
     });
+
+    // Update trend chart if the category exists in trend data
+    if (numericValue !== null) {
+      setLocalTrendData((prev) =>
+        prev.map((td) => {
+          if (td.categoryId !== categoryId) return td;
+
+          const existingIdx = td.data.findIndex(
+            (dp) => dp.date === selectedDate
+          );
+          const updatedData =
+            existingIdx >= 0
+              ? td.data.map((dp, i) =>
+                  i === existingIdx ? { ...dp, value: numericValue } : dp
+                )
+              : [...td.data, { date: selectedDate, value: numericValue }].sort(
+                  (a, b) => a.date.localeCompare(b.date)
+                );
+
+          return { ...td, data: updatedData };
+        })
+      );
+    }
   }
 
-  const showTrends = canSeeAnalysis && trendData.length > 0;
+  const showTrends = canSeeAnalysis && localTrendData.length > 0;
 
   return (
     <div className="space-y-6">
@@ -177,7 +204,7 @@ export function AthleteCheckinPage({
           {showTrends && (
             <div className="mt-6 lg:mt-0">
               <h2 className="text-h3 text-foreground mb-3">{t("myTrends")}</h2>
-              <UnifiedTrendChart trendData={trendData} />
+              <UnifiedTrendChart trendData={localTrendData} />
             </div>
           )}
         </div>
