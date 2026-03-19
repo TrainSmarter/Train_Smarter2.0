@@ -124,6 +124,37 @@ export default async function PrivacyPage() {
         </ul>
       </Section>
 
+      <Section title={t("privacyCookiesTitle")}>
+        <p className="text-body text-muted-foreground">
+          {t("privacyCookiesIntro")}
+        </p>
+        <h3 className="text-body font-semibold text-foreground">
+          {t("privacyCookiesAuthTitle")}
+        </h3>
+        <p className="text-body text-muted-foreground">
+          {t("privacyCookiesAuthText")}
+        </p>
+        <h3 className="text-body font-semibold text-foreground">
+          {t("privacyCookiesSessionTitle")}
+        </h3>
+        <p className="text-body text-muted-foreground">
+          {t("privacyCookiesSessionText")}
+        </p>
+        <ul className="list-disc pl-6 space-y-1.5 text-body text-muted-foreground">
+          <li>{t("privacyCookiesSessionDefault")}</li>
+          <li>{t("privacyCookiesSessionRemember")}</li>
+        </ul>
+        <h3 className="text-body font-semibold text-foreground">
+          {t("privacyCookiesLocalStorageTitle")}
+        </h3>
+        <p className="text-body text-muted-foreground">
+          {t("privacyCookiesLocalStorageText")}
+        </p>
+        <p className="text-body text-muted-foreground italic">
+          {t("privacyCookiesLegalBasis")}
+        </p>
+      </Section>
+
       <Section title={t("privacyRights")}>
         <p className="text-body text-muted-foreground">
           {t("privacyRightsText")}

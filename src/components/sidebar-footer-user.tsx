@@ -26,28 +26,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { AuthUser } from "@/lib/mock-session";
+import type { AuthUser } from "@/lib/auth-user";
+import { getSafeAvatarUrl, getInitials } from "@/lib/utils";
 
 interface SidebarFooterUserProps {
   user: AuthUser;
-}
-
-function getInitials(firstName: string, lastName: string): string {
-  const a = firstName.charAt(0) ?? "";
-  const b = lastName.charAt(0) ?? "";
-  const initials = `${a}${b}`.toUpperCase();
-  return initials || "?";
-}
-
-/** Only allow https: URLs to prevent javascript:/data: injection from client-writable user_metadata */
-function getSafeAvatarUrl(url: string | undefined): string | undefined {
-  if (!url) return undefined;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "https:" ? url : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 export function SidebarFooterUser({ user }: SidebarFooterUserProps) {
@@ -67,6 +50,12 @@ export function SidebarFooterUser({ user }: SidebarFooterUserProps) {
   async function handleLogout() {
     setIsLoggingOut(true);
     try {
+      // Clear session marker cookies before signing out
+      document.cookie = "ts_session=; path=/; SameSite=Lax; Max-Age=0";
+      document.cookie = "ts_remember=; path=/; SameSite=Lax; Max-Age=0";
+      // Cleanup legacy localStorage key (safe to call even if absent)
+      localStorage.removeItem("ts_no_remember");
+
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       await supabase.auth.signOut();

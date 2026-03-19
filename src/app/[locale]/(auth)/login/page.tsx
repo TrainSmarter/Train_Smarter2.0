@@ -18,6 +18,14 @@ import { createClient } from "@/lib/supabase/client";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 
 export default function LoginPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <LoginPageInner />
+    </React.Suspense>
+  );
+}
+
+function LoginPageInner() {
   const t = useTranslations("auth.login");
   const tAuth = useTranslations("auth");
   const locale = useLocale();
@@ -78,11 +86,15 @@ export default function LoginPage() {
         return;
       }
 
-      // Store remember-me preference for session management
-      if (!data.rememberMe) {
-        sessionStorage.setItem("ts_session_only", "true");
+      // Set marker cookies for middleware session-only detection.
+      // ts_remember is persistent (30 days); ts_session has no Max-Age
+      // so it dies when the browser closes.
+      if (data.rememberMe) {
+        document.cookie = "ts_remember=1; path=/; SameSite=Lax; Max-Age=2592000";
+        document.cookie = "ts_session=; path=/; SameSite=Lax; Max-Age=0";
       } else {
-        sessionStorage.removeItem("ts_session_only");
+        document.cookie = "ts_session=1; path=/; SameSite=Lax";
+        document.cookie = "ts_remember=; path=/; SameSite=Lax; Max-Age=0";
       }
 
       // Full page reload to ensure middleware picks up fresh session cookie
