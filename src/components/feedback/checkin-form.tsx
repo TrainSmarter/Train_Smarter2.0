@@ -266,8 +266,26 @@ export function CheckinForm({
       delete debounceTimers.current[categoryId];
     }
     const val = values[categoryId];
-    if (val && (val.numericValue != null || val.textValue != null)) {
-      doSave(categoryId, val.numericValue, val.textValue);
+    // Save if there's a value OR if the field was previously filled (clearing = save null)
+    const existing = existingValues?.[categoryId];
+    const hasCurrentValue = val && (val.numericValue != null || val.textValue != null);
+    const hadPreviousValue = existing && (existing.numericValue != null || existing.textValue != null);
+    if (hasCurrentValue || hadPreviousValue) {
+      doSave(categoryId, val?.numericValue ?? null, val?.textValue ?? null);
+    }
+  }
+
+  function handleEnterSave(categoryId: string) {
+    // Save current field and focus the next number field
+    handleBlurSave(categoryId);
+    const idx = numberCategoryIds.indexOf(categoryId);
+    if (idx >= 0 && idx < numberCategoryIds.length - 1) {
+      const nextId = numberCategoryIds[idx + 1];
+      // Focus the next number input
+      const nextInput = document.querySelector<HTMLInputElement>(
+        `[data-category-id="${nextId}"] input[type="number"]`
+      );
+      nextInput?.focus();
     }
   }
 
@@ -294,6 +312,7 @@ export function CheckinForm({
 
   // Separate categories by type
   const numberCategories = activeCategories.filter((c) => c.type === "number");
+  const numberCategoryIds = numberCategories.map((c) => c.id);
   const scaleCategories = activeCategories.filter((c) => c.type === "scale");
   const textCategories = activeCategories.filter((c) => c.type === "text");
 
@@ -387,7 +406,7 @@ export function CheckinForm({
             const showFieldError = hasError && isFieldSpecificError(cat.id);
 
             return (
-              <div key={cat.id} className="px-4 py-3 transition-colors focus-within:bg-muted/30">
+              <div key={cat.id} data-category-id={cat.id} className="px-4 py-3 transition-colors focus-within:bg-muted/30">
                 <div className={cn(
                   "flex items-center justify-between",
                   hasError && "rounded-md"
@@ -405,6 +424,7 @@ export function CheckinForm({
                     value={val?.numericValue ?? null}
                     onChange={(v) => setFieldValue(cat.id, v, null, "blur")}
                     onBlur={() => handleBlurSave(cat.id)}
+                    onEnter={() => handleEnterSave(cat.id)}
                     min={cat.minValue ?? undefined}
                     max={cat.maxValue ?? undefined}
                     step={inputStep}

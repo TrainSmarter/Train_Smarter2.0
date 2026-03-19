@@ -36,6 +36,8 @@ export interface NumberInputProps {
   error?: string;
   /** Called when the input loses focus */
   onBlur?: () => void;
+  /** Called when Enter is pressed (save + move to next field) */
+  onEnter?: () => void;
   /** Use inline strip layout (no label/wrapper, just value+stepper) */
   inline?: boolean;
   /** Additional classes */
@@ -57,6 +59,7 @@ export function NumberInput({
   hasError = false,
   error,
   onBlur,
+  onEnter,
   inline = false,
   className,
 }: NumberInputProps) {
@@ -125,6 +128,12 @@ export function NumberInput({
             value={value ?? ""}
             onChange={handleChange}
             onBlur={onBlur}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onEnter?.();
+              }
+            }}
             min={min}
             max={max}
             step={step}
@@ -183,6 +192,12 @@ export function NumberInput({
           value={value ?? ""}
           onChange={handleChange}
           onBlur={onBlur}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onEnter?.();
+            }
+          }}
           min={min}
           max={max}
           step={step}
