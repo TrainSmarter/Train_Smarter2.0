@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   hasRealValues,
   computeDotColor,
+  computeStreak,
   type CheckinEntryValues,
 } from "./dot-color";
 
@@ -295,7 +296,98 @@ describe("computeDotColor — edge cases", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// 6. i18n — streak plural syntax
+// 6. computeStreak — client-side streak calculation
+// ═══════════════════════════════════════════════════════════════
+
+describe("computeStreak", () => {
+  const required = ["cat-weight"];
+
+  function makeCheckin(date: string, weight: number | null): [string, CheckinEntryValues] {
+    return [date, { values: { "cat-weight": { numericValue: weight, textValue: null } } }];
+  }
+
+  it("returns 0 when no checkins at all", () => {
+    expect(computeStreak({}, required, "2026-03-19")).toBe(0);
+  });
+
+  it("returns 0 when today is not green and yesterday has no data", () => {
+    expect(computeStreak({}, required, "2026-03-19")).toBe(0);
+  });
+
+  it("returns 1 when only today is green", () => {
+    const checkins = Object.fromEntries([makeCheckin("2026-03-19", 80)]);
+    expect(computeStreak(checkins, required, "2026-03-19")).toBe(1);
+  });
+
+  it("counts consecutive green days from today backwards", () => {
+    const checkins = Object.fromEntries([
+      makeCheckin("2026-03-19", 80),
+      makeCheckin("2026-03-18", 79),
+      makeCheckin("2026-03-17", 78),
+      makeCheckin("2026-03-16", 77),
+    ]);
+    expect(computeStreak(checkins, required, "2026-03-19")).toBe(4);
+  });
+
+  it("stops counting at a gap (missing day)", () => {
+    const checkins = Object.fromEntries([
+      makeCheckin("2026-03-19", 80),
+      makeCheckin("2026-03-18", 79),
+      // 2026-03-17 missing
+      makeCheckin("2026-03-16", 77),
+    ]);
+    expect(computeStreak(checkins, required, "2026-03-19")).toBe(2);
+  });
+
+  it("skips today if not green and counts from yesterday", () => {
+    // Today has no data (still in progress), but yesterday is green
+    const checkins = Object.fromEntries([
+      makeCheckin("2026-03-18", 79),
+      makeCheckin("2026-03-17", 78),
+    ]);
+    expect(computeStreak(checkins, required, "2026-03-19")).toBe(2);
+  });
+
+  it("returns 0 when today is not green and yesterday is also not green", () => {
+    // No data for today or yesterday
+    const checkins = Object.fromEntries([
+      makeCheckin("2026-03-16", 77),
+    ]);
+    expect(computeStreak(checkins, required, "2026-03-19")).toBe(0);
+  });
+
+  it("counts correctly with no required fields (any entry = green)", () => {
+    const checkins = Object.fromEntries([
+      makeCheckin("2026-03-19", 80),
+      makeCheckin("2026-03-18", 79),
+    ]);
+    // No required fields → any entry is green
+    expect(computeStreak(checkins, [], "2026-03-19")).toBe(2);
+  });
+
+  it("returns 0 when no required fields and no entries", () => {
+    expect(computeStreak({}, [], "2026-03-19")).toBe(0);
+  });
+
+  it("stops at yellow day (partial required fields)", () => {
+    const checkins = Object.fromEntries([
+      ["2026-03-19", { values: {
+        "cat-weight": { numericValue: 80, textValue: null },
+        "cat-steps": { numericValue: 7000, textValue: null },
+      }}],
+      // Yesterday: weight filled but steps missing → yellow
+      ["2026-03-18", { values: {
+        "cat-weight": { numericValue: 79, textValue: null },
+        "cat-steps": { numericValue: null, textValue: null },
+      }}],
+    ]);
+    const twoRequired = ["cat-weight", "cat-steps"];
+    expect(computeStreak(checkins, twoRequired, "2026-03-19")).toBe(1);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 7. i18n — streak plural syntax
 // ═══════════════════════════════════════════════════════════════
 
 describe("i18n: streak plural syntax", () => {

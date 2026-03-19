@@ -9,6 +9,50 @@ export interface CheckinEntryValues {
 }
 
 /**
+ * Compute the current streak — consecutive green days backwards from today.
+ * If today is not green, start counting from yesterday (today is still in progress).
+ */
+export function computeStreak(
+  checkinValues: Record<string, CheckinEntryValues>,
+  requiredCategoryIds: string[] | undefined,
+  today: string
+): number {
+  const filledDates = new Set(Object.keys(checkinValues));
+  let streak = 0;
+
+  // Check today first
+  const todayColor = computeDotColor(today, filledDates, requiredCategoryIds, checkinValues, today);
+  const startFromToday = todayColor === "green";
+
+  // Walk backwards from today (or yesterday)
+  const d = new Date(today + "T00:00:00");
+  if (!startFromToday) {
+    d.setDate(d.getDate() - 1); // start from yesterday
+  }
+
+  for (let i = 0; i < 365; i++) {
+    const dateStr = toLocalDate(d);
+    const color = computeDotColor(dateStr, filledDates, requiredCategoryIds, checkinValues, today);
+    if (color === "green") {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+}
+
+/** Format Date to YYYY-MM-DD (local time) */
+function toLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
  * Check if a checkin entry has at least one real (non-null) value.
  */
 export function hasRealValues(entry: CheckinEntryValues): boolean {

@@ -17,6 +17,7 @@ import { UnifiedTrendChart } from "./unified-trend-chart";
 import { StreakBadge } from "./streak-badge";
 import { CategoryManager } from "./category-manager";
 import { loadWeekCheckins } from "@/lib/feedback/actions";
+import { computeStreak } from "@/lib/feedback/dot-color";
 import type {
   ActiveCategory,
   BackfillMode,
@@ -74,8 +75,10 @@ export function AthleteCheckinPage({
   const [localTrendData, setLocalTrendData] =
     React.useState<AthleteTrendData[]>(trendData);
 
-  // Track which weeks have been loaded to avoid re-fetching
-  const loadedWeeks = React.useRef<Set<string>>(new Set([initialWeekStart]));
+  // Track which weeks have been loaded to avoid re-fetching + suppress red flash
+  const [loadedWeekStarts, setLoadedWeekStarts] = React.useState<Set<string>>(
+    () => new Set([initialWeekStart])
+  );
 
   // Derived: set of dates that have data (for WeekStrip dots)
   const filledDates = React.useMemo(
@@ -88,11 +91,11 @@ export function AthleteCheckinPage({
 
   // Handle week navigation — load new week's check-ins if not already cached
   async function handleWeekChange(startDate: string, endDate: string) {
-    if (loadedWeeks.current.has(startDate)) return;
+    if (loadedWeekStarts.has(startDate)) return;
 
     try {
       const newCheckins = await loadWeekCheckins(startDate, endDate);
-      loadedWeeks.current.add(startDate);
+      setLoadedWeekStarts((prev) => new Set([...prev, startDate]));
       setCheckins((prev) => ({ ...prev, ...newCheckins }));
     } catch (err) {
       console.error("Failed to load week check-ins:", err);
@@ -148,6 +151,12 @@ export function AthleteCheckinPage({
     }
   }
 
+  // Compute streak client-side from checkin data (updates live on save)
+  const liveStreak = React.useMemo(
+    () => computeStreak(checkins, requiredCategoryIds, today),
+    [checkins, requiredCategoryIds, today]
+  );
+
   const showTrends = canSeeAnalysis && localTrendData.length > 0;
 
   return (
@@ -160,7 +169,7 @@ export function AthleteCheckinPage({
             {t("checkinSubtitle")}
           </p>
         </div>
-        {streak > 0 && <StreakBadge streak={streak} className="mt-1" />}
+        {liveStreak > 0 && <StreakBadge streak={liveStreak} className="mt-1" />}
       </div>
 
       {/* DSGVO consent warning */}
@@ -181,6 +190,7 @@ export function AthleteCheckinPage({
           onWeekChange={handleWeekChange}
           requiredCategoryIds={requiredCategoryIds}
           checkinValues={checkins}
+          loadedWeekStarts={loadedWeekStarts}
         />
       )}
 

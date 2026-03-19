@@ -22,6 +22,8 @@ export interface WeekStripProps {
   requiredCategoryIds?: string[];
   /** Full check-in data per date — used with requiredCategoryIds for dot color */
   checkinValues?: Record<string, CheckinEntryValues>;
+  /** Set of week start dates (Monday ISO strings) that have been loaded — suppresses red flash on unloaded weeks */
+  loadedWeekStarts?: Set<string>;
 }
 
 /** Weekday abbreviations per locale (Monday-first, ISO week order) */
@@ -59,6 +61,7 @@ export function WeekStrip({
   onWeekChange,
   requiredCategoryIds,
   checkinValues,
+  loadedWeekStarts,
 }: WeekStripProps) {
   const t = useTranslations("feedback");
   const locale = useLocale();
@@ -154,7 +157,12 @@ export function WeekStrip({
           const isToday = dateStr === today;
           const isSelected = dateStr === selectedDate;
           const isFuture = dateStr > today;
-          const dotColor = computeDotColor(dateStr, filledDates, requiredCategoryIds, checkinValues, today);
+          // Suppress red dots for weeks that haven't been loaded yet (prevents flash)
+          const weekMonday = toISODate(getMonday(dateStr));
+          const isWeekLoaded = !loadedWeekStarts || loadedWeekStarts.has(weekMonday);
+          const dotColor = isWeekLoaded
+            ? computeDotColor(dateStr, filledDates, requiredCategoryIds, checkinValues, today)
+            : "none";
 
           const statusLabel =
             dotColor === "green"
