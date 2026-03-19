@@ -411,18 +411,6 @@ export async function updateBackfillMode(
   return { success: true };
 }
 
-/** @deprecated Use updateBackfillMode instead */
-export async function updateBackfillDays(
-  athleteId: string,
-  days: number
-): Promise<ActionResult> {
-  let mode: "current_week" | "two_weeks" | "unlimited";
-  if (days <= 7) mode = "current_week";
-  else if (days <= 14) mode = "two_weeks";
-  else mode = "unlimited";
-  return updateBackfillMode(athleteId, mode);
-}
-
 // ── Load More Check-in History ──────────────────────────────────
 
 export async function loadMoreCheckinHistory(

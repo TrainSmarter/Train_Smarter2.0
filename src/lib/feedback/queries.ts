@@ -271,7 +271,6 @@ export async function getMonitoringOverview(
       `
       athlete_id,
       can_see_analysis,
-      feedback_backfill_days,
       feedback_backfill_mode,
       athlete:profiles!trainer_athlete_connections_athlete_id_fkey (
         id,
@@ -395,7 +394,6 @@ export async function getMonitoringOverview(
         ? Number(summary.latest_weight)
         : null,
       canSeeAnalysis: conn.can_see_analysis,
-      backfillDays: conn.feedback_backfill_days,
       backfillMode: (conn.feedback_backfill_mode ?? "current_week") as BackfillMode,
     };
   });
@@ -704,7 +702,6 @@ export async function getAthleteDetail(
       `
       id,
       can_see_analysis,
-      feedback_backfill_days,
       feedback_backfill_mode,
       athlete:profiles!trainer_athlete_connections_athlete_id_fkey (
         id,
@@ -776,7 +773,6 @@ export async function getAthleteDetail(
       ? Number(summary.latest_weight)
       : null,
     canSeeAnalysis: connection.can_see_analysis,
-    backfillDays: connection.feedback_backfill_days,
     backfillMode: (connection.feedback_backfill_mode ?? "current_week") as BackfillMode,
   };
 

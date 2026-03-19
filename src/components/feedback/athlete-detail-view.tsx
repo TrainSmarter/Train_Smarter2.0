@@ -40,13 +40,14 @@ import {
 import { UnifiedTrendChart } from "./unified-trend-chart";
 import { StreakBadge } from "./streak-badge";
 import { CategoryManager } from "./category-manager";
-import { toggleAnalysisVisibility, updateBackfillDays, loadMoreCheckinHistory } from "@/lib/feedback/actions";
+import { toggleAnalysisVisibility, updateBackfillMode, loadMoreCheckinHistory } from "@/lib/feedback/actions";
 import type {
   MonitoringAthleteSummary,
   AthleteTrendData,
   ActiveCategory,
   CheckinEntry,
   MonitoringTimeRange,
+  BackfillMode,
 } from "@/lib/feedback/types";
 
 interface AthleteDetailViewProps {
@@ -71,7 +72,7 @@ export function AthleteDetailView({
   const locale = useLocale();
   const [timeRange, setTimeRange] = React.useState<MonitoringTimeRange>("30");
   const [canSeeAnalysis, setCanSeeAnalysis] = React.useState(athlete.canSeeAnalysis);
-  const [backfillDays, setBackfillDays] = React.useState(String(athlete.backfillDays));
+  const [backfillModeValue, setBackfillModeValue] = React.useState<BackfillMode>(athlete.backfillMode);
   const [togglingAnalysis, setTogglingAnalysis] = React.useState(false);
   const [showCategoryManager, setShowCategoryManager] = React.useState(false);
   const [history, setHistory] = React.useState(checkinHistory);
@@ -114,10 +115,11 @@ export function AthleteDetailView({
     }
   }
 
-  async function handleBackfillChange(days: string) {
-    setBackfillDays(days);
+  async function handleBackfillChange(mode: string) {
+    const newMode = mode as BackfillMode;
+    setBackfillModeValue(newMode);
     try {
-      const result = await updateBackfillDays(athlete.athleteId, parseInt(days));
+      const result = await updateBackfillMode(athlete.athleteId, newMode);
       if (!result.success) {
         toast.error(t("updateError"));
       }
@@ -186,18 +188,16 @@ export function AthleteDetailView({
         </div>
         <div className="flex items-center gap-3">
           <Label className="text-sm text-muted-foreground">
-            {t("backfillLimit")}
+            {t("backfillModeLabel")}
           </Label>
-          <Select value={backfillDays} onValueChange={handleBackfillChange}>
-            <SelectTrigger className="w-[80px]">
+          <Select value={backfillModeValue} onValueChange={handleBackfillChange}>
+            <SelectTrigger className="w-[160px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Array.from({ length: 14 }, (_, i) => i + 1).map((d) => (
-                <SelectItem key={d} value={String(d)}>
-                  {d}d
-                </SelectItem>
-              ))}
+              <SelectItem value="current_week">{t("backfillCurrentWeek")}</SelectItem>
+              <SelectItem value="two_weeks">{t("backfillTwoWeeks")}</SelectItem>
+              <SelectItem value="unlimited">{t("backfillUnlimited")}</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -120,8 +120,6 @@ export interface MonitoringAthleteSummary {
   weightTrend: number | null; // delta over 7 days
   latestWeight: number | null;
   canSeeAnalysis: boolean;
-  /** @deprecated Use backfillMode instead */
-  backfillDays: number;
   backfillMode: BackfillMode;
 }
 

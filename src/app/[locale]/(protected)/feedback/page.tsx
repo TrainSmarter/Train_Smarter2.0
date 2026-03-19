@@ -70,7 +70,7 @@ export default async function FeedbackPage() {
     .maybeSingle();
   const hasBodyWellnessConsent = consentData?.granted === true;
 
-  // Fetch real connection info (canSeeAnalysis, backfillDays, streak)
+  // Fetch real connection info (canSeeAnalysis, backfillMode, streak)
   const connectionInfo = await getAthleteConnectionInfo(authUser.id);
   const { canSeeAnalysis, streak, backfillMode } = connectionInfo;
 
