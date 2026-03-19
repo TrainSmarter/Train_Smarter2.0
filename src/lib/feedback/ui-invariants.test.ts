@@ -330,18 +330,18 @@ describe("week-strip: today indicator and status badges", () => {
     expect(strip).toContain("bg-destructive/20");
   });
 
-  it("green badge: solid bg-success with Check icon", () => {
-    expect(strip).toContain("bg-success text-success-foreground");
+  it("green badge: solid bg-success with Check icon and white text", () => {
+    expect(strip).toContain("bg-success text-white");
     expect(strip).toContain("<Check");
   });
 
-  it("yellow badge: solid bg-warning with Minus icon", () => {
-    expect(strip).toContain("bg-warning text-warning-foreground");
+  it("yellow badge: solid bg-warning with Minus icon and white text", () => {
+    expect(strip).toContain("bg-warning text-white");
     expect(strip).toContain("<Minus");
   });
 
-  it("red badge: solid bg-destructive with X icon", () => {
-    expect(strip).toContain("bg-destructive text-destructive-foreground");
+  it("red badge: solid bg-destructive with X icon and white text", () => {
+    expect(strip).toContain("bg-destructive text-white");
     expect(strip).toContain("<X");
   });
 

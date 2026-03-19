@@ -259,17 +259,17 @@ export function WeekStrip({
                 {dayNum}
                 {/* Micro icon badge */}
                 {dotColor === "green" && (
-                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success text-success-foreground" aria-hidden="true">
+                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success text-white" aria-hidden="true">
                     <Check className="h-2 w-2" />
                   </span>
                 )}
                 {dotColor === "yellow" && (
-                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-warning text-warning-foreground" aria-hidden="true">
+                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-warning text-white" aria-hidden="true">
                     <Minus className="h-2 w-2" />
                   </span>
                 )}
                 {dotColor === "red" && (
-                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-destructive-foreground" aria-hidden="true">
+                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-white" aria-hidden="true">
                     <X className="h-2 w-2" />
                   </span>
                 )}
