@@ -545,7 +545,7 @@ export async function acceptInvitation(
   // BUG-6: Application-level authorization — verify invitation belongs to this user
   const { data: connection } = await supabase
     .from("trainer_athlete_connections")
-    .select("id, athlete_email, status")
+    .select("id, trainer_id, athlete_email, status")
     .eq("id", connectionId)
     .eq("status", "pending")
     .single();
@@ -583,6 +583,19 @@ export async function acceptInvitation(
   if (updateError) {
     console.error("Failed to accept invitation:", updateError);
     return { success: false, error: "UPDATE_FAILED" };
+  }
+
+  // PROJ-18: Copy trainer's default category settings to the new athlete
+  if (connection.trainer_id) {
+    const { error: copyError } = await supabase.rpc("copy_trainer_defaults_to_athlete", {
+      p_trainer_id: connection.trainer_id,
+      p_athlete_id: user.id,
+    });
+
+    if (copyError) {
+      // Non-blocking: defaults copy failure should not prevent connection acceptance
+      console.error("Failed to copy trainer defaults to athlete:", copyError);
+    }
   }
 
   revalidatePath("/", "layout");

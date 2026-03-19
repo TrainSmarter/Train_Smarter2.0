@@ -48,6 +48,7 @@ import type {
   CheckinEntry,
   MonitoringTimeRange,
   BackfillMode,
+  TrainerCategoryDefault,
 } from "@/lib/feedback/types";
 
 interface AthleteDetailViewProps {
@@ -58,6 +59,8 @@ interface AthleteDetailViewProps {
   categories: ActiveCategory[];
   /** Whether the athlete has granted body_wellness_data consent */
   hasBodyWellnessConsent: boolean;
+  /** Trainer defaults for comparing individual overrides */
+  trainerDefaults?: TrainerCategoryDefault[];
 }
 
 export function AthleteDetailView({
@@ -67,6 +70,7 @@ export function AthleteDetailView({
   hasMoreHistory,
   categories,
   hasBodyWellnessConsent,
+  trainerDefaults,
 }: AthleteDetailViewProps) {
   const t = useTranslations("feedback");
   const locale = useLocale();
@@ -323,7 +327,12 @@ export function AthleteDetailView({
               {t("manageCategories")}
             </DialogTitle>
           </DialogHeader>
-          <CategoryManager categories={categories} isTrainerView />
+          <CategoryManager
+            categories={categories}
+            isTrainerView
+            targetAthleteId={athlete.athleteId}
+            trainerDefaults={trainerDefaults}
+          />
         </DialogContent>
       </Dialog>
     </div>

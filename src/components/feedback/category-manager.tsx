@@ -10,17 +10,19 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { toggleCategoryOverride } from "@/lib/feedback/actions";
+import { toggleCategoryOverride, updateAthleteRequired } from "@/lib/feedback/actions";
 import { CategoryFormModal } from "./category-form-modal";
-import type { ActiveCategory, CategoryScope } from "@/lib/feedback/types";
+import type { ActiveCategory, CategoryScope, TrainerCategoryDefault } from "@/lib/feedback/types";
 
 interface CategoryManagerProps {
   /** All categories with their active state */
   categories: ActiveCategory[];
   /** Whether the current user is a trainer managing an athlete's categories */
   isTrainerView?: boolean;
-  /** Target athlete ID when trainer creates category */
+  /** Target athlete ID when trainer creates category / manages required toggles */
   targetAthleteId?: string | null;
+  /** Trainer defaults — used to show "Individuell" badge when athlete differs */
+  trainerDefaults?: TrainerCategoryDefault[];
   /** Additional classes */
   className?: string;
 }
@@ -38,6 +40,7 @@ export function CategoryManager({
   categories,
   isTrainerView = false,
   targetAthleteId,
+  trainerDefaults,
   className,
 }: CategoryManagerProps) {
   const t = useTranslations("feedback");
@@ -50,7 +53,25 @@ export function CategoryManager({
     }
     return states;
   });
+  const [localRequiredStates, setLocalRequiredStates] = React.useState<Record<string, boolean>>(() => {
+    const states: Record<string, boolean> = {};
+    for (const cat of categories) {
+      states[cat.id] = cat.isEffectivelyRequired;
+    }
+    return states;
+  });
   const [togglingId, setTogglingId] = React.useState<string | null>(null);
+
+  // Build trainer default map for comparison
+  const defaultMap = React.useMemo(() => {
+    const map = new Map<string, TrainerCategoryDefault>();
+    if (trainerDefaults) {
+      for (const def of trainerDefaults) {
+        map.set(def.categoryId, def);
+      }
+    }
+    return map;
+  }, [trainerDefaults]);
 
   // Group by scope
   const grouped = React.useMemo(() => {
@@ -84,6 +105,40 @@ export function CategoryManager({
     }
   }
 
+  async function handleRequiredToggle(categoryId: string, required: boolean) {
+    if (!targetAthleteId) return;
+    setTogglingId(categoryId);
+    const prev = localRequiredStates[categoryId];
+    setLocalRequiredStates((s) => ({ ...s, [categoryId]: required }));
+
+    try {
+      const result = await updateAthleteRequired(targetAthleteId, categoryId, required);
+      if (!result.success) {
+        setLocalRequiredStates((s) => ({ ...s, [categoryId]: prev }));
+        toast.error(t("athleteRequiredError"));
+      } else {
+        toast.success(t("athleteRequiredSaved"));
+      }
+    } catch {
+      setLocalRequiredStates((s) => ({ ...s, [categoryId]: prev }));
+      toast.error(t("athleteRequiredError"));
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  /** Check if athlete's setting differs from trainer default */
+  function isIndividual(cat: ActiveCategory): boolean {
+    if (!trainerDefaults || trainerDefaults.length === 0) return false;
+    const def = defaultMap.get(cat.id);
+    const currentActive = localStates[cat.id] ?? cat.isActive;
+    const currentRequired = localRequiredStates[cat.id] ?? cat.isEffectivelyRequired;
+    // Default: active=true, required=false when no trainer default exists
+    const defaultActive = def ? def.isActive : true;
+    const defaultRequired = def ? def.isRequired : false;
+    return currentActive !== defaultActive || currentRequired !== defaultRequired;
+  }
+
   const scopes: CategoryScope[] = ["global", "trainer", "athlete"];
 
   return (
@@ -106,17 +161,21 @@ export function CategoryManager({
                 const isActive = localStates[cat.id] ?? cat.isActive;
                 const isToggling = togglingId === cat.id;
 
+                const isRequired = localRequiredStates[cat.id] ?? cat.isEffectivelyRequired;
+                const isTextType = cat.type === "text";
+                const showIndividual = isTrainerView && trainerDefaults && isIndividual(cat);
+
                 return (
                   <div
                     key={cat.id}
                     className={cn(
-                      "flex items-center justify-between rounded-lg border p-3 transition-colors",
+                      "flex flex-col gap-2 rounded-lg border p-3 transition-colors sm:flex-row sm:items-center sm:justify-between",
                       !isActive && "opacity-60"
                     )}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="space-y-0.5 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Label className="text-sm font-medium">{name}</Label>
                           <Badge
                             variant={config.badgeVariant}
@@ -124,9 +183,14 @@ export function CategoryManager({
                           >
                             {cat.type}
                           </Badge>
-                          {cat.isRequired && (
+                          {isRequired && (
                             <Badge variant="outline" size="sm">
                               {t("required")}
+                            </Badge>
+                          )}
+                          {showIndividual && (
+                            <Badge variant="warning" size="sm">
+                              {t("individualBadge")}
                             </Badge>
                           )}
                         </div>
@@ -150,14 +214,40 @@ export function CategoryManager({
                           )}
                       </div>
                     </div>
-                    <Switch
-                      checked={isActive}
-                      onCheckedChange={(checked) =>
-                        handleToggle(cat.id, checked)
-                      }
-                      disabled={isToggling}
-                      aria-label={t("toggleCategory", { name })}
-                    />
+                    <div className="flex items-center gap-4 shrink-0">
+                      {/* Required toggle — only in trainer view when active */}
+                      {isTrainerView && targetAthleteId && isActive && (
+                        <div className="flex items-center gap-1.5">
+                          <Label
+                            htmlFor={`req-${cat.id}`}
+                            className={cn(
+                              "text-xs whitespace-nowrap",
+                              isTextType ? "text-muted-foreground/50" : "text-muted-foreground"
+                            )}
+                          >
+                            {t("defaultRequired")}
+                          </Label>
+                          <Switch
+                            id={`req-${cat.id}`}
+                            checked={isRequired}
+                            onCheckedChange={(checked) =>
+                              handleRequiredToggle(cat.id, checked)
+                            }
+                            disabled={isTextType || isToggling}
+                            aria-label={`${t("defaultRequired")}: ${name}`}
+                          />
+                        </div>
+                      )}
+                      {/* Active toggle */}
+                      <Switch
+                        checked={isActive}
+                        onCheckedChange={(checked) =>
+                          handleToggle(cat.id, checked)
+                        }
+                        disabled={isToggling}
+                        aria-label={t("toggleCategory", { name })}
+                      />
+                    </div>
                   </div>
                 );
               })}

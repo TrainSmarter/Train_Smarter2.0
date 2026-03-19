@@ -314,9 +314,13 @@ describe("week-strip: today indicator distinct from entry dot", () => {
     expect(strip).toContain("ring-2 ring-primary");
   });
 
-  it("entry dot uses bg-success only when isFilled", () => {
-    expect(strip).toContain("isFilled");
+  it("entry dot uses bg-success for filled/complete days", () => {
     expect(strip).toContain("bg-success");
+  });
+
+  it("supports yellow dot for partial required fields (PROJ-18)", () => {
+    expect(strip).toContain("bg-warning");
+    expect(strip).toContain("computeDotColor");
   });
 
   it("empty days have transparent dot (no gray dot)", () => {
@@ -327,5 +331,10 @@ describe("week-strip: today indicator distinct from entry dot", () => {
   it("day number is inside a rounded-full container for ring effect", () => {
     expect(strip).toContain("rounded-full");
     expect(strip).toContain("h-7 w-7");
+  });
+
+  it("accepts requiredCategoryIds and checkinValues props", () => {
+    expect(strip).toContain("requiredCategoryIds");
+    expect(strip).toContain("checkinValues");
   });
 });

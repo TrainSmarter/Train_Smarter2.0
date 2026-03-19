@@ -6,6 +6,7 @@ import {
   getAthleteTrendData,
   getCheckinHistory,
   getAthleteDetail,
+  getTrainerDefaults,
 } from "@/lib/feedback/queries";
 import { redirect } from "@/i18n/navigation";
 
@@ -54,10 +55,11 @@ export default async function AthleteDetailPage({
     return null;
   }
 
-  // Get trend data and history (both respect DSGVO consent internally)
-  const [trendData, { entries: checkinHistory, hasMore }] = await Promise.all([
+  // Get trend data, history, and trainer defaults (all respect DSGVO consent internally)
+  const [trendData, { entries: checkinHistory, hasMore }, trainerDefaults] = await Promise.all([
     getAthleteTrendData(athleteId, "30"),
     getCheckinHistory(athleteId, { limit: 20 }),
+    getTrainerDefaults(authUser.id),
   ]);
 
   return (
@@ -68,6 +70,7 @@ export default async function AthleteDetailPage({
       hasMoreHistory={hasMore}
       categories={detail.categories}
       hasBodyWellnessConsent={detail.hasBodyWellnessConsent}
+      trainerDefaults={trainerDefaults}
     />
   );
 }

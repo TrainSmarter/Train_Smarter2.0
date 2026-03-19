@@ -1,9 +1,10 @@
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { toAuthUser } from "@/lib/auth-user";
-import { MonitoringDashboard } from "@/components/feedback/monitoring-dashboard";
+import { FeedbackTrainerPage } from "@/components/feedback/feedback-trainer-page";
 import { AthleteCheckinPage } from "@/components/feedback/athlete-checkin-page";
-import { getActiveCategories, getCheckinsByDateRange, getMonitoringOverview, getAthleteTrendData, getAthleteConnectionInfo } from "@/lib/feedback/queries";
+import { getActiveCategories, getCheckinsByDateRange, getMonitoringOverview, getAthleteTrendData, getAthleteConnectionInfo, getTrainerDefaults, getRequiredCategoryIds } from "@/lib/feedback/queries";
+import type { FeedbackCategory } from "@/lib/feedback/types";
 
 export async function generateMetadata({
   params,
@@ -33,13 +34,30 @@ export default async function FeedbackPage() {
   const isTrainer = role === "TRAINER";
 
   if (isTrainer) {
-    // Trainer: Monitoring Dashboard
-    const overview = await getMonitoringOverview(authUser.id);
-    return <MonitoringDashboard overview={overview} />;
+    // Trainer: Monitoring Dashboard + Settings tabs
+    const [overview, trainerDefaults, allCategoriesRaw] = await Promise.all([
+      getMonitoringOverview(authUser.id),
+      getTrainerDefaults(authUser.id),
+      getAllCategories(),
+    ]);
+
+    // Serialize FeedbackCategory[] for client component
+    const allCategories: FeedbackCategory[] = allCategoriesRaw;
+
+    return (
+      <FeedbackTrainerPage
+        overview={overview}
+        allCategories={allCategories}
+        trainerDefaults={trainerDefaults}
+      />
+    );
   }
 
   // Athlete: Check-in Page
-  const categories = await getActiveCategories(authUser.id);
+  const [categories, requiredCategoryIds] = await Promise.all([
+    getActiveCategories(authUser.id),
+    getRequiredCategoryIds(authUser.id),
+  ]);
 
   // Calculate current week range (Monday through today)
   const today = new Date();
@@ -89,6 +107,7 @@ export default async function FeedbackPage() {
       backfillMode={backfillMode}
       hasBodyWellnessConsent={hasBodyWellnessConsent}
       initialWeekStart={startDate}
+      requiredCategoryIds={requiredCategoryIds}
     />
   );
 }
@@ -99,4 +118,41 @@ function formatDate(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/** Fetch all non-archived categories (for trainer settings page) */
+async function getAllCategories(): Promise<FeedbackCategory[]> {
+  const { createClient } = await import("@/lib/supabase/server");
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("feedback_categories")
+    .select("*")
+    .is("archived_at", null)
+    .order("sort_order", { ascending: true });
+
+  if (error || !data) {
+    console.error("Failed to fetch all categories:", error);
+    return [];
+  }
+
+  return data.map((row: Record<string, unknown>) => ({
+    id: row.id as string,
+    name: row.name as { de: string; en: string },
+    slug: (row.slug as string) ?? "",
+    type: row.type as "number" | "scale" | "text",
+    unit: row.unit as string | null,
+    minValue: row.min_value as number | null,
+    maxValue: row.max_value as number | null,
+    scaleLabels: row.scale_labels as Record<string, { de: string; en: string }> | null,
+    isRequired: row.is_required as boolean,
+    sortOrder: row.sort_order as number,
+    icon: row.icon as string | null,
+    scope: row.scope as "global" | "trainer" | "athlete",
+    createdBy: row.created_by as string | null,
+    targetAthleteId: row.target_athlete_id as string | null,
+    archivedAt: row.archived_at as string | null,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  }));
 }

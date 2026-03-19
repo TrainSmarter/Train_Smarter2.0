@@ -76,6 +76,18 @@ const archiveCategorySchema = z.object({
   id: z.string().uuid(),
 });
 
+const updateTrainerDefaultSchema = z.object({
+  categoryId: z.string().uuid(),
+  field: z.enum(["is_active", "is_required"]),
+  value: z.boolean(),
+});
+
+const updateAthleteRequiredSchema = z.object({
+  athleteId: z.string().uuid(),
+  categoryId: z.string().uuid(),
+  isRequired: z.boolean(),
+});
+
 import { computeBackfillMinDate } from "./backfill";
 import type { BackfillMode } from "./types";
 
@@ -651,6 +663,125 @@ export async function archiveCategory(
   if (updateError) {
     console.error("Failed to archive category:", updateError);
     return { success: false, error: "UPDATE_FAILED" };
+  }
+
+  revalidatePath("/feedback");
+  return { success: true };
+}
+
+// ── Update Trainer Default ──────────────────────────────────────
+
+export async function updateTrainerDefault(
+  categoryId: string,
+  field: "is_active" | "is_required",
+  value: boolean
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  // Validate input
+  const parsed = updateTrainerDefaultSchema.safeParse({ categoryId, field, value });
+  if (!parsed.success) {
+    return { success: false, error: "INVALID_INPUT" };
+  }
+
+  // Build the upsert data based on field
+  let isActive: boolean;
+  let isRequired: boolean;
+
+  if (field === "is_active") {
+    isActive = value;
+    // If deactivating, also set required to false
+    isRequired = value ? false : false; // On activate, default required to false; on deactivate, force false
+  } else {
+    // field === "is_required"
+    isRequired = value;
+    // If setting required=true, ensure active=true
+    isActive = value ? true : true; // Keep active regardless; front-end controls visibility
+  }
+
+  // For is_active=true, we need to preserve the existing is_required if it exists
+  // For is_required change, we need to preserve the existing is_active
+  // So we need to read the current state first for accurate merge
+  const { data: existing } = await supabase
+    .from("trainer_category_defaults")
+    .select("is_active, is_required")
+    .eq("trainer_id", user.id)
+    .eq("category_id", categoryId)
+    .maybeSingle();
+
+  if (field === "is_active") {
+    isActive = value;
+    // If deactivating, also force required to false
+    isRequired = value ? (existing?.is_required ?? false) : false;
+  } else {
+    // field === "is_required"
+    isRequired = value;
+    // If setting required=true, ensure active=true
+    isActive = value ? true : (existing?.is_active ?? true);
+  }
+
+  const { error: upsertError } = await supabase
+    .from("trainer_category_defaults")
+    .upsert(
+      {
+        trainer_id: user.id,
+        category_id: categoryId,
+        is_active: isActive,
+        is_required: isRequired,
+      },
+      { onConflict: "trainer_id,category_id" }
+    );
+
+  if (upsertError) {
+    console.error("Failed to update trainer default:", upsertError);
+    return { success: false, error: "UPSERT_FAILED" };
+  }
+
+  revalidatePath("/feedback");
+  return { success: true };
+}
+
+// ── Update Athlete Required (Trainer sets per-athlete override) ──
+
+export async function updateAthleteRequired(
+  athleteId: string,
+  categoryId: string,
+  isRequired: boolean
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  // Validate input
+  const parsed = updateAthleteRequiredSchema.safeParse({ athleteId, categoryId, isRequired });
+  if (!parsed.success) {
+    return { success: false, error: "INVALID_INPUT" };
+  }
+
+  // Call the SECURITY DEFINER function
+  const { error: rpcError } = await supabase.rpc("set_athlete_category_required", {
+    p_athlete_id: athleteId,
+    p_category_id: categoryId,
+    p_is_required: isRequired,
+  });
+
+  if (rpcError) {
+    console.error("Failed to update athlete required:", rpcError);
+    return { success: false, error: "RPC_FAILED" };
   }
 
   revalidatePath("/feedback");

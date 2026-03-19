@@ -25,6 +25,7 @@ Einheitliches Benachrichtigungssystem mit zwei Kanälen (In-App + E-Mail) und gr
 | `connection_disconnected` | Trainer + Athlet | Verbindung getrennt (von wem auch immer) |
 | `athlete_checkin_submitted` | Trainer | Athlet hat täglichen Check-in abgeschlossen |
 | `athlete_missing_checkin` | Trainer | Athlet hat 3 Tage keinen Check-in (konfigurierbarer Schwellwert) |
+| `missing_required_checkin` | Athlet | Pflichtfelder vom Vortag nicht ausgefüllt (PROJ-18). Max 1x/Tag, navigiert zum gestrigen Check-in. |
 | `workout_completed` | Trainer | Athlet hat Trainingseinheit als abgeschlossen markiert |
 | `plan_expired` | Trainer | Zugewiesener Plan eines Athleten ist abgelaufen |
 | `data_export_ready` | User | Daten-Export bereit zum Download |

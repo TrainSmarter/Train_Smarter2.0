@@ -44,13 +44,26 @@ export interface CategoryOverride {
   userId: string;
   categoryId: string;
   isActive: boolean;
+  isRequired: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TrainerCategoryDefault {
+  id: string;
+  trainerId: string;
+  categoryId: string;
+  isActive: boolean;
+  isRequired: boolean;
 }
 
 /** A category with its effective active state for a specific user */
 export interface ActiveCategory extends FeedbackCategory {
   isActive: boolean;
+  /** Per-athlete override for required flag (null = no override, use global isRequired) */
+  isRequiredOverride: boolean | null;
+  /** Effective required status: override wins, then global fallback */
+  isEffectivelyRequired: boolean;
 }
 
 // ── Backfill Mode ────────────────────────────────────────────

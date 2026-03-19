@@ -415,7 +415,12 @@ export function CheckinForm({
                     <span className={cn(
                       "text-sm font-medium",
                       hasError ? "text-error" : "text-muted-foreground"
-                    )}>{name}</span>
+                    )}>
+                      {name}
+                      {cat.isEffectivelyRequired && (
+                        <span className="text-destructive ml-0.5" aria-hidden="true">*</span>
+                      )}
+                    </span>
                     <StatusIcon categoryId={cat.id} />
                   </div>
                   <NumberInput
@@ -469,7 +474,12 @@ export function CheckinForm({
               <Label className={cn(
                 "text-label",
                 hasError ? "text-error" : "text-foreground"
-              )}>{name}</Label>
+              )}>
+                {name}
+                {cat.isEffectivelyRequired && (
+                  <span className="text-destructive ml-0.5" aria-hidden="true">*</span>
+                )}
+              </Label>
               <StatusIcon categoryId={cat.id} />
             </div>
             <Select
@@ -528,7 +538,12 @@ export function CheckinForm({
               <Label className={cn(
                 "text-label",
                 hasError ? "text-error" : "text-foreground"
-              )}>{name}</Label>
+              )}>
+                {name}
+                {cat.isEffectivelyRequired && (
+                  <span className="text-destructive ml-0.5" aria-hidden="true">*</span>
+                )}
+              </Label>
               <StatusIcon categoryId={cat.id} />
             </div>
             <Textarea

@@ -41,6 +41,8 @@ interface AthleteCheckinPageProps {
   hasBodyWellnessConsent: boolean;
   /** ISO date of the Monday of the initial week */
   initialWeekStart: string;
+  /** IDs of categories that are required AND active for this athlete */
+  requiredCategoryIds?: string[];
 }
 
 export function AthleteCheckinPage({
@@ -52,6 +54,7 @@ export function AthleteCheckinPage({
   backfillMode,
   hasBodyWellnessConsent,
   initialWeekStart,
+  requiredCategoryIds,
 }: AthleteCheckinPageProps) {
   const t = useTranslations("feedback");
   const [showCategoryManager, setShowCategoryManager] = React.useState(false);
@@ -176,6 +179,8 @@ export function AthleteCheckinPage({
           filledDates={filledDates}
           onSelectDate={setSelectedDate}
           onWeekChange={handleWeekChange}
+          requiredCategoryIds={requiredCategoryIds}
+          checkinValues={checkins}
         />
       )}
 

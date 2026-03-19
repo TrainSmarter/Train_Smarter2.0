@@ -16,6 +16,7 @@ import type {
   TrafficLight,
   AlertSeverity,
   BackfillMode,
+  TrainerCategoryDefault,
 } from "./types";
 
 /**
@@ -114,22 +115,26 @@ export async function getActiveCategories(
     return [];
   }
 
-  // Fetch overrides for this user
+  // Fetch overrides for this user (including is_required)
   const { data: overrides } = await supabase
     .from("feedback_category_overrides")
-    .select("category_id, is_active")
+    .select("category_id, is_active, is_required")
     .eq("user_id", userId);
 
   const overrideMap = new Map(
-    (overrides ?? []).map((o) => [o.category_id, o.is_active])
+    (overrides ?? []).map((o) => [o.category_id, { isActive: o.is_active, isRequired: o.is_required as boolean }])
   );
 
   return (categories ?? []).map((row) => {
     const cat = mapDbCategory(row as unknown as DbCategory);
-    const overrideValue = overrideMap.get(cat.id);
+    const override = overrideMap.get(cat.id);
     // Default is active unless explicitly overridden to false
-    const isActive = overrideValue !== undefined ? overrideValue : true;
-    return { ...cat, isActive };
+    const isActive = override !== undefined ? override.isActive : true;
+    // is_required override: null means no override exists, use global
+    const isRequiredOverride = override !== undefined ? override.isRequired : null;
+    // Effective required: override wins, then global fallback
+    const isEffectivelyRequired = isRequiredOverride !== null ? isRequiredOverride : cat.isRequired;
+    return { ...cat, isActive, isRequiredOverride, isEffectivelyRequired };
   });
 }
 
@@ -795,4 +800,74 @@ export async function getAthleteDetail(
     connectionId: connection.id,
     hasBodyWellnessConsent: athleteConsent,
   };
+}
+
+// ── Trainer Default Queries ─────────────────────────────────────────
+
+/** Get all trainer category defaults for a trainer */
+export async function getTrainerDefaults(
+  trainerId: string
+): Promise<TrainerCategoryDefault[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("trainer_category_defaults")
+    .select("id, trainer_id, category_id, is_active, is_required")
+    .eq("trainer_id", trainerId);
+
+  if (error) {
+    console.error("Failed to fetch trainer defaults:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    trainerId: row.trainer_id,
+    categoryId: row.category_id,
+    isActive: row.is_active,
+    isRequired: row.is_required,
+  }));
+}
+
+/** Get IDs of categories that are required AND active for an athlete */
+export async function getRequiredCategoryIds(
+  userId: string
+): Promise<string[]> {
+  const supabase = await createClient();
+
+  // Fetch all non-archived categories
+  const { data: categories } = await supabase
+    .from("feedback_categories")
+    .select("id, is_required, type")
+    .is("archived_at", null);
+
+  if (!categories || categories.length === 0) return [];
+
+  // Fetch overrides
+  const { data: overrides } = await supabase
+    .from("feedback_category_overrides")
+    .select("category_id, is_active, is_required")
+    .eq("user_id", userId);
+
+  const overrideMap = new Map(
+    (overrides ?? []).map((o) => [o.category_id, { isActive: o.is_active, isRequired: o.is_required as boolean }])
+  );
+
+  const requiredIds: string[] = [];
+
+  for (const cat of categories) {
+    // Text categories can never be required
+    if (cat.type === "text") continue;
+
+    const override = overrideMap.get(cat.id);
+    const isActive = override !== undefined ? override.isActive : true;
+    if (!isActive) continue;
+
+    const isRequired = override !== undefined ? override.isRequired : cat.is_required;
+    if (isRequired) {
+      requiredIds.push(cat.id);
+    }
+  }
+
+  return requiredIds;
 }

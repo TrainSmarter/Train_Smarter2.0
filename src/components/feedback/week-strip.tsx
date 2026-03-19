@@ -7,6 +7,10 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+interface CheckinEntryValues {
+  values: Record<string, { numericValue: number | null; textValue: string | null }>;
+}
+
 export interface WeekStripProps {
   /** Currently selected date (ISO string YYYY-MM-DD) */
   selectedDate: string;
@@ -16,6 +20,10 @@ export interface WeekStripProps {
   onSelectDate: (date: string) => void;
   /** Called when the visible week changes (via arrows), passes Monday ISO date and Sunday ISO date */
   onWeekChange?: (startDate: string, endDate: string) => void;
+  /** IDs of categories that are required AND active — used for yellow/green dot logic */
+  requiredCategoryIds?: string[];
+  /** Full check-in data per date — used with requiredCategoryIds for dot color */
+  checkinValues?: Record<string, CheckinEntryValues>;
 }
 
 /** Weekday abbreviations per locale (Monday-first, ISO week order) */
@@ -46,11 +54,45 @@ function toISODate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * Compute dot color for a given date.
+ * - "none": no entries
+ * - "green": all required fields filled, OR no required fields and at least one entry
+ * - "yellow": has entries but not all required fields filled
+ */
+function computeDotColor(
+  dateStr: string,
+  filledDates: Set<string>,
+  requiredCategoryIds?: string[],
+  checkinValues?: Record<string, CheckinEntryValues>
+): "none" | "green" | "yellow" {
+  const hasEntry = filledDates.has(dateStr);
+  if (!hasEntry) return "none";
+
+  // If no required categories defined, any entry = green (backwards-compatible)
+  if (!requiredCategoryIds || requiredCategoryIds.length === 0) return "green";
+
+  // Check if all required categories are filled
+  const entry = checkinValues?.[dateStr];
+  if (!entry) return "green"; // filledDates says it's filled but no detailed data — assume green
+
+  const allRequiredFilled = requiredCategoryIds.every((catId) => {
+    const val = entry.values[catId];
+    if (!val) return false;
+    // number/scale: numericValue is not null (0 counts as filled)
+    return val.numericValue !== null && val.numericValue !== undefined;
+  });
+
+  return allRequiredFilled ? "green" : "yellow";
+}
+
 export function WeekStrip({
   selectedDate,
   filledDates,
   onSelectDate,
   onWeekChange,
+  requiredCategoryIds,
+  checkinValues,
 }: WeekStripProps) {
   const t = useTranslations("feedback");
   const locale = useLocale();
@@ -146,7 +188,7 @@ export function WeekStrip({
           const isToday = dateStr === today;
           const isSelected = dateStr === selectedDate;
           const isFuture = dateStr > today;
-          const isFilled = filledDates.has(dateStr);
+          const dotColor = computeDotColor(dateStr, filledDates, requiredCategoryIds, checkinValues);
 
           return (
             <button
@@ -176,11 +218,13 @@ export function WeekStrip({
               )}>
                 {dayNum}
               </span>
-              {/* Entry indicator dot — only shown when day has check-in data */}
+              {/* Entry indicator dot — green=complete, yellow=partial, none=empty */}
               <span
                 className={cn(
                   "mt-0.5 h-1.5 w-1.5 rounded-full",
-                  isFilled ? "bg-success" : "bg-transparent"
+                  dotColor === "green" && "bg-success",
+                  dotColor === "yellow" && "bg-warning",
+                  dotColor === "none" && "bg-transparent"
                 )}
                 aria-hidden="true"
               />
