@@ -15,6 +15,7 @@ import { PasswordField } from "@/components/password-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createClient } from "@/lib/supabase/client";
+import { setSessionCookies } from "@/lib/auth-utils";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 
 export default function LoginPage() {
@@ -87,15 +88,7 @@ function LoginPageInner() {
       }
 
       // Set marker cookies for middleware session-only detection.
-      // ts_remember is persistent (30 days); ts_session has no Max-Age
-      // so it dies when the browser closes.
-      if (data.rememberMe) {
-        document.cookie = "ts_remember=1; path=/; SameSite=Lax; Max-Age=2592000";
-        document.cookie = "ts_session=; path=/; SameSite=Lax; Max-Age=0";
-      } else {
-        document.cookie = "ts_session=1; path=/; SameSite=Lax";
-        document.cookie = "ts_remember=; path=/; SameSite=Lax; Max-Age=0";
-      }
+      setSessionCookies(data.rememberMe);
 
       // Full page reload to ensure middleware picks up fresh session cookie
       // router.push() uses client-side navigation which may read stale cookies

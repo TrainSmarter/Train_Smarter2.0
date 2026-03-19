@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { generateCSP } from "./src/lib/csp";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
@@ -40,17 +41,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-              `connect-src 'self' ${supabaseUrl} https://*.supabase.co wss://*.supabase.co`,
-              "img-src 'self' data: blob: https:",
-              "font-src 'self'",
-              "style-src 'self' 'unsafe-inline'",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-            ].join("; "),
+            value: generateCSP(isDev, supabaseUrl),
           },
         ],
       },

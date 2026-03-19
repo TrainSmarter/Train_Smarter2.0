@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
+import { clearSessionMarkers } from "@/lib/auth-utils";
 import { toast } from "sonner";
 
 interface ConsentRecord {
@@ -294,10 +295,7 @@ export default function PrivacyTabContent() {
       toast.success(t("deleteSuccess"));
       setDeleteStep(0);
 
-      // Clear session marker cookies before signing out
-      document.cookie = "ts_session=; path=/; SameSite=Lax; Max-Age=0";
-      document.cookie = "ts_remember=; path=/; SameSite=Lax; Max-Age=0";
-      localStorage.removeItem("ts_no_remember");
+      clearSessionMarkers();
 
       const supabase = createClient();
       await supabase.auth.signOut();

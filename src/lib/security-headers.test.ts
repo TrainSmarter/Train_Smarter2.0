@@ -1,13 +1,15 @@
 import { describe, it, expect } from "vitest";
+import { generateCSP } from "./csp";
 
 /**
  * Tests that verify security header values match expected production config.
  *
- * These tests validate the header values defined in next.config.ts
- * to catch accidental weakening of security policies during refactoring.
+ * IMPORTANT: These tests import the real generateCSP function from src/lib/csp.ts
+ * which is also used in next.config.ts. This ensures we test the ACTUAL config,
+ * not a hardcoded duplicate that could drift out of sync.
  */
 
-// Extract the header config as data (mirrors next.config.ts)
+// Static security headers (mirrors next.config.ts — these rarely change)
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -23,20 +25,6 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
 ];
-
-// Production CSP (isDev = false)
-const supabaseUrl = "https://*.supabase.co";
-const csp = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  `connect-src 'self' ${supabaseUrl} https://*.supabase.co wss://*.supabase.co`,
-  "img-src 'self' data: blob: https:",
-  "font-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
 
 describe("Security Headers", () => {
   it("prevents clickjacking with X-Frame-Options DENY", () => {
@@ -87,34 +75,61 @@ describe("Security Headers", () => {
   });
 });
 
-describe("Content Security Policy", () => {
-  it("restricts default-src to self", () => {
-    expect(csp).toContain("default-src 'self'");
+describe("Content Security Policy (generateCSP)", () => {
+  describe("production (isDev = false)", () => {
+    const csp = generateCSP(false);
+
+    it("restricts default-src to self", () => {
+      expect(csp).toContain("default-src 'self'");
+    });
+
+    it("does NOT allow unsafe-eval", () => {
+      expect(csp).not.toContain("unsafe-eval");
+    });
+
+    it("allows unsafe-inline for scripts (Next.js requirement)", () => {
+      expect(csp).toContain("script-src 'self' 'unsafe-inline'");
+    });
+
+    it("allows Supabase connections", () => {
+      expect(csp).toContain("https://*.supabase.co");
+      expect(csp).toContain("wss://*.supabase.co");
+    });
+
+    it("allows data: and blob: for images", () => {
+      expect(csp).toContain("img-src 'self' data: blob: https:");
+    });
+
+    it("prevents framing via frame-ancestors none", () => {
+      expect(csp).toContain("frame-ancestors 'none'");
+    });
+
+    it("restricts form actions to self", () => {
+      expect(csp).toContain("form-action 'self'");
+    });
+
+    it("restricts base-uri to self", () => {
+      expect(csp).toContain("base-uri 'self'");
+    });
   });
 
-  it("does not allow unsafe-eval in production", () => {
-    expect(csp).not.toContain("unsafe-eval");
+  describe("development (isDev = true)", () => {
+    const csp = generateCSP(true);
+
+    it("allows unsafe-eval for HMR/dev tools", () => {
+      expect(csp).toContain("unsafe-eval");
+    });
+
+    it("still restricts default-src to self", () => {
+      expect(csp).toContain("default-src 'self'");
+    });
   });
 
-  it("allows Supabase connections", () => {
-    expect(csp).toContain("https://*.supabase.co");
-    expect(csp).toContain("wss://*.supabase.co");
-  });
-
-  it("allows data: and blob: for images", () => {
-    expect(csp).toContain("img-src 'self' data: blob: https:");
-  });
-
-  it("prevents framing via frame-ancestors none", () => {
-    expect(csp).toContain("frame-ancestors 'none'");
-  });
-
-  it("restricts form actions to self", () => {
-    expect(csp).toContain("form-action 'self'");
-  });
-
-  it("restricts base-uri to self", () => {
-    expect(csp).toContain("base-uri 'self'");
+  describe("custom supabase URL", () => {
+    it("includes the custom URL in connect-src", () => {
+      const csp = generateCSP(false, "https://myproject.supabase.co");
+      expect(csp).toContain("https://myproject.supabase.co");
+    });
   });
 });
 

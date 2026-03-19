@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import type { AuthUser } from "@/lib/auth-user";
 import { getSafeAvatarUrl, getInitials } from "@/lib/utils";
+import { clearSessionMarkers } from "@/lib/auth-utils";
 
 interface SidebarFooterUserProps {
   user: AuthUser;
@@ -50,11 +51,7 @@ export function SidebarFooterUser({ user }: SidebarFooterUserProps) {
   async function handleLogout() {
     setIsLoggingOut(true);
     try {
-      // Clear session marker cookies before signing out
-      document.cookie = "ts_session=; path=/; SameSite=Lax; Max-Age=0";
-      document.cookie = "ts_remember=; path=/; SameSite=Lax; Max-Age=0";
-      // Cleanup legacy localStorage key (safe to call even if absent)
-      localStorage.removeItem("ts_no_remember");
+      clearSessionMarkers();
 
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
