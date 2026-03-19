@@ -1076,7 +1076,10 @@
     "athleteRequiredSaved": "Required field setting saved",
     "athleteRequiredError": "Error saving required field setting",
     "allRequiredFilled": "All required fields completed",
-    "requiredFieldsMissing": "Required fields missing"
+    "requiredFieldsMissing": "Required fields missing",
+    "expandChart": "Expand chart",
+    "scrollChipsLeft": "Scroll categories left",
+    "scrollChipsRight": "Scroll categories right"
   },
   "errors": {
     "authPageError": "An error occurred while loading the page.",

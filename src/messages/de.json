@@ -1076,7 +1076,10 @@
     "athleteRequiredSaved": "Pflichtfeld-Einstellung gespeichert",
     "athleteRequiredError": "Fehler beim Speichern der Pflichtfeld-Einstellung",
     "allRequiredFilled": "Alle Pflichtfelder ausgefüllt",
-    "requiredFieldsMissing": "Pflichtfelder fehlen"
+    "requiredFieldsMissing": "Pflichtfelder fehlen",
+    "expandChart": "Diagramm vergrößern",
+    "scrollChipsLeft": "Kategorien nach links scrollen",
+    "scrollChipsRight": "Kategorien nach rechts scrollen"
   },
   "errors": {
     "authPageError": "Beim Laden der Seite ist ein Fehler aufgetreten.",

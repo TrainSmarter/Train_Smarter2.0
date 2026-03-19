@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Settings2 } from "lucide-react";
+import { Maximize2, Settings2 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +60,7 @@ export function AthleteCheckinPage({
 }: AthleteCheckinPageProps) {
   const t = useTranslations("feedback");
   const [showCategoryManager, setShowCategoryManager] = React.useState(false);
+  const [showFullscreenChart, setShowFullscreenChart] = React.useState(false);
 
   // Today's date
   const today = new Date().toISOString().split("T")[0];
@@ -181,19 +183,6 @@ export function AthleteCheckinPage({
         </div>
       )}
 
-      {/* Week Strip Navigation — full width on all breakpoints */}
-      {hasBodyWellnessConsent && (
-        <WeekStrip
-          selectedDate={selectedDate}
-          filledDates={filledDates}
-          onSelectDate={setSelectedDate}
-          onWeekChange={handleWeekChange}
-          requiredCategoryIds={requiredCategoryIds}
-          checkinValues={checkins}
-          loadedWeekStarts={loadedWeekStarts}
-        />
-      )}
-
       {/* Main content: 2-column on desktop when trends are visible */}
       {hasBodyWellnessConsent && (
         <div
@@ -204,27 +193,61 @@ export function AthleteCheckinPage({
               : ""
           )}
         >
-          {/* Left column: Check-in Form */}
-          <div className="rounded-lg border bg-card p-5">
-            <CheckinForm
-              key={selectedDate}
-              categories={categories}
-              date={selectedDate}
-              existingValues={currentCheckin?.values}
-              onFieldSaved={handleFieldSaved}
-              onManageCategories={() => setShowCategoryManager(true)}
-              backfillMode={backfillMode}
+          {/* Left column: Week Strip + Check-in Form */}
+          <div>
+            <WeekStrip
+              selectedDate={selectedDate}
+              filledDates={filledDates}
+              onSelectDate={setSelectedDate}
+              onWeekChange={handleWeekChange}
+              requiredCategoryIds={requiredCategoryIds}
+              checkinValues={checkins}
+              loadedWeekStarts={loadedWeekStarts}
             />
+            <div className="mt-4 rounded-lg border bg-card p-5">
+              <CheckinForm
+                key={selectedDate}
+                categories={categories}
+                date={selectedDate}
+                existingValues={currentCheckin?.values}
+                onFieldSaved={handleFieldSaved}
+                onManageCategories={() => setShowCategoryManager(true)}
+                backfillMode={backfillMode}
+              />
+            </div>
           </div>
 
-          {/* Right column: Unified Trend Chart */}
+          {/* Right column: Unified Trend Chart (sticky on desktop) */}
           {showTrends && (
-            <div className="mt-6 lg:mt-0">
-              <h2 className="text-h3 text-foreground mb-3">{t("myTrends")}</h2>
+            <div className="mt-6 lg:mt-0 lg:sticky lg:top-6 lg:self-start">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-h3 text-foreground">{t("myTrends")}</h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setShowFullscreenChart(true)}
+                  aria-label={t("expandChart")}
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+              </div>
               <UnifiedTrendChart trendData={localTrendData} />
             </div>
           )}
         </div>
+      )}
+
+      {/* Fullscreen Chart Dialog */}
+      {showTrends && (
+        <Dialog open={showFullscreenChart} onOpenChange={setShowFullscreenChart}>
+          <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{t("myTrends")}</DialogTitle>
+            </DialogHeader>
+            <UnifiedTrendChart trendData={localTrendData} />
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Category Manager Dialog */}
