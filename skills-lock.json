@@ -20,6 +20,26 @@
       "source": "supabase/agent-skills",
       "sourceType": "github",
       "computedHash": "e3ba3d760c5f4cc43b02a91fb8924f726c7818f95cc35d79d0a606ca622b72f5"
+    },
+    "vercel-composition-patterns": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "10eb4ec94577b79ae98c63ce3e7f35f8a6a06436a4011bff083b397de6960eeb"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "ff602214356ac15c65aa8702aff5a2aedaf958d66d301e3279f1dfeaf18c94e9"
+    },
+    "web-accessibility": {
+      "source": "supercent-io/skills-template",
+      "sourceType": "github",
+      "computedHash": "18f3c393f2fe364ecd7b0fbf646eafabef4dcb287af948e1414d16c84b4d7628"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "d8e7d3afe37dcc8a97b99ffb5afdb4d0919ae0092ea8b68f44eb201f035e33ac"
     }
   }
 }

@@ -25,13 +25,13 @@
 
 ### MCP-Verbindung
 
-- **Channel:** `24frju6h`
+- **Channel:** `unkr858t` (WebSocket Server: `npx cursor-talk-to-figma-socket@latest` auf Port 3055)
 - **Figma File Key:** `AxOnJViNOMcviAAUmcudhA`
 - **Figma File URL:** `https://www.figma.com/design/AxOnJViNOMcviAAUmcudhA/Train-Smarter2.0`
 
 Verbindung herstellen mit:
 ```
-mcp__figma__join_channel({ channel: "24frju6h" })
+mcp__figma__join_channel({ channel: "unkr858t" })
 ```
 
 ### Bekannte Frame-IDs
@@ -67,6 +67,39 @@ mcp__figma__join_channel({ channel: "24frju6h" })
 | StatsCard Green | `6:132` |
 | StatsCard Orange | `6:137` |
 | StatsCard Info | `6:142` |
+| **PROJ-3 App Shell** | `29:225` |
+| AppSidebar Expanded | `29:228` |
+| AppSidebar Collapsed | `29:259` |
+| AppHeader | `29:270` |
+| EmptyState | `29:295` |
+| **PROJ-4 Auth & Onboarding** | `52:2` |
+| Login Card | `52:22` |
+| Register Card | `52:38` |
+| Verify Email Card | `52:39` |
+| Onboarding Wizard | `52:40` |
+| **PROJ-5 Athleten-Management** | `52:3` |
+| AthleteCard Default | `52:78` |
+| AthleteCard Hover | `52:79` |
+| AthleteCard Dragging | `52:80` |
+| ViewSwitcher | `52:98` |
+| InviteModal | `52:123` |
+| DragConfirmDialog | `52:124` |
+| **PROJ-6 Feedback & Monitoring** | `52:4` |
+| Monitoring Stats Row | `52:147` |
+| CheckIn Form Card | `52:165` |
+| CheckIn Summary Card | `52:166` |
+| SegmentedControl | `52:186` |
+| StreakBadge | `52:187` |
+| NumberInput | `52:188` |
+| TrendChart | `52:189` |
+| **PROJ-9 Team-Verwaltung** | `52:5` |
+| TeamCard Default | `52:212` |
+| TeamCard Drop Target | `52:213` |
+| TeamCard Archiviert | `52:214` |
+| TeamFormModal | `52:229` |
+| TeamDetail Preview | `52:230` |
+| TeamOverviewCard | `52:245` |
+| TeamArchiveDialog | `52:246` |
 
 ### Design Token Referenz (aktuelles Brand)
 

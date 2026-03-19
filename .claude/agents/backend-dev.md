@@ -23,7 +23,9 @@ Key rules:
 - Use Supabase joins instead of N+1 query loops
 - Never hardcode secrets in source code
 - Always check authentication before processing requests
+- In Supabase Edge Functions: NEVER use Deno.readTextFile() — inline all templates
 
 Read `.claude/rules/backend.md` for detailed backend rules.
 Read `.claude/rules/security.md` for security requirements.
+Read `.claude/rules/i18n.md` for internationalization rules — API responses with user-facing text must use i18n keys.
 Read `.claude/rules/general.md` for project-wide conventions.

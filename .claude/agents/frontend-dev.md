@@ -25,4 +25,6 @@ Key rules:
 - Use semantic HTML and ARIA labels for accessibility
 
 Read `.claude/rules/frontend.md` for detailed frontend rules.
+Read `.claude/rules/i18n.md` for internationalization rules — NEVER hardcode user-facing strings.
+Read `.claude/rules/figma-sync.md` for mandatory Figma sync after component changes.
 Read `.claude/rules/general.md` for project-wide conventions.
