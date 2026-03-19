@@ -80,7 +80,7 @@ const archiveCategorySchema = z.object({
 
 type BackfillMode = "current_week" | "two_weeks" | "unlimited";
 
-function computeBackfillMinDate(mode: BackfillMode): string {
+export function computeBackfillMinDate(mode: BackfillMode): string {
   if (mode === "unlimited") {
     return "1970-01-01";
   }
