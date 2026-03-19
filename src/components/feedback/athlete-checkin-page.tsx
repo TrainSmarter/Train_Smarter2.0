@@ -235,11 +235,13 @@ export function AthleteCheckinPage({
       {/* Fullscreen Chart Dialog */}
       {showTrends && (
         <Dialog open={showFullscreenChart} onOpenChange={setShowFullscreenChart}>
-          <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>{t("myTrends")}</DialogTitle>
             </DialogHeader>
-            <UnifiedTrendChart trendData={localTrendData} />
+            <div className="min-w-0 w-full">
+              <UnifiedTrendChart trendData={localTrendData} />
+            </div>
           </DialogContent>
         </Dialog>
       )}
