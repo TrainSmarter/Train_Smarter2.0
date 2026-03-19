@@ -193,11 +193,8 @@ describe("PROJ-6 SECURITY-3: Server-side DSGVO consent checks in queries.ts", ()
     expect(queries).toContain("async function hasBodyWellnessConsent");
   });
 
-  it("helper checks body_wellness_data consent via RPC or direct query", () => {
-    // Consent check uses either direct table query or RPC function
-    const usesRpc = queries.includes("check_athlete_consent");
-    const usesDirect = queries.includes('.eq("consent_type", "body_wellness_data")');
-    expect(usesRpc || usesDirect).toBe(true);
+  it("helper queries user_consents table for body_wellness_data", () => {
+    expect(queries).toContain('.eq("consent_type", "body_wellness_data")');
   });
 
   describe("getAthleteTrendData checks consent", () => {
@@ -227,10 +224,7 @@ describe("PROJ-6 SECURITY-3: Server-side DSGVO consent checks in queries.ts", ()
       );
       expect(fnMatch).not.toBeNull();
       const fnBody = fnMatch![0];
-      // Should query consent via RPC batch function or direct table query
-      const usesRpc = fnBody.includes("check_athletes_consent");
-      const usesDirect = fnBody.includes('.in("user_id", athleteIds)');
-      expect(usesRpc || usesDirect).toBe(true);
+      expect(fnBody).toContain('.in("user_id", athleteIds)');
     });
 
     it("nulls out weightTrend when athlete revokes consent", () => {
