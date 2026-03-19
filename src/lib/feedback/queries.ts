@@ -26,21 +26,25 @@ import type {
  */
 
 // ── Helper: Check body_wellness_data consent ─────────────────────
+// Uses a SECURITY DEFINER RPC to bypass RLS on user_consents.
+// This allows trainers to check their connected athletes' consent status
+// without broadening the RLS policy on the sensitive consent table.
 
 async function hasBodyWellnessConsent(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string
 ): Promise<boolean> {
-  const { data } = await supabase
-    .from("user_consents")
-    .select("granted")
-    .eq("user_id", userId)
-    .eq("consent_type", "body_wellness_data")
-    .order("granted_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("check_athlete_consent", {
+    p_athlete_id: userId,
+    p_consent_type: "body_wellness_data",
+  });
 
-  return data?.granted === true;
+  if (error) {
+    console.error("Failed to check consent via RPC:", error);
+    return false;
+  }
+
+  return data === true;
 }
 
 // ── Helper: Map DB row to FeedbackCategory ───────────────────────
@@ -295,17 +299,16 @@ export async function getMonitoringOverview(
 
   if (athleteIds.length === 0) return empty;
 
-  // DSGVO consent check — check which athletes have body_wellness_data consent
-  const { data: consents } = await supabase
-    .from("user_consents")
-    .select("user_id, granted")
-    .eq("consent_type", "body_wellness_data")
-    .in("user_id", athleteIds);
+  // DSGVO consent check — use SECURITY DEFINER RPC to check which athletes
+  // have body_wellness_data consent (bypasses RLS that blocks trainer reads)
+  const { data: consentRows } = await supabase.rpc("check_athletes_consent", {
+    p_athlete_ids: athleteIds,
+    p_consent_type: "body_wellness_data",
+  });
 
-  // Build consent map (latest consent per user — query returns all, we trust RLS + latest)
   const consentMap = new Map<string, boolean>();
-  for (const c of consents ?? []) {
-    consentMap.set(c.user_id, c.granted === true);
+  for (const c of (consentRows ?? []) as { athlete_id: string; has_consent: boolean }[]) {
+    consentMap.set(c.athlete_id, c.has_consent === true);
   }
 
   // Fetch monitoring summaries from the view
