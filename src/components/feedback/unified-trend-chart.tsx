@@ -263,10 +263,10 @@ export function UnifiedTrendChart({
             <button
               type="button"
               onClick={onExpand}
-              className="absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-md bg-card/80 backdrop-blur-sm hover:bg-muted transition-colors"
+              className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-md border bg-card/90 backdrop-blur-sm shadow-sm hover:bg-muted transition-colors"
               aria-label={t("expandChart")}
             >
-              <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
+              <Maximize2 className="h-4 w-4 text-foreground" />
             </button>
           )}
           <ResponsiveContainer width="100%" height={chartHeight}>

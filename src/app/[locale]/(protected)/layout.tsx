@@ -28,7 +28,7 @@ export default async function ProtectedLayout({
       <AppSidebar user={authUser} />
       <SidebarInset>
         <AppHeader />
-        <div className="flex-1 overflow-y-auto p-6 lg:p-8">{children}</div>
+        <div className="flex-1 p-6 lg:p-8">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );
