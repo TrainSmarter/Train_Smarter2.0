@@ -864,3 +864,136 @@ describe("athlete-checkin-page.tsx PROJ-18 extensions", () => {
     expect(page).toContain("requiredCategoryIds={requiredCategoryIds}");
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// 19. Trend chart UX — scroll arrows, sticky, fullscreen, layout
+// ═══════════════════════════════════════════════════════════════
+
+describe("unified-trend-chart.tsx — scroll arrows + expand button", () => {
+  const chart = readSrc("components/feedback/unified-trend-chart.tsx");
+
+  it("imports ChevronLeft, ChevronRight, Maximize2 from lucide-react", () => {
+    expect(chart).toMatch(/import\s*\{[^}]*ChevronLeft[^}]*\}\s*from\s*"lucide-react"/);
+    expect(chart).toMatch(/import\s*\{[^}]*ChevronRight[^}]*\}\s*from\s*"lucide-react"/);
+    expect(chart).toMatch(/import\s*\{[^}]*Maximize2[^}]*\}\s*from\s*"lucide-react"/);
+  });
+
+  it("accepts onExpand optional prop", () => {
+    expect(chart).toContain("onExpand?: () => void");
+  });
+
+  it("renders expand button inside chart border area when onExpand is provided", () => {
+    expect(chart).toContain("onExpand && (");
+    expect(chart).toContain("Maximize2");
+    expect(chart).toContain("expandChart");
+  });
+
+  it("expand button is positioned absolute inside chart card", () => {
+    expect(chart).toContain("absolute top-3 right-3 z-10");
+  });
+
+  it("expand button has border and shadow for visibility", () => {
+    expect(chart).toContain("border bg-card/90");
+    expect(chart).toContain("shadow-sm");
+  });
+
+  it("has scroll arrow buttons for chip overflow", () => {
+    expect(chart).toContain("scrollChipsLeft");
+    expect(chart).toContain("scrollChipsRight");
+  });
+
+  it("uses useRef for chip scroll container", () => {
+    expect(chart).toContain("chipsRef");
+    expect(chart).toMatch(/React\.useRef<HTMLDivElement>/);
+  });
+
+  it("tracks scroll state with canScrollLeft/canScrollRight", () => {
+    expect(chart).toContain("canScrollLeft");
+    expect(chart).toContain("canScrollRight");
+  });
+
+  it("uses ResizeObserver to update scroll state", () => {
+    expect(chart).toContain("ResizeObserver");
+  });
+
+  it("chip container has overflow-x-auto and scrollbar-hide", () => {
+    expect(chart).toContain("overflow-x-auto");
+    expect(chart).toContain("scrollbar-hide");
+  });
+});
+
+describe("athlete-checkin-page.tsx — layout, sticky, fullscreen dialog", () => {
+  const page = readSrc("components/feedback/athlete-checkin-page.tsx");
+
+  it("WeekStrip is inside the left column (not above the grid)", () => {
+    // WeekStrip should be inside the grid, before the form card
+    expect(page).toContain("WeekStrip");
+    // The form card follows directly after WeekStrip with mt-4
+    expect(page).toContain("mt-4 rounded-lg border bg-card p-5");
+  });
+
+  it("right column has sticky positioning for the chart", () => {
+    expect(page).toContain("lg:sticky");
+    expect(page).toContain("lg:top-[max(1.5rem,calc(50vh-250px))]");
+  });
+
+  it("sticky div is inside an outer wrapper (not self-start) for proper sticky behavior", () => {
+    // The outer grid cell must NOT have self-start (breaks sticky)
+    expect(page).not.toMatch(/lg:self-start/);
+  });
+
+  it("has fullscreen chart dialog", () => {
+    expect(page).toContain("showFullscreenChart");
+    expect(page).toContain("setShowFullscreenChart");
+    expect(page).toContain("DialogContent");
+    expect(page).toContain("max-w-[95vw]");
+  });
+
+  it("passes onExpand to UnifiedTrendChart", () => {
+    expect(page).toContain("onExpand={() => setShowFullscreenChart(true)}");
+  });
+
+  it("does NOT import Maximize2 (moved to chart component)", () => {
+    expect(page).not.toContain("Maximize2");
+  });
+
+  it("computes streak client-side via computeStreak", () => {
+    expect(page).toContain("computeStreak");
+    expect(page).toContain("liveStreak");
+  });
+
+  it("passes loadedWeekStarts to WeekStrip", () => {
+    expect(page).toContain("loadedWeekStarts={loadedWeekStarts}");
+  });
+});
+
+describe("protected layout.tsx — no overflow-y-auto (sticky fix)", () => {
+  const layout = readRoot(
+    "src/app/[locale]/(protected)/layout.tsx"
+  );
+
+  it("main content div does NOT have overflow-y-auto (breaks sticky)", () => {
+    expect(layout).not.toContain("overflow-y-auto");
+  });
+
+  it("main content div has flex-1 and padding", () => {
+    expect(layout).toContain("flex-1 p-6 lg:p-8");
+  });
+});
+
+describe("i18n: trend chart UX keys", () => {
+  const de = readRoot("src/messages/de.json");
+  const en = readRoot("src/messages/en.json");
+
+  const keys = ["expandChart", "scrollChipsLeft", "scrollChipsRight"];
+
+  for (const key of keys) {
+    it(`has "${key}" in de.json`, () => {
+      expect(de).toContain(`"${key}"`);
+    });
+
+    it(`has "${key}" in en.json`, () => {
+      expect(en).toContain(`"${key}"`);
+    });
+  }
+});
