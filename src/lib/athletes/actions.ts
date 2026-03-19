@@ -418,10 +418,10 @@ export async function sendConnectionRequest(data: {
     return { success: false, error: "RATE_LIMITED" };
   }
 
-  // Look up athlete profile
+  // Look up athlete profile (include locale for email language — W5)
   const { data: athleteProfile } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, role")
+    .select("id, first_name, last_name, role, locale")
     .eq("email", normalizedEmail)
     .maybeSingle();
 
@@ -497,8 +497,9 @@ export async function sendConnectionRequest(data: {
       ? `${trainerProfile.first_name ?? ""} ${trainerProfile.last_name ?? ""}`.trim()
       : user.email ?? "Trainer";
 
+    // W5: Use athlete's locale preference, not trainer's
     const locale =
-      (user.user_metadata?.locale as string) === "en" ? "en" : "de";
+      (athleteProfile.locale as string) === "en" ? "en" : "de";
     const siteUrl =
       process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.train-smarter.at";
 

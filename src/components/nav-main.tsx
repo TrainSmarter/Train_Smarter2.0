@@ -6,7 +6,7 @@ import { ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { navConfig, type NavEntry, type NavItem, type NavSection } from "@/lib/nav-config";
-import type { UserRole } from "@/lib/mock-session";
+import type { UserRole } from "@/lib/auth-user";
 import {
   SidebarGroup,
   SidebarGroupLabel,

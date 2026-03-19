@@ -16,6 +16,14 @@ import { ResendEmailButton } from "@/components/resend-email-button";
 import { createClient } from "@/lib/supabase/client";
 
 export default function VerifyEmailPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <VerifyEmailPageInner />
+    </React.Suspense>
+  );
+}
+
+function VerifyEmailPageInner() {
   const t = useTranslations("auth.verifyEmail");
   const searchParams = useSearchParams();
   const email = searchParams.get("email");

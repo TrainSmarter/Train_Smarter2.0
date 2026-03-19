@@ -24,6 +24,14 @@ import { resetPasswordSchema, type ResetPasswordFormData } from "@/lib/validatio
 type PageState = "loading" | "form" | "success" | "expired" | "error";
 
 export default function ResetPasswordPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <ResetPasswordPageInner />
+    </React.Suspense>
+  );
+}
+
+function ResetPasswordPageInner() {
   const t = useTranslations("auth.resetPassword");
   const tAuth = useTranslations("auth");
   const router = useRouter();

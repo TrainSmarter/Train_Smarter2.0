@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react"
 
+import { useTranslations } from "next-intl"
 import { cn } from "@/lib/utils"
 
 /**
@@ -69,6 +70,7 @@ function AlertExtended({
   children,
   ...props
 }: AlertExtendedProps) {
+  const t = useTranslations("common")
   const config = variantConfig[variant]
   const IconComponent = config.icon
 
@@ -102,7 +104,7 @@ function AlertExtended({
           type="button"
           onClick={onDismiss}
           className="shrink-0 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          aria-label="Benachrichtigung schließen"
+          aria-label={t("dismissNotification")}
         >
           <X className="h-4 w-4" />
         </button>

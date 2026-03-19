@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import type { AthleteListItem } from "@/lib/athletes/types";
 
 interface AthleteCardProps {
@@ -17,10 +17,6 @@ interface AthleteCardProps {
   isResending?: boolean;
   onWithdrawInvite?: (connectionId: string) => void;
   isWithdrawing?: boolean;
-}
-
-function getInitials(firstName: string, lastName: string): string {
-  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
 export function AthleteCard({

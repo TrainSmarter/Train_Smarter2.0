@@ -723,6 +723,17 @@
     "privacyProcessorsText": "Wir setzen folgende Auftragsverarbeiter ein, die alle über ein Data Processing Agreement (DPA) verfügen und Daten innerhalb des EWR verarbeiten:",
     "privacyProcessor1": "Supabase Inc. — Datenbank, Authentifizierung, Storage (Region: eu-central-1, Frankfurt)",
     "privacyProcessor2": "Vercel Inc. — Hosting, Edge Functions (EU-Region)",
+    "privacyCookiesTitle": "Cookies und lokaler Speicher",
+    "privacyCookiesIntro": "Unsere Website verwendet ausschließlich technisch notwendige Cookies, die für den Betrieb der Plattform unerlässlich sind. Ein Cookie-Consent-Banner ist daher nicht erforderlich.",
+    "privacyCookiesAuthTitle": "Authentifizierungs-Cookie",
+    "privacyCookiesAuthText": "Für die Anmeldung und Aufrechterhaltung Ihrer Sitzung setzen wir ein Authentifizierungs-Cookie (HttpOnly, Secure, SameSite=Lax). Dieses Cookie enthält ein verschlüsseltes Token zur Identifikation Ihrer Sitzung — keine personenbezogenen Daten im Klartext.",
+    "privacyCookiesSessionTitle": "Sitzungsdauer",
+    "privacyCookiesSessionText": "Die Dauer Ihrer Sitzung hängt von Ihrer Wahl beim Login ab:",
+    "privacyCookiesSessionDefault": "Standard (ohne ‚Eingeloggt bleiben'): Ihre Sitzung endet, wenn Sie den Browser schließen.",
+    "privacyCookiesSessionRemember": "Mit ‚Eingeloggt bleiben': Ihre Sitzung bleibt bis zu 30 Tage aktiv oder bis Sie sich manuell abmelden.",
+    "privacyCookiesLocalStorageTitle": "Lokaler Speicher",
+    "privacyCookiesLocalStorageText": "Wir nutzen den lokalen Speicher Ihres Browsers ausschließlich für Ihre Anzeigeeinstellungen (z.\u00A0B. Seitenleisten-Status, bevorzugte Ansicht). Diese Daten verlassen Ihr Gerät nicht und werden nicht an unsere Server übermittelt.",
+    "privacyCookiesLegalBasis": "Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung). Diese Cookies sind technisch notwendig und von der Einwilligungspflicht nach § 165 TKG 2021 ausgenommen.",
     "privacyRights": "Deine Rechte",
     "privacyRightsText": "Du hast folgende Rechte nach DSGVO:",
     "privacyRight1": "Auskunftsrecht (Art. 15) — Übersicht deiner gespeicherten Daten unter Datenschutz-Einstellungen",
@@ -870,7 +881,20 @@
     "comingSoonDescription": "Dieses Feature wird gerade entwickelt und ist bald verfügbar.",
     "emailNoMxRecord": "Diese E-Mail-Domain scheint keine E-Mails empfangen zu können. Bitte überprüfe die Adresse.",
     "emailInvalidDomain": "Diese E-Mail-Domain ist ungültig. Bitte überprüfe die Adresse.",
-    "emailValidating": "E-Mail wird überprüft…"
+    "emailValidating": "E-Mail wird überprüft…",
+    "decrease": "verringern",
+    "increase": "erhöhen",
+    "dismissNotification": "Benachrichtigung schließen",
+    "contentLoading": "Inhalt wird geladen",
+    "cardLoading": "Karte wird geladen",
+    "statsLoading": "Statistik wird geladen",
+    "avatarLoading": "Avatar wird geladen",
+    "toggleColorScheme": "Farbschema wechseln",
+    "switchToLightMode": "Zu Light Mode wechseln",
+    "switchToDarkMode": "Zu Dark Mode wechseln",
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode",
+    "toggleSidebar": "Sidebar umschalten"
   },
   "feedback": {
     "pageTitle": "Feedback & Monitoring",
@@ -1016,5 +1040,11 @@
     "selectCategories": "Wähle Kategorien aus um Trends anzuzeigen",
     "maxCategories": "Max. {max} gleichzeitig",
     "tooFewDataPoints": "Mindestens 3 Einträge für eine Trendanzeige nötig"
+  },
+  "errors": {
+    "authPageError": "Beim Laden der Seite ist ein Fehler aufgetreten.",
+    "legalPageError": "Die Seite konnte nicht geladen werden.",
+    "tryAgain": "Erneut versuchen",
+    "backToHome": "Zurück zur Startseite"
   }
 }

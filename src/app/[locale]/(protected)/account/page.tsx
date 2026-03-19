@@ -8,7 +8,7 @@ import { User, Shield, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
-import { toAuthUser, type AuthUser } from "@/lib/mock-session";
+import { toAuthUser, type AuthUser } from "@/lib/auth-user";
 import type { TrainerInfo } from "@/lib/athletes/types";
 
 import { ProfileSection } from "@/components/account/profile-section";
@@ -22,6 +22,14 @@ const PrivacyTabContent = React.lazy(
 );
 
 export default function AccountPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <AccountPageInner />
+    </React.Suspense>
+  );
+}
+
+function AccountPageInner() {
   const t = useTranslations("account");
   const searchParams = useSearchParams();
 

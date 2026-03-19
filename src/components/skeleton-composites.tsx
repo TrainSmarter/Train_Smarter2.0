@@ -25,7 +25,7 @@ function SkeletonText({
     <div
       className={cn("space-y-2", className)}
       aria-busy="true"
-      aria-label="Inhalt wird geladen"
+      aria-label={props["aria-label"] ?? "Inhalt wird geladen"}
       {...props}
     >
       {Array.from({ length: lines }).map((_, i) => (
@@ -56,7 +56,7 @@ function SkeletonCard({ className, ...props }: SkeletonCardProps) {
         className
       )}
       aria-busy="true"
-      aria-label="Karte wird geladen"
+      aria-label={props["aria-label"] ?? "Karte wird geladen"}
       {...props}
     >
       {/* Header: icon + title */}
@@ -87,7 +87,7 @@ function SkeletonStatsCard({ className, ...props }: SkeletonStatsCardProps) {
         className
       )}
       aria-busy="true"
-      aria-label="Statistik wird geladen"
+      aria-label={props["aria-label"] ?? "Statistik wird geladen"}
       {...props}
     >
       <div className="flex items-start justify-between">
@@ -125,7 +125,7 @@ function SkeletonAvatar({
     <Skeleton
       className={cn("rounded-full", sizeClasses[size], className)}
       aria-busy="true"
-      aria-label="Avatar wird geladen"
+      aria-label={props["aria-label"] ?? "Avatar wird geladen"}
       {...props}
     />
   )

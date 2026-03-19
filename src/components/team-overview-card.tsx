@@ -12,15 +12,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import type { AthleteTeamInfo } from "@/lib/teams/types";
-
-function getInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((w) => w.charAt(0))
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { getNameInitials } from "@/lib/utils";
 
 interface TeamOverviewCardProps {
   teams: AthleteTeamInfo[];
@@ -59,7 +51,7 @@ export function TeamOverviewCard({ teams }: TeamOverviewCardProps) {
                     <AvatarImage src={team.logoUrl} alt={team.name} />
                   )}
                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-                    {getInitials(team.name)}
+                    {getNameInitials(team.name)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">

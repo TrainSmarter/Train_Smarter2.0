@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { toAuthUser } from "@/lib/mock-session";
+import { toAuthUser } from "@/lib/auth-user";
 import { MonitoringDashboard } from "@/components/feedback/monitoring-dashboard";
 import { AthleteCheckinPage } from "@/components/feedback/athlete-checkin-page";
 import { getActiveCategories, getCheckinsByDateRange, getMonitoringOverview, getAthleteTrendData, getAthleteConnectionInfo } from "@/lib/feedback/queries";

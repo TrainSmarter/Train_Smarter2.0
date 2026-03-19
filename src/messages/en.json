@@ -723,6 +723,17 @@
     "privacyProcessorsText": "We use the following data processors, all of which have a Data Processing Agreement (DPA) and process data within the EEA:",
     "privacyProcessor1": "Supabase Inc. — Database, authentication, storage (Region: eu-central-1, Frankfurt)",
     "privacyProcessor2": "Vercel Inc. — Hosting, Edge Functions (EU region)",
+    "privacyCookiesTitle": "Cookies and Local Storage",
+    "privacyCookiesIntro": "Our website uses only technically necessary cookies that are essential for operating the platform. A cookie consent banner is therefore not required.",
+    "privacyCookiesAuthTitle": "Authentication Cookie",
+    "privacyCookiesAuthText": "For login and session maintenance, we set an authentication cookie (HttpOnly, Secure, SameSite=Lax). This cookie contains an encrypted token to identify your session — no personal data in plain text.",
+    "privacyCookiesSessionTitle": "Session Duration",
+    "privacyCookiesSessionText": "The duration of your session depends on your choice at login:",
+    "privacyCookiesSessionDefault": "Default (without 'Remember me'): Your session ends when you close the browser.",
+    "privacyCookiesSessionRemember": "With 'Remember me': Your session remains active for up to 30 days or until you manually sign out.",
+    "privacyCookiesLocalStorageTitle": "Local Storage",
+    "privacyCookiesLocalStorageText": "We use your browser's local storage solely for your display preferences (e.g., sidebar state, preferred view). This data does not leave your device and is not transmitted to our servers.",
+    "privacyCookiesLegalBasis": "Legal basis: Art. 6(1)(b) GDPR (performance of contract). These cookies are technically necessary and exempt from the consent requirement under the ePrivacy Directive.",
     "privacyRights": "Your Rights",
     "privacyRightsText": "You have the following rights under GDPR:",
     "privacyRight1": "Right of access (Art. 15) — Overview of your stored data in Privacy Settings",
@@ -870,7 +881,20 @@
     "comingSoonDescription": "This feature is currently being developed and will be available soon.",
     "emailNoMxRecord": "This email domain does not appear to receive emails. Please check the address.",
     "emailInvalidDomain": "This email domain is invalid. Please check the address.",
-    "emailValidating": "Validating email…"
+    "emailValidating": "Validating email…",
+    "decrease": "decrease",
+    "increase": "increase",
+    "dismissNotification": "Dismiss notification",
+    "contentLoading": "Content loading",
+    "cardLoading": "Card loading",
+    "statsLoading": "Stats loading",
+    "avatarLoading": "Avatar loading",
+    "toggleColorScheme": "Toggle color scheme",
+    "switchToLightMode": "Switch to light mode",
+    "switchToDarkMode": "Switch to dark mode",
+    "lightMode": "Light mode",
+    "darkMode": "Dark mode",
+    "toggleSidebar": "Toggle sidebar"
   },
   "feedback": {
     "pageTitle": "Feedback & Monitoring",
@@ -1016,5 +1040,11 @@
     "selectCategories": "Select categories to show trends",
     "maxCategories": "Max. {max} at once",
     "tooFewDataPoints": "At least 3 entries needed to show trends"
+  },
+  "errors": {
+    "authPageError": "An error occurred while loading the page.",
+    "legalPageError": "The page could not be loaded.",
+    "tryAgain": "Try again",
+    "backToHome": "Back to home"
   }
 }

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { NavMain } from "@/components/nav-main";
 import { SidebarFooterUser } from "@/components/sidebar-footer-user";
-import type { AuthUser } from "@/lib/mock-session";
+import type { AuthUser } from "@/lib/auth-user";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user: AuthUser | null;

@@ -14,19 +14,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+import { cn, getNameInitials } from "@/lib/utils";
 import { DraggableAthleteCard } from "@/components/draggable-athlete-card";
 import type { TeamListItem } from "@/lib/teams/types";
 import type { AthleteListItem } from "@/lib/athletes/types";
-
-function getInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((w) => w.charAt(0))
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 interface DroppableTeamCardProps {
   team: TeamListItem;
@@ -74,7 +65,7 @@ export function DroppableTeamCard({
                   <AvatarImage src={team.logoUrl} alt={team.name} />
                 )}
                 <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                  {getInitials(team.name)}
+                  {getNameInitials(team.name)}
                 </AvatarFallback>
               </Avatar>
 

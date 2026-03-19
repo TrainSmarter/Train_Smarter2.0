@@ -27,16 +27,13 @@ import {
 } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/modal";
 import { disconnectAthlete } from "@/lib/athletes/actions";
-import type { AuthUser } from "@/lib/mock-session";
+import type { AuthUser } from "@/lib/auth-user";
 import type { TrainerInfo } from "@/lib/athletes/types";
+import { getSafeAvatarUrl, getInitials } from "@/lib/utils";
 
 interface ProfileViewProps {
   user: AuthUser;
   trainerInfo: TrainerInfo | null;
-}
-
-function getInitials(firstName: string, lastName: string): string {
-  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -119,9 +116,9 @@ export function ProfileView({ user, trainerInfo }: ProfileViewProps) {
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             <div className="relative group">
               <Avatar className="h-20 w-20 shrink-0">
-                {user.user_metadata.avatar_url && (
+                {getSafeAvatarUrl(user.user_metadata.avatar_url) && (
                   <AvatarImage
-                    src={user.user_metadata.avatar_url}
+                    src={getSafeAvatarUrl(user.user_metadata.avatar_url)!}
                     alt={fullName}
                   />
                 )}
@@ -181,9 +178,9 @@ export function ProfileView({ user, trainerInfo }: ProfileViewProps) {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-12 w-12 shrink-0">
-                    {trainerInfo.avatarUrl && (
+                    {getSafeAvatarUrl(trainerInfo.avatarUrl ?? undefined) && (
                       <AvatarImage
-                        src={trainerInfo.avatarUrl}
+                        src={getSafeAvatarUrl(trainerInfo.avatarUrl ?? undefined)!}
                         alt={`${trainerInfo.firstName} ${trainerInfo.lastName}`}
                       />
                     )}

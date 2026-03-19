@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { toAuthUser } from "@/lib/mock-session";
+import { toAuthUser } from "@/lib/auth-user";
 import { AthleteDetailView } from "@/components/feedback/athlete-detail-view";
 import {
   getAthleteTrendData,

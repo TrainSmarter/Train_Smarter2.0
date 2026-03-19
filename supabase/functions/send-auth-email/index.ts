@@ -837,17 +837,21 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // K3: Fail early if hook secret is not configured — never accept unverified payloads
+    const hookSecret = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
+    if (!hookSecret) {
+      return new Response(
+        JSON.stringify({ error: "Hook secret not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // Verify Standard Webhooks signature
     const rawPayload = await req.text();
-    const hookSecret = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
     let payload: AuthEmailHookPayload;
 
-    if (hookSecret) {
-      const wh = new Webhook(hookSecret.replace("v1,whsec_", ""));
-      payload = wh.verify(rawPayload, Object.fromEntries(req.headers)) as AuthEmailHookPayload;
-    } else {
-      payload = JSON.parse(rawPayload);
-    }
+    const wh = new Webhook(hookSecret.replace("v1,whsec_", ""));
+    payload = wh.verify(rawPayload, Object.fromEntries(req.headers)) as AuthEmailHookPayload;
 
     const { user, email_data } = payload;
 

@@ -955,3 +955,395 @@ Phase 3 (E2E Playwright) folgt mit Implementierung weiterer kritischer Features 
   - Trainer zieht Einladung zurück (Withdraw-Button in Unified View) → Card verschwindet
 - [ ] `tests/e2e/01-auth/registration.spec.ts` — Erweitern:
   - User gibt ungültige Domain ein → Inline-Warnung, Submit blockiert
+
+---
+
+## Full Project Security Audit (2026-03-18)
+
+**Audited by:** QA Engineer / Red-Team Pen-Tester (AI)
+**Scope:** Complete codebase audit covering OWASP Top 10, input validation, RLS policies, auth flows, dependency security, DSGVO compliance, error handling, performance, and build integrity.
+**Build status:** `npm run build` PASS, `npm run lint` PASS (0 errors, 3 warnings), `npm run test` PASS (400 tests / 17 files)
+
+---
+
+### 1. SECURITY AUDIT (OWASP Top 10)
+
+#### 1.1 Injection (A03:2021)
+
+**PASS -- SQL Injection**
+- All database queries use the Supabase client library with parameterized queries. No raw SQL strings with user input concatenation found anywhere in `src/`.
+- Server Actions in `src/lib/feedback/actions.ts` and `src/lib/athletes/` all validate input via Zod before any DB call.
+- The `.or()` filter in `src/app/api/gdpr/delete-account/route.ts` line 97 uses template literals with `userId` from `supabase.auth.getUser()` (server-validated UUID), not user-supplied input. Safe.
+
+**PASS -- XSS**
+- No `dangerouslySetInnerHTML` or `innerHTML` usage found anywhere in `src/`.
+- Edge Function `send-invitation-email/index.ts` properly escapes HTML in user-supplied `trainerName` and `personalMessage` via `escapeHtml()` (line 48-55). This prevents stored XSS in email templates.
+- React's default JSX escaping handles all other user-facing output.
+
+**PASS -- Command Injection**
+- No `exec()`, `spawn()`, or shell command execution found in application code.
+
+#### 1.2 Broken Authentication (A07:2021)
+
+**PASS -- Session Management**
+- Middleware (`src/middleware.ts`) uses `supabase.auth.getUser()` (line 38 in middleware.ts) which validates the session server-side. Does NOT use `getSession()` which only reads the cookie.
+- Session cookies are httpOnly (Supabase default), with secure flag in production.
+- Invite tokens stored as httpOnly cookies (`src/app/api/auth/invite-token/route.ts` line 27, `src/app/api/teams/invite-token/route.ts` line 27).
+
+**PASS -- Open Redirect Prevention**
+- `isValidReturnUrl()` in `src/middleware.ts` line 63-66 correctly blocks protocol-relative URLs (`//evil.com`), `://` schemes, and only allows paths starting with `/`.
+- Login page (`login/page.tsx` line 90) re-validates returnUrl before redirect.
+
+**PASS -- Token Handling**
+- Invite tokens validated for length (32-128 chars) in both invite-token routes.
+- Password reset uses Supabase's standard OTP/PKCE flow -- no custom token management.
+- After password reset, `signOut({ scope: "others" })` invalidates other sessions (reset-password/page.tsx line 147).
+
+**P2 MEDIUM -- BUG-A1: No rate limiting on authentication endpoints**
+- File: `src/app/[locale]/(auth)/login/page.tsx`, `register/page.tsx`
+- Description: Login and registration forms have no client-side or server-side rate limiting. Supabase Auth has its own built-in rate limits, but the application does not add any additional layer. The `set-role` API route explicitly documents that rate limiting was removed because in-memory Maps are ineffective on Vercel serverless (line 12).
+- Impact: Brute-force attacks on login are limited only by Supabase's default rate limits. No application-level lockout after N failed attempts.
+- Recommended fix: Implement persistent rate limiting using Vercel KV or Upstash Redis for auth endpoints. Consider adding account lockout after 10 failed login attempts.
+
+#### 1.3 Sensitive Data Exposure (A02:2021)
+
+**PASS -- Secrets Management**
+- `.env.local` is gitignored via `.env*.local` pattern in `.gitignore`.
+- `.env.example` contains only placeholder values, no secrets.
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only in `src/lib/env.ts` (not prefixed with `NEXT_PUBLIC_`).
+- Service role key is only used in server-side API routes (4 files), never exposed to client.
+
+**P3 LOW -- BUG-A2: SMTP credentials in .env.example**
+- File: `.env.example` line 13
+- Description: `.env.example` contains `SMTP_HOST=s306.goserver.host` and `SMTP_USER=noreply@train-smarter.at` -- these are real production hostnames and usernames (not dummy values). While no passwords are exposed, this reveals infrastructure details.
+- Impact: Low -- attacker learns the mail server hostname and sender address.
+- Recommended fix: Replace with `SMTP_HOST=your-smtp-host` and `SMTP_USER=your-smtp-user`.
+
+**PASS -- Error Messages**
+- Forgot-password page shows success for both existing and non-existing emails (anti-enumeration, line 77 of forgot-password/page.tsx).
+- Registration uses Supabase's identical response for new and existing accounts (documented in register/page.tsx line 101).
+- Server errors return generic messages, never internal details.
+
+#### 1.4 Broken Access Control (A01:2021)
+
+**PASS -- Middleware Route Protection**
+- Protected routes correctly require authentication. Unauthenticated users are redirected to `/login`.
+- Guest-only routes (login, register) redirect authenticated users to `/dashboard`.
+- Onboarding gate enforced via `app_metadata.onboarding_completed` (server-only writable).
+- Email verification check prevents unverified users from accessing protected routes.
+- Role-based access: `/organisation` requires TRAINER role, `/admin` requires `is_platform_admin`.
+
+**PASS -- RLS Policies**
+- All tables have `ENABLE ROW LEVEL SECURITY` set.
+- `profiles`, `user_consents`, `trainer_athlete_connections`, `feedback_checkins`, `feedback_checkin_values`, `feedback_categories`, `feedback_category_overrides`, `data_exports`, `pending_deletions`, `team_athletes`, `teams` all have RLS enabled.
+- Cross-user data access properly gated: trainers can only see connected athletes, athletes can only see own data.
+- `is_connected_athlete()` helper function (SECURITY DEFINER) used for trainer-athlete relationship checks.
+
+**P2 MEDIUM -- BUG-A3: user_consents has an overly broad UPDATE/ALL policy**
+- File: `supabase/migrations/20260312000000_initial_schema.sql` lines 117-120
+- Description: The initial migration creates a policy "Users can update own consents" with `FOR ALL`, which grants UPDATE and DELETE in addition to SELECT and INSERT. Consents should be append-only (immutable audit log per DSGVO Art. 7). The health check endpoint (`/api/health`) explicitly tests for this and flags it as a failure. A later migration may have fixed this, but the initial schema still creates the broad policy.
+- Impact: A user could theoretically update or delete consent records via the Supabase client, undermining the DSGVO audit trail.
+- Recommended fix: Drop the "Users can update own consents" policy and ensure only INSERT and SELECT policies exist on `user_consents`.
+
+**P3 LOW -- BUG-A4: /components page is publicly accessible without auth**
+- File: `src/app/[locale]/components/page.tsx`
+- Description: The `/components` page (design system showcase) is not in the `(protected)` route group, so it is accessible without authentication. It is also not in the AUTH_ROUTES or PUBLIC_ROUTES lists in middleware.ts. The `isProtectedRoute()` function at line 56 would correctly redirect unauthenticated users since `/components` does not match any exclusion. However, this page exists in the routing table and is a development-only page that should not be accessible in production.
+- Impact: Information disclosure of internal component library.
+- Recommended fix: Either move to `(protected)` route group or remove before production.
+
+#### 1.5 Security Misconfiguration (A05:2021)
+
+**P1 HIGH -- BUG-A5: CSP contains 'unsafe-eval' in production**
+- File: `next.config.ts` line 45
+- Description: The Content Security Policy `script-src` directive includes `'unsafe-eval'`. The security header test (`src/lib/security-headers.test.ts` line 95-96) explicitly asserts `expect(csp).not.toContain("unsafe-eval")` and passes -- but this is because the test defines its own hardcoded CSP string (line 31) that does NOT include `unsafe-eval`, while the actual `next.config.ts` DOES include it. The test is testing a string literal, not the actual config.
+- Impact: `unsafe-eval` allows `eval()`, `Function()`, and `setTimeout("string")` in scripts, which significantly weakens CSP protection against XSS. An attacker who can inject a script tag could use `eval()` to execute arbitrary code.
+- Recommended fix: Remove `'unsafe-eval'` from the CSP `script-src` directive. If it was added for development/hot-reload, make it conditional on `isDev` (the variable exists on line 7 but is not used for this purpose). Fix the test to read the actual config rather than a hardcoded duplicate.
+
+**P1 HIGH -- BUG-A6: Security header test tests hardcoded strings, not actual config**
+- File: `src/lib/security-headers.test.ts` lines 11-39
+- Description: The test file duplicates the security header values as string literals and tests THOSE, not the actual `next.config.ts` values. If someone changes `next.config.ts` (e.g., weakening CSP or removing HSTS), the tests would still pass because they test their own copy. This is proven by BUG-A5: the test asserts no `unsafe-eval`, but the real config has it.
+- Impact: Security regression protection is illusory. Tests provide false confidence.
+- Recommended fix: Import or parse the actual `next.config.ts` and test the real values, or at minimum, extract the header definitions into a shared constant used by both `next.config.ts` and the test.
+
+**PASS -- Security Headers (aside from CSP issue)**
+- X-Frame-Options: DENY (prevents clickjacking)
+- X-Content-Type-Options: nosniff
+- HSTS with max-age=31536000, includeSubDomains, preload
+- Permissions-Policy disables camera, microphone, geolocation, payment
+- COOP and CORP set to same-origin
+- Auth routes get stricter Referrer-Policy: no-referrer (prevents token leakage)
+
+#### 1.6 CSRF Protection
+
+**PASS -- CSRF**
+- Next.js App Router uses server actions with automatic CSRF protection (server actions verify the origin header).
+- All API routes are POST-only for mutations (no state-changing GET requests).
+- `form-action 'self'` in CSP prevents form submissions to external origins.
+- Supabase Auth handles its own CSRF protection for auth endpoints.
+
+---
+
+### 2. INPUT VALIDATION
+
+**PASS -- Zod Validation on All Forms**
+- Login: `loginSchema` validates email format + non-empty password
+- Register: `registerSchema` validates names (unicode regex), email, password (min 8 chars + uppercase + number), password match
+- Forgot password: `forgotPasswordSchema` validates email
+- Reset password: `resetPasswordSchema` validates password rules + match
+- Profile: `profileSchema` validates names + optional birth date
+- All validation is client-side via `react-hook-form` + `zodResolver`
+
+**PASS -- Server-Side Validation**
+- All Server Actions in `src/lib/feedback/actions.ts` validate with Zod BEFORE any database operation.
+- API routes: `set-role` (Zod), `gdpr/consents` (Zod), `gdpr/delete-account` (Zod), `validate-email` (Zod), `account/locale` (manual check).
+- Edge Functions: `send-invitation-email` has manual validation in `validatePayload()`.
+
+**PASS -- URL validation in invite links**
+- `send-invitation-email/index.ts` line 288-295: validates inviteLink is a valid URL with http/https protocol.
+
+**P3 LOW -- BUG-A7: account/locale API route uses manual validation instead of Zod**
+- File: `src/app/api/account/locale/route.ts` lines 13-16
+- Description: The locale update endpoint validates with `if (!locale || !VALID_LOCALES.includes(locale))` instead of using Zod like all other API routes. While functionally correct, this is inconsistent with the project convention.
+- Impact: None functionally, but inconsistency could lead to missed edge cases in future changes.
+- Recommended fix: Use Zod schema for consistency.
+
+---
+
+### 3. TEST COVERAGE ANALYSIS
+
+**Current State:**
+- 17 test files, 400 tests, ALL passing
+- Test types: Unit tests (Vitest), E2E tests (Playwright)
+- Unit coverage: auth validation (22 tests), email validation (17+10 tests), security headers (12), mock session (8), utils (8), avatar upload (8), bugfix regressions (many), manifest, icon route
+
+**P2 MEDIUM -- BUG-A8: No tests for critical Server Actions (feedback, athletes, teams)**
+- Description: The entire `src/lib/feedback/actions.ts` (656 lines, 8 server actions) has 0% test coverage. Similarly, `src/lib/athletes/` and `src/lib/teams/` have no integration tests. These are the core business logic of the application.
+- What is not tested:
+  - `saveCheckin()` -- DSGVO consent check, backfill limit logic, date validation
+  - `autosaveCheckinField()` -- same critical path
+  - `createCategory()` / `updateCategory()` -- scope determination, trainer connection verification
+  - `toggleAnalysisVisibility()` / `updateBackfillDays()` -- authorization checks
+  - Athlete invitation flow server actions
+  - Team management server actions
+- Impact: Core business logic bugs could ship to production undetected.
+- Recommended fix: Add Vitest integration tests with mocked Supabase for all server actions, prioritizing the feedback and athlete management actions.
+
+**P2 MEDIUM -- BUG-A9: No RLS integration tests**
+- Description: The spec explicitly states RLS integration tests are the "highest security priority" but none exist. No tests verify that Trainer A cannot read Trainer B's athletes, or that Athlete X cannot see Athlete Y's check-in data.
+- Impact: RLS policy regressions could expose user data across accounts -- the "worst possible bug" per the spec itself.
+- Recommended fix: Set up local Supabase test instance and write RLS tests for `trainer_athlete_connections`, `feedback_checkins`, `feedback_checkin_values`, `profiles`.
+
+---
+
+### 4. ERROR HANDLING & EDGE CASES
+
+**PASS -- Network Error Handling**
+- All auth forms (login, register, forgot-password, reset-password) catch network errors and display translated error messages.
+- Server actions return structured `{ success: false, error: "ERROR_CODE" }` results.
+- API routes wrap all logic in try/catch with generic 500 responses.
+
+**PASS -- Empty/Null States**
+- Feedback check-in form handles empty categories with a "no categories active" message.
+- Monitoring dashboard handles zero athletes.
+- Server actions handle `null` consent records gracefully.
+
+**P3 LOW -- BUG-A10: Race condition in autosave debounce**
+- File: `src/components/feedback/checkin-form.tsx` lines 89-98
+- Description: ESLint warns that `debounceTimers.current` and `savedTimers.current` ref values may change between effect setup and cleanup. If the component unmounts while a debounce timer is pending, the cleanup might not clear the correct timers.
+- Impact: Minor -- could cause a "setState on unmounted component" warning or a stale save attempt.
+- Recommended fix: Copy the ref values to local variables inside the effect, as the ESLint warning suggests.
+
+---
+
+### 5. DEPENDENCY AUDIT
+
+**P1 HIGH -- BUG-A11: 5 known vulnerabilities in dependencies (1 moderate, 4 high)**
+- Source: `npm audit` output
+- Description:
+  - `next` (16.1.1): Unbounded next/image disk cache growth (GHSA-3x4c-7xq6-9pq8), unbounded postponed resume buffering DoS (GHSA-h27x-g6w4-24gq)
+  - `undici` (7.0.0-7.23.0, transitive via next): 4 high-severity issues -- WebSocket 64-bit length overflow, HTTP request smuggling, unbounded memory in WebSocket decompression, CRLF injection via upgrade option, unbounded memory in DeduplicationHandler
+- Impact: The undici vulnerabilities could enable HTTP request smuggling or DoS attacks. The next/image vulnerability could exhaust server disk space.
+- Recommended fix: Run `npm audit fix`. If that does not fully resolve, pin or override the vulnerable transitive dependency.
+
+**PASS -- No unnecessary dependencies**
+- All dependencies in `package.json` serve clear purposes.
+- No duplicate or overlapping libraries found.
+
+**PASS -- Lock file committed**
+- `package-lock.json` is committed (verified by successful `npm ci` in build).
+
+---
+
+### 6. ENVIRONMENT & CONFIGURATION
+
+**PASS -- env.ts validation**
+- `@t3-oss/env-nextjs` validates 4 environment variables at module load time.
+- All API routes using service role key import from `@/lib/env` (fixed in prior QA round).
+
+**PASS -- next.config.ts**
+- No experimental or dangerous Next.js features enabled.
+- withNextIntl plugin properly configured.
+- CSP, security headers, and rewrites properly defined (aside from BUG-A5 unsafe-eval).
+
+**PASS -- TypeScript strict mode**
+- `tsconfig.json` has `"strict": true` (line 12).
+
+---
+
+### 7. MIDDLEWARE & AUTH GUARDS
+
+**PASS -- Route protection completeness**
+- All auth routes properly identified: login, register, forgot-password, reset-password, verify-email
+- Public routes: datenschutz, impressum, agb (both DE and EN variants)
+- Auth callback and confirm routes correctly excluded from protection
+- Static files (.*, _next/, api/) correctly skipped
+- Legacy redirects (301) for consolidated routes
+
+**PASS -- Redirect loop prevention**
+- Onboarding routes excluded from onboarding redirect check (line 183-184)
+- Verify-email routes excluded from email verification redirect
+- Root path "/" handled separately
+
+**PASS -- Locale redirect safety**
+- User's preferred locale from `user_metadata` is checked and redirected only for protected routes
+- Query params preserved during locale redirect
+
+---
+
+### 8. DATA PRIVACY (DSGVO)
+
+**PASS -- DSGVO Compliance Implementation**
+- Art. 7 (Consent): Append-only `user_consents` table with IP logging, consent revocation cascades to connection visibility flags
+- Art. 17 (Right to erasure): Account deletion pseudonymizes profile, removes avatar, disconnects connections, bans account, creates 30-day pending deletion
+- Art. 20 (Data portability): JSON export of all user data via `/api/gdpr/export`, rate-limited to 1 per 30 days
+- Cookie consent implemented via user_consents during onboarding
+- Impressum and Datenschutz pages accessible without login (DSGVO requirement)
+
+**PASS -- PII Logging**
+- Edge Functions log email hashes (SHA-256, first 12 chars) instead of actual email addresses
+- Server-side errors use `console.error` with generic messages, no PII
+
+**P2 MEDIUM -- BUG-A12: v_athlete_monitoring_summary view exposes email column**
+- File: `supabase/migrations/20260316000000_proj6_feedback_monitoring.sql` line 468
+- Description: The `v_athlete_monitoring_summary` view includes `p.email` from profiles, making athlete email addresses readable to any connected trainer via the view. While RLS on the underlying `profiles` table limits access, the view itself may bypass RLS depending on the view owner (SECURITY INVOKER vs DEFINER). If the view runs as the table owner, it could expose emails beyond what RLS intends.
+- Impact: Trainers may see athlete email addresses through the monitoring view even if they should only see names.
+- Recommended fix: Verify the view uses SECURITY INVOKER (PostgreSQL 15+) or remove the email column from the view if not needed for the monitoring dashboard.
+
+---
+
+### 9. PERFORMANCE ISSUES
+
+**P3 LOW -- BUG-A13: Health check endpoint fetches ALL profiles and ALL auth users**
+- File: `src/app/api/health/route.ts` lines 196-262
+- Description: `checkOrphanedProfiles()` and `checkOrphanedReferences()` each independently fetch ALL profiles AND paginate through ALL auth.users to check for orphans. With many users, this could be slow and resource-intensive. The health endpoint runs these sequentially, not in parallel.
+- Impact: Health check response time degrades linearly with user count. Could timeout with thousands of users.
+- Recommended fix: Use a SQL query (RPC) to detect orphans server-side instead of fetching all records to the application.
+
+**PASS -- No obvious memory leaks**
+- React effects in `checkin-form.tsx` properly clean up timers on unmount.
+- `SessionManager` component has a single `useEffect` with no subscriptions.
+- No uncleaned event listeners or subscriptions found.
+
+**PASS -- No infinite re-render risks**
+- State updates are properly guarded (e.g., `checkin-form.tsx` only resets values when date changes, not on every existingValues change).
+- No circular dependency between state updates detected.
+
+---
+
+### 10. BUILD & DEPLOY
+
+**PASS -- Build succeeds**
+- `npm run build` completes successfully with 0 errors.
+- All 55 pages generated correctly.
+- No TypeScript errors.
+
+**PASS -- Lint succeeds**
+- 0 lint errors, 3 warnings (all minor: React Compiler compatibility, exhaustive-deps on ref cleanup).
+
+**PASS -- All 400 unit tests pass**
+- 17 test files, 400 tests, 0 failures.
+
+**P3 LOW -- BUG-A14: Next.js middleware deprecation warning**
+- Description: Build output shows "The 'middleware' file convention is deprecated. Please use 'proxy' instead." This is a Next.js 16 change that should be addressed before the next major version.
+- Impact: None currently, but middleware may stop working in a future Next.js version.
+- Recommended fix: Plan migration to the new "proxy" convention.
+
+---
+
+### 11. i18n COMPLIANCE
+
+**PASS -- No hardcoded user-facing strings in pages**
+- All page components use `useTranslations()` or `getTranslations()`.
+- Login, register, forgot-password, reset-password, verify-email, feedback, onboarding all use translation keys.
+- Legal pages (datenschutz, impressum, agb) use server-side translations.
+
+**PASS -- Navigation uses locale-aware imports**
+- All `Link` and `useRouter` imports from `@/i18n/navigation` (verified by grep).
+- `useSearchParams` from `next/navigation` is acceptable (it is not a navigation function).
+- `redirect` and `notFound` from `next/navigation` are acceptable for server components.
+
+**PASS -- German umlauts correct**
+- Checked edge function templates and seed data: "Eiweiß" (not "Eiweiss"), "Überblick", "zurücksetzen", "Kohlenhydrate" all correct.
+
+---
+
+### SUMMARY OF FINDINGS
+
+#### P0 CRITICAL -- None found
+
+#### P1 HIGH (must fix before release)
+
+| ID | Finding | File | Line |
+|----|---------|------|------|
+| BUG-A5 | CSP contains 'unsafe-eval' in production | `next.config.ts` | 45 |
+| BUG-A6 | Security header tests test hardcoded strings, not actual config (BUG-A5 was invisible to tests) | `src/lib/security-headers.test.ts` | 11-39 |
+| BUG-A11 | 5 known dependency vulnerabilities (4 high in undici, 1 moderate in next) | `package.json` | -- |
+
+#### P2 MEDIUM (should fix before release)
+
+| ID | Finding | File | Line |
+|----|---------|------|------|
+| BUG-A1 | No application-level rate limiting on auth endpoints | `src/app/[locale]/(auth)/login/page.tsx` | -- |
+| BUG-A3 | user_consents has overly broad UPDATE/ALL RLS policy (should be append-only) | `supabase/migrations/20260312000000_initial_schema.sql` | 117-120 |
+| BUG-A8 | No tests for core Server Actions (feedback, athletes, teams) -- 0% coverage on business logic | `src/lib/feedback/actions.ts` | -- |
+| BUG-A9 | No RLS integration tests (spec's "highest security priority") | -- | -- |
+| BUG-A12 | v_athlete_monitoring_summary view includes email, may bypass RLS | `supabase/migrations/20260316000000_proj6_feedback_monitoring.sql` | 468 |
+
+#### P3 LOW (nice-to-have)
+
+| ID | Finding | File | Line |
+|----|---------|------|------|
+| BUG-A2 | Real SMTP hostname and username in .env.example | `.env.example` | 13 |
+| BUG-A4 | /components page accessible in production (dev-only page) | `src/app/[locale]/components/page.tsx` | -- |
+| BUG-A7 | account/locale API uses manual validation instead of Zod | `src/app/api/account/locale/route.ts` | 13-16 |
+| BUG-A10 | ESLint warning: ref values in effect cleanup may be stale | `src/components/feedback/checkin-form.tsx` | 89-98 |
+| BUG-A13 | Health check fetches all profiles/users into memory | `src/app/api/health/route.ts` | 196-262 |
+| BUG-A14 | Next.js middleware deprecation warning | `src/middleware.ts` | -- |
+
+#### PASS (well implemented)
+
+| Area | Notes |
+|------|-------|
+| SQL Injection protection | Parameterized queries throughout, Zod validation before all DB calls |
+| XSS protection | No dangerouslySetInnerHTML, HTML escaping in Edge Functions |
+| Session management | Server-validated sessions via getUser(), httpOnly cookies |
+| Open redirect prevention | returnUrl validated in middleware and login page |
+| CSRF protection | Next.js server actions + CSP form-action restriction |
+| RLS on all tables | Every table has RLS enabled with appropriate policies |
+| Role-based access control | Middleware checks roles for /organisation and /admin routes |
+| DSGVO compliance | Consent, deletion, export, pseudonymization all implemented |
+| Secrets management | .env.local gitignored, service role key server-only |
+| TypeScript strict mode | Enabled, 0 errors |
+| Build integrity | Clean build, 0 errors, all tests pass |
+| i18n compliance | All strings translated, locale-aware navigation |
+| Error handling | Structured error responses, no PII in logs |
+| Anti-enumeration | Forgot-password shows success regardless of account existence |
+
+---
+
+### RECOMMENDED FIX PRIORITY
+
+1. **Immediate (before next deploy):** BUG-A5 (remove unsafe-eval from CSP), BUG-A11 (npm audit fix)
+2. **This sprint:** BUG-A6 (fix security header tests), BUG-A3 (fix user_consents RLS policy)
+3. **Next sprint:** BUG-A8 (server action tests), BUG-A9 (RLS integration tests), BUG-A1 (auth rate limiting)
+4. **Backlog:** BUG-A2, BUG-A4, BUG-A7, BUG-A10, BUG-A12, BUG-A13, BUG-A14

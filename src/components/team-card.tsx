@@ -8,15 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { TeamListItem } from "@/lib/teams/types";
-
-function getInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((w) => w.charAt(0))
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { getNameInitials } from "@/lib/utils";
 
 interface TeamCardProps {
   team: TeamListItem;
@@ -39,7 +31,7 @@ export function TeamCard({ team }: TeamCardProps) {
                 <AvatarImage src={team.logoUrl} alt={team.name} />
               )}
               <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                {getInitials(team.name)}
+                {getNameInitials(team.name)}
               </AvatarFallback>
             </Avatar>
 

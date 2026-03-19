@@ -34,15 +34,7 @@ import type {
   TeamInvitation,
   AssignableAthlete,
 } from "@/lib/teams/types";
-
-function getInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((w) => w.charAt(0))
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { getNameInitials } from "@/lib/utils";
 
 interface TeamDetailViewProps {
   team: TeamDetail;
@@ -88,7 +80,7 @@ export function TeamDetailView({
                 <AvatarImage src={team.logoUrl} alt={team.name} />
               )}
               <AvatarFallback className="bg-primary/10 text-primary text-lg font-medium">
-                {getInitials(team.name)}
+                {getNameInitials(team.name)}
               </AvatarFallback>
             </Avatar>
             <div>

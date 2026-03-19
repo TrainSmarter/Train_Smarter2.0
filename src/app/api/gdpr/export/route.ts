@@ -79,6 +79,41 @@ export async function POST() {
       .select("team_id, assigned_at")
       .eq("athlete_id", userId);
 
+    // Trainer profile (if exists)
+    const { data: trainerProfile } = await supabase
+      .from("trainer_profiles")
+      .select("organization_name, specialization, max_athletes, created_at, updated_at")
+      .eq("id", userId)
+      .maybeSingle();
+
+    // Athlete profile (if exists)
+    const { data: athleteProfile } = await supabase
+      .from("athlete_profiles")
+      .select("height_cm, sport_type, created_at, updated_at")
+      .eq("id", userId)
+      .maybeSingle();
+
+    // Feedback check-ins (W12: DSGVO export completeness)
+    const { data: feedbackCheckins } = await supabase
+      .from("feedback_checkins")
+      .select("id, date, notes, created_at")
+      .eq("athlete_id", userId)
+      .order("date", { ascending: true });
+
+    // Feedback check-in values
+    const { data: feedbackCheckinValues } = await supabase
+      .from("feedback_checkin_values")
+      .select("checkin_id, category_id, numeric_value, text_value, created_at")
+      .eq("athlete_id", userId)
+      .order("created_at", { ascending: true });
+
+    // Feedback category overrides (athlete-specific settings)
+    const { data: feedbackCategoryOverrides } = await supabase
+      .from("feedback_category_overrides")
+      .select("category_id, is_enabled, sort_order, created_at, updated_at")
+      .eq("athlete_id", userId)
+      .order("created_at", { ascending: true });
+
     // Build export payload
     const exportData = {
       _meta: {
@@ -117,6 +152,45 @@ export async function POST() {
         team_id: t.team_id,
         zugewiesen_am: t.assigned_at,
       })),
+      trainer_profil: trainerProfile
+        ? {
+            organisation: trainerProfile.organization_name,
+            spezialisierung: trainerProfile.specialization,
+            max_athleten: trainerProfile.max_athletes,
+            erstellt_am: trainerProfile.created_at,
+            aktualisiert_am: trainerProfile.updated_at,
+          }
+        : null,
+      athleten_profil: athleteProfile
+        ? {
+            groesse_cm: athleteProfile.height_cm,
+            sportart: athleteProfile.sport_type,
+            erstellt_am: athleteProfile.created_at,
+            aktualisiert_am: athleteProfile.updated_at,
+          }
+        : null,
+      feedback_checkins: (feedbackCheckins ?? []).map((c) => ({
+        id: c.id,
+        datum: c.date,
+        notizen: c.notes,
+        erstellt_am: c.created_at,
+      })),
+      feedback_werte: (feedbackCheckinValues ?? []).map((v) => ({
+        checkin_id: v.checkin_id,
+        kategorie_id: v.category_id,
+        numerischer_wert: v.numeric_value,
+        text_wert: v.text_value,
+        erstellt_am: v.created_at,
+      })),
+      feedback_kategorie_einstellungen: (feedbackCategoryOverrides ?? []).map(
+        (o) => ({
+          kategorie_id: o.category_id,
+          aktiviert: o.is_enabled,
+          sortierung: o.sort_order,
+          erstellt_am: o.created_at,
+          aktualisiert_am: o.updated_at,
+        })
+      ),
     };
 
     // ── Record export in data_exports table ──

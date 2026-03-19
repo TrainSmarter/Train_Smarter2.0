@@ -7,7 +7,7 @@ import {
   Shield,
   type LucideIcon,
 } from "lucide-react";
-import type { UserRole } from "@/lib/mock-session";
+import type { UserRole } from "@/lib/auth-user";
 
 export interface NavItem {
   /** Key into messages.nav namespace */

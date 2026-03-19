@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/auth/invite-token?token=xxx
@@ -38,8 +39,19 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/auth/invite-token — reads the httpOnly cookie server-side.
  * Returns { token: "..." } if present, or { token: null }.
+ * Requires authenticated user to prevent token enumeration.
  */
 export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const token = request.cookies.get("inviteToken")?.value ?? null;
   return NextResponse.json({ token });
 }

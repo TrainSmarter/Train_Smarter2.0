@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useTranslations } from "next-intl"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -18,6 +19,7 @@ import {
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
+  const t = useTranslations("common")
 
   React.useEffect(() => {
     setMounted(true)
@@ -25,7 +27,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="outline" size="icon" disabled aria-label="Farbschema wechseln">
+      <Button variant="outline" size="icon" disabled aria-label={t("toggleColorScheme")}>
         <Sun className="h-4 w-4" />
       </Button>
     )
@@ -40,7 +42,7 @@ export function ThemeToggle() {
           variant="outline"
           size="icon"
           onClick={() => setTheme(isDark ? "light" : "dark")}
-          aria-label={isDark ? "Zu Light Mode wechseln" : "Zu Dark Mode wechseln"}
+          aria-label={isDark ? t("switchToLightMode") : t("switchToDarkMode")}
         >
           {isDark ? (
             <Sun className="h-4 w-4" />
@@ -50,7 +52,7 @@ export function ThemeToggle() {
         </Button>
       </TooltipTrigger>
       <TooltipContent>
-        <p>{isDark ? "Light Mode" : "Dark Mode"}</p>
+        <p>{isDark ? t("lightMode") : t("darkMode")}</p>
       </TooltipContent>
     </Tooltip>
   )

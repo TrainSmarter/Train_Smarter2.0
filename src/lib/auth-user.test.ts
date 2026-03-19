@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toAuthUser } from "./mock-session";
+import { toAuthUser } from "./auth-user";
 import type { User } from "@supabase/supabase-js";
 
 function makeUser(overrides: Partial<User> = {}): User {

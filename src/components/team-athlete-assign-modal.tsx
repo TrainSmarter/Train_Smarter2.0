@@ -10,10 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { assignAthletes } from "@/lib/teams/actions";
 import type { AssignableAthlete } from "@/lib/teams/types";
-
-function getInitials(firstName: string, lastName: string): string {
-  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-}
+import { getInitials } from "@/lib/utils";
 
 interface TeamAthleteAssignModalProps {
   open: boolean;

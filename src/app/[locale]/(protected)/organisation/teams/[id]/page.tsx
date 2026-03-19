@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { toAuthUser } from "@/lib/mock-session";
+import { toAuthUser } from "@/lib/auth-user";
 import { TeamDetailView } from "@/components/team-detail-view";
 import {
   fetchTeamDetail,

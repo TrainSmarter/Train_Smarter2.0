@@ -1,11 +1,6 @@
 /**
  * Auth user types and Supabase-to-AuthUser converter.
  *
- * NOTE: Despite the filename "mock-session.ts", this file no longer contains
- * any mock data. It exports the `AuthUser` type and the `toAuthUser()` helper
- * that converts a Supabase `User` into a serializable `AuthUser` object.
- * The filename is kept for backwards compatibility with existing imports.
- *
  * Role architecture (Phase 1 — defined in PROJ-4):
  * - `app_metadata.roles`: UserRole[] — stored as ARRAY (e.g. ["TRAINER"]) for Dual-Role readiness (PROJ-11+)
  * - `app_metadata.is_platform_admin`: boolean — grants access to /admin area (manual SQL-only)
@@ -33,7 +28,7 @@ export interface AuthUser {
   };
 }
 
-/** Also export as MockUser for backwards compatibility with existing imports */
+/** @deprecated Use AuthUser instead */
 export type MockUser = AuthUser;
 
 /**

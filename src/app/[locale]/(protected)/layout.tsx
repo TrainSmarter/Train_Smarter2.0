@@ -5,7 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { AppHeader } from "@/components/app-header";
 import { SessionManager } from "@/components/session-manager";
 import { createClient } from "@/lib/supabase/server";
-import { toAuthUser } from "@/lib/mock-session";
+import { toAuthUser } from "@/lib/auth-user";
 
 export default async function ProtectedLayout({
   children,

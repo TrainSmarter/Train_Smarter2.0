@@ -42,7 +42,7 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              `script-src 'self' 'unsafe-inline' 'unsafe-eval'`,
+              `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
               `connect-src 'self' ${supabaseUrl} https://*.supabase.co wss://*.supabase.co`,
               "img-src 'self' data: blob: https:",
               "font-src 'self'",
