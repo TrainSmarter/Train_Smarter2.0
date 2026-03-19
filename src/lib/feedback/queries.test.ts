@@ -73,3 +73,93 @@ describe("getAthleteDetail consent flag", () => {
     expect(queries).toContain("hasBodyWellnessConsent: athleteConsent");
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Regression: Direct queries NOT RPC (PostgREST cache issue)
+// ═══════════════════════════════════════════════════════════════
+
+describe("Regression: queries.ts uses direct table queries, NOT RPC", () => {
+  const queries = readSrc("lib/feedback/queries.ts");
+
+  it("hasBodyWellnessConsent uses .from('user_consents'), NOT supabase.rpc", () => {
+    const fnMatch = queries.match(
+      /async function hasBodyWellnessConsent[\s\S]*?^}/m
+    );
+    expect(fnMatch).not.toBeNull();
+    const fnBody = fnMatch![0];
+    expect(fnBody).toContain('.from("user_consents")');
+    expect(fnBody).not.toContain("supabase.rpc");
+  });
+
+  it("getMonitoringOverview uses .from('user_consents'), NOT supabase.rpc", () => {
+    const fnMatch = queries.match(
+      /export async function getMonitoringOverview[\s\S]*?^}/m
+    );
+    expect(fnMatch).not.toBeNull();
+    const fnBody = fnMatch![0];
+    expect(fnBody).toContain('.from("user_consents")');
+    expect(fnBody).not.toContain("supabase.rpc");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Migration: RLS policy for trainer consent read
+// ═══════════════════════════════════════════════════════════════
+
+describe("Migration: consent_rls_trainer_read", () => {
+  const migration = readSrc(
+    "../supabase/migrations/20260319300000_consent_rls_trainer_read.sql"
+  );
+
+  it("creates 'Trainers can read connected athlete consents' policy", () => {
+    expect(migration).toContain(
+      "Trainers can read connected athlete consents"
+    );
+  });
+
+  it("policy is on user_consents table for SELECT", () => {
+    expect(migration).toContain("user_consents");
+    expect(migration).toContain("FOR SELECT");
+  });
+
+  it("policy checks trainer_athlete_connections with active status", () => {
+    expect(migration).toContain("trainer_athlete_connections");
+    expect(migration).toContain("trainer_id = auth.uid()");
+    expect(migration).toContain("athlete_id = user_consents.user_id");
+    expect(migration).toContain("status = 'active'");
+  });
+
+  it("uses IF NOT EXISTS guard", () => {
+    expect(migration).toContain("IF NOT EXISTS");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// backfill.ts: computeBackfillMinDate is in separate module
+// ═══════════════════════════════════════════════════════════════
+
+describe("backfill.ts module separation", () => {
+  const backfill = readSrc("lib/feedback/backfill.ts");
+  const actions = readSrc("lib/feedback/actions.ts");
+
+  it("backfill.ts exports computeBackfillMinDate", () => {
+    expect(backfill).toContain("export function computeBackfillMinDate");
+  });
+
+  it("backfill.ts imports BackfillMode from types", () => {
+    expect(backfill).toContain('import type { BackfillMode } from "./types"');
+  });
+
+  it("actions.ts imports computeBackfillMinDate from backfill", () => {
+    expect(actions).toContain(
+      'import { computeBackfillMinDate } from "./backfill"'
+    );
+  });
+
+  it("actions.ts does NOT define computeBackfillMinDate itself", () => {
+    expect(actions).not.toContain("export function computeBackfillMinDate");
+    expect(actions).not.toMatch(
+      /^function computeBackfillMinDate/m
+    );
+  });
+});
