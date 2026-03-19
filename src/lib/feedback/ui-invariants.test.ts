@@ -338,3 +338,491 @@ describe("week-strip: today indicator distinct from entry dot", () => {
     expect(strip).toContain("checkinValues");
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// 7. PROJ-18: Migration invariants
+// ═══════════════════════════════════════════════════════════════
+
+describe("Migration 20260320000000_proj18_trainer_defaults.sql", () => {
+  const migration = readRoot(
+    "supabase/migrations/20260320000000_proj18_trainer_defaults.sql"
+  );
+
+  it("creates trainer_category_defaults table", () => {
+    expect(migration).toContain(
+      "CREATE TABLE public.trainer_category_defaults"
+    );
+  });
+
+  it("has trainer_id and category_id columns with FK constraints", () => {
+    expect(migration).toContain("trainer_id");
+    expect(migration).toContain("category_id");
+    expect(migration).toContain("REFERENCES auth.users(id)");
+    expect(migration).toContain("REFERENCES public.feedback_categories(id)");
+  });
+
+  it("has UNIQUE constraint on (trainer_id, category_id)", () => {
+    expect(migration).toContain("uq_trainer_category_default");
+    expect(migration).toContain("UNIQUE (trainer_id, category_id)");
+  });
+
+  it("has CHECK constraint: required needs active", () => {
+    expect(migration).toContain("chk_required_needs_active");
+    expect(migration).toContain("NOT is_required OR is_active");
+  });
+
+  it("enables RLS on trainer_category_defaults", () => {
+    expect(migration).toContain(
+      "ALTER TABLE public.trainer_category_defaults ENABLE ROW LEVEL SECURITY"
+    );
+  });
+
+  it("has all 4 RLS policies (SELECT, INSERT, UPDATE, DELETE)", () => {
+    expect(migration).toContain("Trainers can read own defaults");
+    expect(migration).toContain("Trainers can insert own defaults");
+    expect(migration).toContain("Trainers can update own defaults");
+    expect(migration).toContain("Trainers can delete own defaults");
+  });
+
+  it("adds is_required column to feedback_category_overrides", () => {
+    expect(migration).toContain(
+      "ADD COLUMN IF NOT EXISTS is_required boolean NOT NULL DEFAULT false"
+    );
+  });
+
+  it("creates set_athlete_category_required SECURITY DEFINER function", () => {
+    expect(migration).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.set_athlete_category_required/
+    );
+    expect(migration).toContain("SECURITY DEFINER");
+  });
+
+  it("set_athlete_category_required verifies trainer-athlete connection", () => {
+    expect(migration).toContain("trainer_athlete_connections");
+    expect(migration).toContain("trainer_id = auth.uid()");
+    expect(migration).toContain("athlete_id = p_athlete_id");
+    expect(migration).toContain("status = 'active'");
+  });
+
+  it("set_athlete_category_required upserts override row", () => {
+    expect(migration).toContain("ON CONFLICT (user_id, category_id)");
+    expect(migration).toContain("DO UPDATE SET");
+    expect(migration).toContain("is_required = p_is_required");
+  });
+
+  it("creates copy_trainer_defaults_to_athlete SECURITY DEFINER function", () => {
+    expect(migration).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.copy_trainer_defaults_to_athlete/
+    );
+  });
+
+  it("copy_trainer_defaults_to_athlete verifies caller is the trainer", () => {
+    expect(migration).toContain("v_caller := auth.uid()");
+    expect(migration).toContain("v_caller != p_trainer_id");
+  });
+
+  it("GRANTs EXECUTE to authenticated for both functions", () => {
+    expect(migration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.set_athlete_category_required"
+    );
+    expect(migration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.copy_trainer_defaults_to_athlete"
+    );
+  });
+});
+
+describe("Migration 20260320100000_proj18_fix_override_rls_and_copy.sql", () => {
+  const migration = readRoot(
+    "supabase/migrations/20260320100000_proj18_fix_override_rls_and_copy.sql"
+  );
+
+  it("creates RLS policy for trainers to read athlete overrides", () => {
+    expect(migration).toContain(
+      "Trainers can read connected athlete overrides"
+    );
+    expect(migration).toContain("feedback_category_overrides");
+  });
+
+  it("RLS policy checks trainer_athlete_connections with status = 'active'", () => {
+    expect(migration).toContain("trainer_athlete_connections");
+    expect(migration).toContain("trainer_id = auth.uid()");
+    expect(migration).toContain("status = 'active'");
+  });
+
+  it("fixes copy_trainer_defaults_to_athlete to use status = 'active'", () => {
+    // The fix migration overwrites the function — make sure 'accepted' is NOT present
+    expect(migration).not.toContain("status = 'accepted'");
+    expect(migration).toContain("status = 'active'");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 8. PROJ-18: checkin-form required field asterisk
+// ═══════════════════════════════════════════════════════════════
+
+describe("checkin-form: required field asterisk (PROJ-18)", () => {
+  const form = readSrc("components/feedback/checkin-form.tsx");
+
+  it("shows asterisk for isEffectivelyRequired categories", () => {
+    expect(form).toContain("isEffectivelyRequired");
+  });
+
+  it("asterisk uses text-destructive class", () => {
+    expect(form).toContain('className="text-destructive');
+  });
+
+  it("asterisk is aria-hidden (decorative)", () => {
+    expect(form).toContain('aria-hidden="true">*</span>');
+  });
+
+  it("renders asterisk for all field types (number, scale, text)", () => {
+    // Count occurrences of the asterisk pattern
+    const matches = form.match(/isEffectivelyRequired && \(/g);
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 9. PROJ-18: default-settings-page component
+// ═══════════════════════════════════════════════════════════════
+
+describe("default-settings-page.tsx invariants (PROJ-18)", () => {
+  const page = readSrc("components/feedback/default-settings-page.tsx");
+
+  it("imports updateTrainerDefault action", () => {
+    expect(page).toContain("updateTrainerDefault");
+    expect(page).toMatch(/import.*updateTrainerDefault.*from/);
+  });
+
+  it("accepts allCategories and trainerDefaults props", () => {
+    expect(page).toContain("allCategories: FeedbackCategory[]");
+    expect(page).toContain("trainerDefaults: TrainerCategoryDefault[]");
+  });
+
+  it("has active toggle (is_active) and required toggle (is_required)", () => {
+    expect(page).toContain('"is_active"');
+    expect(page).toContain('"is_required"');
+  });
+
+  it("disables required toggle for text-type categories", () => {
+    expect(page).toContain("isTextType");
+    expect(page).toContain("disabled={isTextType");
+  });
+
+  it("shows info banner with AlertExtended", () => {
+    expect(page).toContain("AlertExtended");
+    expect(page).toContain('variant="info"');
+    expect(page).toContain("settingsInfoBanner");
+  });
+
+  it("has optimistic update with revert on error", () => {
+    expect(page).toContain("Optimistic update");
+    expect(page).toContain("Revert");
+  });
+
+  it("syncs local state from props via defaultsKey effect", () => {
+    expect(page).toContain("defaultsKey");
+    expect(page).toContain("setLocalDefaults");
+  });
+
+  it("handles both scope groups: global and trainer", () => {
+    expect(page).toContain('"global"');
+    expect(page).toContain('"trainer"');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 10. PROJ-18: feedback-trainer-page tabs
+// ═══════════════════════════════════════════════════════════════
+
+describe("feedback-trainer-page.tsx invariants (PROJ-18)", () => {
+  const page = readSrc("components/feedback/feedback-trainer-page.tsx");
+
+  it("renders shadcn Tabs component", () => {
+    expect(page).toContain("Tabs");
+    expect(page).toContain("TabsList");
+    expect(page).toContain("TabsTrigger");
+    expect(page).toContain("TabsContent");
+  });
+
+  it("has overview and settings tabs", () => {
+    expect(page).toContain('value="overview"');
+    expect(page).toContain('value="settings"');
+  });
+
+  it("renders MonitoringDashboard in overview tab", () => {
+    expect(page).toContain("MonitoringDashboard");
+  });
+
+  it("renders DefaultSettingsPage in settings tab", () => {
+    expect(page).toContain("DefaultSettingsPage");
+  });
+
+  it("persists tab selection in localStorage", () => {
+    expect(page).toContain("localStorage");
+    expect(page).toContain("TAB_STORAGE_KEY");
+  });
+
+  it("passes trainerDefaults and allCategories to DefaultSettingsPage", () => {
+    expect(page).toContain("trainerDefaults={trainerDefaults}");
+    expect(page).toContain("allCategories={allCategories}");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 11. PROJ-18: category-manager required toggle + state sync
+// ═══════════════════════════════════════════════════════════════
+
+describe("category-manager.tsx PROJ-18 extensions", () => {
+  const mgr = readSrc("components/feedback/category-manager.tsx");
+
+  it("imports updateAthleteRequired action", () => {
+    expect(mgr).toContain("updateAthleteRequired");
+    expect(mgr).toMatch(/import.*updateAthleteRequired.*from/);
+  });
+
+  it("imports TrainerCategoryDefault type", () => {
+    expect(mgr).toContain("TrainerCategoryDefault");
+  });
+
+  it("accepts trainerDefaults prop", () => {
+    expect(mgr).toContain("trainerDefaults?: TrainerCategoryDefault[]");
+  });
+
+  it("has handleRequiredToggle function", () => {
+    expect(mgr).toContain("handleRequiredToggle");
+    expect(mgr).toContain("updateAthleteRequired(targetAthleteId");
+  });
+
+  it("shows Individuell badge when athlete differs from default", () => {
+    expect(mgr).toContain("individualBadge");
+    expect(mgr).toContain("isIndividual");
+    expect(mgr).toContain('variant="warning"');
+  });
+
+  it("syncs state via categoriesKey (not togglingId) to avoid revert bug", () => {
+    expect(mgr).toContain("categoriesKey");
+    // categoriesKey is computed from categories.map (may span multiple lines)
+    expect(mgr).toContain("categories.map((c)");
+    // Must NOT depend on togglingId for sync (was the root cause of the revert bug)
+    expect(mgr).not.toMatch(/\[categories,\s*togglingId\]/);
+  });
+
+  it("disables required toggle for text-type categories", () => {
+    expect(mgr).toContain("isTextType");
+    expect(mgr).toContain("disabled={isTextType || isToggling}");
+  });
+
+  it("shows required toggle only in trainer view with active category", () => {
+    expect(mgr).toContain("isTrainerView && targetAthleteId && isActive");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 12. PROJ-18: actions.ts — revalidatePath uses layout
+// ═══════════════════════════════════════════════════════════════
+
+describe("actions.ts revalidatePath uses layout (PROJ-18 fix)", () => {
+  const actions = readSrc("lib/feedback/actions.ts");
+
+  it("all revalidatePath calls use 'layout' to invalidate sub-routes", () => {
+    // Every revalidatePath in feedback actions must use "layout"
+    const revalidateCalls = actions.match(/revalidatePath\([^)]+\)/g) ?? [];
+    // Filter out comments
+    const actualCalls = revalidateCalls.filter(
+      (c) => !c.includes("//")
+    );
+    expect(actualCalls.length).toBeGreaterThan(0);
+    for (const call of actualCalls) {
+      expect(call).toContain('"layout"');
+    }
+  });
+
+  it("does NOT have any revalidatePath without layout param", () => {
+    // The old pattern was revalidatePath("/feedback") without second arg
+    // Regex: revalidatePath("/feedback") NOT followed by comma
+    expect(actions).not.toMatch(/revalidatePath\("\/feedback"\)\s*;/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 13. PROJ-18: types.ts — new types
+// ═══════════════════════════════════════════════════════════════
+
+describe("types.ts PROJ-18 extensions", () => {
+  const types = readSrc("lib/feedback/types.ts");
+
+  it("defines TrainerCategoryDefault interface", () => {
+    expect(types).toContain("export interface TrainerCategoryDefault");
+    expect(types).toContain("trainerId: string");
+    expect(types).toContain("categoryId: string");
+    expect(types).toContain("isActive: boolean");
+    expect(types).toContain("isRequired: boolean");
+  });
+
+  it("ActiveCategory extends with isRequiredOverride and isEffectivelyRequired", () => {
+    expect(types).toContain("isRequiredOverride: boolean | null");
+    expect(types).toContain("isEffectivelyRequired: boolean");
+  });
+
+  it("CategoryOverride has isRequired field", () => {
+    const overrideMatch = types.match(
+      /export interface CategoryOverride[\s\S]*?\}/
+    );
+    expect(overrideMatch).not.toBeNull();
+    expect(overrideMatch![0]).toContain("isRequired: boolean");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 14. PROJ-18: actions.ts — new server actions exist
+// ═══════════════════════════════════════════════════════════════
+
+describe("actions.ts PROJ-18 server actions", () => {
+  const actions = readSrc("lib/feedback/actions.ts");
+
+  it("exports updateTrainerDefault function", () => {
+    expect(actions).toMatch(
+      /export async function updateTrainerDefault/
+    );
+  });
+
+  it("updateTrainerDefault accepts categoryId, field, value", () => {
+    expect(actions).toContain(
+      'field: "is_active" | "is_required"'
+    );
+  });
+
+  it("updateTrainerDefault upserts into trainer_category_defaults", () => {
+    expect(actions).toContain("trainer_category_defaults");
+    expect(actions).toContain("onConflict");
+  });
+
+  it("updateTrainerDefault preserves existing state on partial update", () => {
+    // When changing is_active, it reads existing is_required first
+    expect(actions).toContain("existing?.is_required");
+    expect(actions).toContain("existing?.is_active");
+  });
+
+  it("exports updateAthleteRequired function", () => {
+    expect(actions).toMatch(
+      /export async function updateAthleteRequired/
+    );
+  });
+
+  it("updateAthleteRequired calls set_athlete_category_required RPC", () => {
+    expect(actions).toContain(
+      'supabase.rpc("set_athlete_category_required"'
+    );
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 15. PROJ-18: queries.ts — new query functions
+// ═══════════════════════════════════════════════════════════════
+
+describe("queries.ts PROJ-18 extensions", () => {
+  const queries = readSrc("lib/feedback/queries.ts");
+
+  it("exports getTrainerDefaults function", () => {
+    expect(queries).toMatch(
+      /export async function getTrainerDefaults/
+    );
+  });
+
+  it("getTrainerDefaults queries trainer_category_defaults", () => {
+    expect(queries).toContain("trainer_category_defaults");
+  });
+
+  it("exports getRequiredCategoryIds function", () => {
+    expect(queries).toMatch(
+      /export async function getRequiredCategoryIds/
+    );
+  });
+
+  it("getActiveCategories returns isRequiredOverride and isEffectivelyRequired", () => {
+    expect(queries).toContain("isRequiredOverride");
+    expect(queries).toContain("isEffectivelyRequired");
+  });
+
+  it("getActiveCategories reads is_required from overrides", () => {
+    expect(queries).toContain("is_required");
+    expect(queries).toContain("override.isRequired");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 16. PROJ-18: i18n — all new keys exist in both locales
+// ═══════════════════════════════════════════════════════════════
+
+describe("i18n: PROJ-18 keys in de.json and en.json", () => {
+  const de = readRoot("src/messages/de.json");
+  const en = readRoot("src/messages/en.json");
+
+  const requiredKeys = [
+    "tabSettings",
+    "settingsTitle",
+    "settingsDescription",
+    "settingsInfoBanner",
+    "defaultActive",
+    "defaultRequired",
+    "requiredField",
+    "individualBadge",
+    "trainerDefaultSaved",
+    "trainerDefaultError",
+    "athleteRequiredSaved",
+    "athleteRequiredError",
+  ];
+
+  for (const key of requiredKeys) {
+    it(`has "${key}" in de.json`, () => {
+      expect(de).toContain(`"${key}"`);
+    });
+
+    it(`has "${key}" in en.json`, () => {
+      expect(en).toContain(`"${key}"`);
+    });
+  }
+
+  it("German strings use correct umlauts (not ASCII substitutes)", () => {
+    // Check that common German words are spelled correctly
+    expect(de).toContain("Änderungen");
+    expect(de).toContain("für");
+    expect(de).toContain("Standardmäßig");
+    expect(de).not.toContain("Aenderungen");
+    expect(de).not.toContain("fuer");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 17. PROJ-18: athlete-detail-view passes trainerDefaults
+// ═══════════════════════════════════════════════════════════════
+
+describe("athlete-detail-view.tsx PROJ-18 extensions", () => {
+  const view = readSrc("components/feedback/athlete-detail-view.tsx");
+
+  it("accepts trainerDefaults prop", () => {
+    expect(view).toContain("trainerDefaults");
+  });
+
+  it("passes trainerDefaults to CategoryManager", () => {
+    expect(view).toContain("trainerDefaults={trainerDefaults}");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 18. PROJ-18: athlete-checkin-page passes requiredCategoryIds
+// ═══════════════════════════════════════════════════════════════
+
+describe("athlete-checkin-page.tsx PROJ-18 extensions", () => {
+  const page = readSrc("components/feedback/athlete-checkin-page.tsx");
+
+  it("accepts requiredCategoryIds prop", () => {
+    expect(page).toContain("requiredCategoryIds");
+  });
+
+  it("passes requiredCategoryIds to WeekStrip", () => {
+    expect(page).toContain("requiredCategoryIds={requiredCategoryIds}");
+  });
+});
