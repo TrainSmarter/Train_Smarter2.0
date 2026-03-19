@@ -86,7 +86,8 @@ Erweiterung des PROJ-6 Feedback-Systems um:
 
 ### Kalender-Punkte (Week Strip)
 
-- [ ] **Kein Punkt:** Keine Eingabe für diesen Tag
+- [ ] **Kein Punkt:** Keine Pflichtfelder definiert UND keine Eingabe für diesen Tag
+- [ ] **Roter Punkt** (`bg-destructive`): Pflichtfelder definiert, aber KEINE Eingabe gemacht (vergessener Tag)
 - [ ] **Gelber Punkt** (`bg-warning`): Mindestens eine Kategorie befüllt, aber nicht alle Pflichtfelder ausgefüllt
 - [ ] **Grüner Punkt** (`bg-success`): Alle Pflichtfelder ausgefüllt ODER keine Pflichtfelder definiert und mindestens ein Wert eingetragen
 - [ ] "Befüllt" Definition:

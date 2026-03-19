@@ -323,6 +323,10 @@ describe("week-strip: today indicator distinct from entry dot", () => {
     expect(strip).toContain("computeDotColor");
   });
 
+  it("supports red dot for missing required fields (PROJ-18)", () => {
+    expect(strip).toContain("bg-destructive");
+  });
+
   it("empty days have transparent dot (no gray dot)", () => {
     expect(strip).toContain("bg-transparent");
     expect(strip).not.toContain("bg-muted-foreground/30");
