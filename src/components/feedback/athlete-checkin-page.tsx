@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Maximize2, Settings2 } from "lucide-react";
+import { Settings2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -219,20 +219,13 @@ export function AthleteCheckinPage({
 
           {/* Right column: Unified Trend Chart (sticky centered on desktop) */}
           {showTrends && (
-            <div className="mt-6 lg:mt-0 lg:sticky lg:top-[max(1.5rem,calc(50vh-250px))] lg:self-start">
-              <h2 className="text-h3 text-foreground mb-3">{t("myTrends")}</h2>
-              <div className="relative">
-                <UnifiedTrendChart trendData={localTrendData} />
-                {/* Fullscreen button — inside chart, top-right corner */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2 h-7 w-7 bg-card/80 backdrop-blur-sm hover:bg-card"
-                  onClick={() => setShowFullscreenChart(true)}
-                  aria-label={t("expandChart")}
-                >
-                  <Maximize2 className="h-3.5 w-3.5" />
-                </Button>
+            <div className="mt-6 lg:mt-0">
+              <div className="lg:sticky lg:top-[max(1.5rem,calc(50vh-250px))]">
+                <h2 className="text-h3 text-foreground mb-3">{t("myTrends")}</h2>
+                <UnifiedTrendChart
+                  trendData={localTrendData}
+                  onExpand={() => setShowFullscreenChart(true)}
+                />
               </div>
             </div>
           )}

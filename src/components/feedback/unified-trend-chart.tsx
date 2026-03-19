@@ -13,7 +13,7 @@ import {
   CartesianGrid,
   Brush,
 } from "recharts";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -36,11 +36,14 @@ const MAX_ACTIVE = 4;
 interface UnifiedTrendChartProps {
   trendData: AthleteTrendData[];
   className?: string;
+  /** Callback to open fullscreen view — renders expand button inside chart area */
+  onExpand?: () => void;
 }
 
 export function UnifiedTrendChart({
   trendData,
   className,
+  onExpand,
 }: UnifiedTrendChartProps) {
   const t = useTranslations("feedback");
   const locale = useLocale();
@@ -254,7 +257,18 @@ export function UnifiedTrendChart({
         </div>
       ) : (
         /* Chart with data */
-        <div className="rounded-lg border bg-card p-3 sm:p-4">
+        <div className="relative rounded-lg border bg-card p-3 sm:p-4">
+          {/* Expand button — top-right inside chart area */}
+          {onExpand && (
+            <button
+              type="button"
+              onClick={onExpand}
+              className="absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-md bg-card/80 backdrop-blur-sm hover:bg-muted transition-colors"
+              aria-label={t("expandChart")}
+            >
+              <Maximize2 className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
+          )}
           <ResponsiveContainer width="100%" height={chartHeight}>
             <ComposedChart
               data={chartData}
