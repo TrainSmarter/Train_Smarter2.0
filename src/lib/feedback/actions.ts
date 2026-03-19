@@ -226,7 +226,7 @@ export async function autosaveCheckinField(
   } = parsed.data;
 
   // Check DSGVO consent for body_wellness_data
-  const { data: consent } = await supabase
+  const { data: consent, error: consentError } = await supabase
     .from("user_consents")
     .select("granted")
     .eq("user_id", user.id)
@@ -235,7 +235,12 @@ export async function autosaveCheckinField(
     .limit(1)
     .maybeSingle();
 
+  if (consentError) {
+    console.error("[autosaveCheckinField] Consent query error:", consentError, "userId:", user.id);
+  }
+
   if (!consent || !consent.granted) {
+    console.error("[autosaveCheckinField] CONSENT_REQUIRED — userId:", user.id, "consent:", consent, "consentError:", consentError);
     return { success: false, error: "CONSENT_REQUIRED" };
   }
 
@@ -256,10 +261,12 @@ export async function autosaveCheckinField(
     const minDateStr = minDate.toISOString().split("T")[0];
 
     if (checkinDate < minDateStr) {
+      console.error("[autosaveCheckinField] BACKFILL_LIMIT_EXCEEDED — checkinDate:", checkinDate, "minDate:", minDateStr, "today:", today);
       return { success: false, error: "BACKFILL_LIMIT_EXCEEDED" };
     }
 
     if (checkinDate > today) {
+      console.error("[autosaveCheckinField] FUTURE_DATE — checkinDate:", checkinDate, "today:", today);
       return { success: false, error: "FUTURE_DATE" };
     }
   }
@@ -278,7 +285,7 @@ export async function autosaveCheckinField(
     .single();
 
   if (checkinError || !checkin) {
-    console.error("Failed to upsert checkin:", checkinError);
+    console.error("[autosaveCheckinField] CHECKIN_FAILED — error:", checkinError, "userId:", user.id, "date:", checkinDate);
     return { success: false, error: "CHECKIN_FAILED" };
   }
 
@@ -297,7 +304,7 @@ export async function autosaveCheckinField(
     );
 
   if (valueError) {
-    console.error("Failed to upsert checkin value:", valueError);
+    console.error("[autosaveCheckinField] VALUE_FAILED — error:", valueError, "checkinId:", checkin.id, "categoryId:", catId);
     return { success: false, error: "VALUE_FAILED" };
   }
 

@@ -14,11 +14,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SegmentedControl } from "./segmented-control";
+import { AlertExtended } from "@/components/alert-extended";
 import { NumberInput } from "./number-input";
 import { autosaveCheckinField } from "@/lib/feedback/actions";
 import { cn } from "@/lib/utils";
 import type { ActiveCategory } from "@/lib/feedback/types";
+
+/** Error codes returned by the server action */
+type ErrorCode =
+  | "BACKFILL_LIMIT_EXCEEDED"
+  | "FUTURE_DATE"
+  | "CONSENT_REQUIRED"
+  | "UNAUTHORIZED"
+  | "CHECKIN_FAILED"
+  | "VALUES_FAILED"
+  | "VALUE_FAILED"
+  | "INVALID_INPUT";
+
+/** Global error codes that apply to all fields (not field-specific) */
+const GLOBAL_ERROR_CODES: ReadonlySet<string> = new Set([
+  "BACKFILL_LIMIT_EXCEEDED",
+  "FUTURE_DATE",
+  "CONSENT_REQUIRED",
+  "UNAUTHORIZED",
+]);
 
 interface CheckinFormProps {
   /** Active categories for this athlete */
@@ -31,6 +50,8 @@ interface CheckinFormProps {
   onFieldSaved?: (categoryId: string, numericValue: number | null, textValue: string | null) => void;
   /** Link/callback to open category manager */
   onManageCategories?: () => void;
+  /** Maximum allowed backfill days (for proactive warning) */
+  backfillDays?: number;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -41,6 +62,7 @@ export function CheckinForm({
   existingValues,
   onFieldSaved,
   onManageCategories,
+  backfillDays,
 }: CheckinFormProps) {
   const t = useTranslations("feedback");
   const locale = useLocale();
@@ -67,6 +89,12 @@ export function CheckinForm({
   >(() => computeInitialValues(existingValues));
   // Per-field save status: "saving" | "saved" | "error"
   const [fieldStatus, setFieldStatus] = React.useState<Record<string, SaveStatus>>({});
+  // Per-field error codes (only set when status is "error")
+  const [fieldErrorCodes, setFieldErrorCodes] = React.useState<Record<string, ErrorCode>>({});
+  // Global error banner state
+  const [globalError, setGlobalError] = React.useState<ErrorCode | null>(null);
+  // Whether the global error banner has been dismissed
+  const [globalErrorDismissed, setGlobalErrorDismissed] = React.useState(false);
 
   // Debounce timers per field
   const debounceTimers = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -76,12 +104,33 @@ export function CheckinForm({
   // Track the previous date to reset values only when navigating to a different day
   const prevDateRef = React.useRef(date);
 
+  // Proactive backfill check: is the selected date outside the allowed window?
+  const proactiveBackfillWarning = React.useMemo(() => {
+    if (backfillDays == null) return false;
+    const today = new Date().toISOString().split("T")[0];
+    if (date > today) return false; // Future date has its own error
+    if (date === today) return false;
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() - backfillDays);
+    const minDateStr = minDate.toISOString().split("T")[0];
+    return date < minDateStr;
+  }, [date, backfillDays]);
+
+  // Proactive future date check
+  const proactiveFutureDateWarning = React.useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    return date > today;
+  }, [date]);
+
   // Reset values only when the date changes (not when existingValues update from autosave)
   React.useEffect(() => {
     if (date !== prevDateRef.current) {
       prevDateRef.current = date;
       setValues(computeInitialValues(existingValues));
       setFieldStatus({});
+      setFieldErrorCodes({});
+      setGlobalError(null);
+      setGlobalErrorDismissed(false);
     }
   }, [date, existingValues, computeInitialValues]);
 
@@ -109,6 +158,12 @@ export function CheckinForm({
 
       if (result.success) {
         setFieldStatus((prev) => ({ ...prev, [categoryId]: "saved" }));
+        // Clear error code on success
+        setFieldErrorCodes((prev) => {
+          const next = { ...prev };
+          delete next[categoryId];
+          return next;
+        });
         onFieldSaved?.(categoryId, numericValue, textValue);
 
         // Clear "saved" indicator after 2s
@@ -123,10 +178,21 @@ export function CheckinForm({
           });
         }, 2000);
       } else {
+        const errorCode = (result.error ?? "CHECKIN_FAILED") as ErrorCode;
+        console.error("[CheckinForm] Save failed:", result.error, { date, categoryId, numericValue, textValue });
         setFieldStatus((prev) => ({ ...prev, [categoryId]: "error" }));
+        setFieldErrorCodes((prev) => ({ ...prev, [categoryId]: errorCode }));
+
+        // If global error, set it for the banner
+        if (GLOBAL_ERROR_CODES.has(errorCode)) {
+          setGlobalError(errorCode);
+          setGlobalErrorDismissed(false);
+        }
       }
-    } catch {
+    } catch (err) {
+      console.error("[CheckinForm] Save exception:", err, { date, categoryId, numericValue, textValue });
       setFieldStatus((prev) => ({ ...prev, [categoryId]: "error" }));
+      setFieldErrorCodes((prev) => ({ ...prev, [categoryId]: "CHECKIN_FAILED" }));
     }
   }
 
@@ -154,6 +220,20 @@ export function CheckinForm({
       ...prev,
       [categoryId]: { numericValue, textValue },
     }));
+
+    // Clear field-level error when user changes value (new save attempt coming)
+    if (fieldStatus[categoryId] === "error") {
+      setFieldStatus((prev) => {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      });
+      setFieldErrorCodes((prev) => {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      });
+    }
 
     if (saveMode === "immediate") {
       doSave(categoryId, numericValue, textValue);
@@ -201,17 +281,78 @@ export function CheckinForm({
   const scaleCategories = activeCategories.filter((c) => c.type === "scale");
   const textCategories = activeCategories.filter((c) => c.type === "text");
 
+  // Helper: get banner info for a global error code
+  function getGlobalErrorInfo(code: ErrorCode): { title: string; message: string } | null {
+    switch (code) {
+      case "BACKFILL_LIMIT_EXCEEDED":
+        return {
+          title: t("errorBannerBackfillTitle"),
+          message: t("errorBannerBackfill", { days: backfillDays ?? 3 }),
+        };
+      case "FUTURE_DATE":
+        return {
+          title: t("errorBannerFutureDateTitle"),
+          message: t("errorBannerFutureDate"),
+        };
+      case "CONSENT_REQUIRED":
+        return {
+          title: t("errorBannerConsentTitle"),
+          message: t("errorBannerConsent"),
+        };
+      case "UNAUTHORIZED":
+        return {
+          title: t("errorBannerUnauthorizedTitle"),
+          message: t("errorBannerUnauthorized"),
+        };
+      default:
+        return null;
+    }
+  }
+
+  // Check if a field error is field-specific (not global)
+  function isFieldSpecificError(categoryId: string): boolean {
+    const code = fieldErrorCodes[categoryId];
+    if (!code) return false;
+    return !GLOBAL_ERROR_CODES.has(code);
+  }
+
   // Save status indicator for a field
   function StatusIcon({ categoryId }: { categoryId: string }) {
     const s = fieldStatus[categoryId];
     if (s === "saving") return <Loader2 className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />;
     if (s === "saved") return <Check className="h-3 w-3 text-primary shrink-0" />;
-    if (s === "error") return <span className="text-[10px] text-error shrink-0">!</span>;
+    if (s === "error") return <span className="text-[10px] font-bold text-error shrink-0" aria-hidden="true">!</span>;
     return null;
   }
 
+  // Determine effective global error: proactive warnings take priority, then server errors
+  const effectiveGlobalError: ErrorCode | null = proactiveBackfillWarning
+    ? "BACKFILL_LIMIT_EXCEEDED"
+    : proactiveFutureDateWarning
+      ? "FUTURE_DATE"
+      : globalError;
+
+  const globalErrorInfo = effectiveGlobalError ? getGlobalErrorInfo(effectiveGlobalError) : null;
+  const showGlobalBanner = globalErrorInfo && !globalErrorDismissed;
+
+  // For proactive warnings, use a special message
+  const proactiveMessage = proactiveBackfillWarning
+    ? t("errorBannerBackfillProactive", { days: backfillDays ?? 3 })
+    : null;
+
   return (
     <div className="space-y-4">
+      {/* Global error banner */}
+      {showGlobalBanner && (
+        <AlertExtended
+          variant="error"
+          title={globalErrorInfo.title}
+          onDismiss={() => setGlobalErrorDismissed(true)}
+        >
+          {proactiveMessage ?? globalErrorInfo.message}
+        </AlertExtended>
+      )}
+
       {/* Number fields — compact inline strips in a shared card */}
       {numberCategories.length > 0 && (
         <div className="rounded-xl border border-border/50 bg-card overflow-hidden divide-y divide-border/30">
@@ -220,24 +361,39 @@ export function CheckinForm({
             const val = values[cat.id];
             const needsDecimals = cat.unit === "kg";
             const inputStep = needsDecimals ? 0.1 : 1;
+            const hasError = fieldStatus[cat.id] === "error";
+            const showFieldError = hasError && isFieldSpecificError(cat.id);
 
             return (
-              <div key={cat.id} className="flex items-center justify-between px-4 py-3 transition-colors focus-within:bg-muted/30">
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-sm font-medium text-muted-foreground">{name}</span>
-                  <StatusIcon categoryId={cat.id} />
+              <div key={cat.id} className="px-4 py-3 transition-colors focus-within:bg-muted/30">
+                <div className={cn(
+                  "flex items-center justify-between",
+                  hasError && "rounded-md"
+                )}>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={cn(
+                      "text-sm font-medium",
+                      hasError ? "text-error" : "text-muted-foreground"
+                    )}>{name}</span>
+                    <StatusIcon categoryId={cat.id} />
+                  </div>
+                  <NumberInput
+                    inline
+                    unit={cat.unit}
+                    value={val?.numericValue ?? null}
+                    onChange={(v) => setFieldValue(cat.id, v, null, "blur")}
+                    onBlur={() => handleBlurSave(cat.id)}
+                    min={cat.minValue ?? undefined}
+                    max={cat.maxValue ?? undefined}
+                    step={inputStep}
+                    hasError={hasError}
+                  />
                 </div>
-                <NumberInput
-                  inline
-                  unit={cat.unit}
-                  value={val?.numericValue ?? null}
-                  onChange={(v) => setFieldValue(cat.id, v, null, "blur")}
-                  onBlur={() => handleBlurSave(cat.id)}
-                  min={cat.minValue ?? undefined}
-                  max={cat.maxValue ?? undefined}
-                  step={inputStep}
-                  hasError={fieldStatus[cat.id] === "error"}
-                />
+                {showFieldError && (
+                  <p className="text-[11px] text-error mt-1" role="alert">
+                    {t("errorFieldSaveFailed")}
+                  </p>
+                )}
               </div>
             );
           })}
@@ -253,6 +409,7 @@ export function CheckinForm({
         const name = locale === "en" ? cat.name.en : cat.name.de;
         const val = values[cat.id];
         const hasError = fieldStatus[cat.id] === "error";
+        const showFieldError = hasError && isFieldSpecificError(cat.id);
         const minVal = cat.minValue ?? 1;
         const maxVal = cat.maxValue ?? 5;
         const stepCount = maxVal - minVal + 1;
@@ -267,7 +424,10 @@ export function CheckinForm({
         return (
           <div key={cat.id} className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label className="text-label text-foreground">{name}</Label>
+              <Label className={cn(
+                "text-label",
+                hasError ? "text-error" : "text-foreground"
+              )}>{name}</Label>
               <StatusIcon categoryId={cat.id} />
             </div>
             <Select
@@ -284,6 +444,7 @@ export function CheckinForm({
               <SelectTrigger
                 className={hasError ? "border-error focus-visible:ring-error" : undefined}
                 aria-label={name}
+                aria-invalid={hasError || undefined}
               >
                 <SelectValue placeholder={t("selectValue")} />
               </SelectTrigger>
@@ -301,6 +462,11 @@ export function CheckinForm({
                 })}
               </SelectContent>
             </Select>
+            {showFieldError && (
+              <p className="text-[11px] text-error" role="alert">
+                {t("errorFieldSaveFailed")}
+              </p>
+            )}
           </div>
         );
       })}
@@ -312,11 +478,15 @@ export function CheckinForm({
         const name = locale === "en" ? cat.name.en : cat.name.de;
         const val = values[cat.id];
         const hasError = fieldStatus[cat.id] === "error";
+        const showFieldError = hasError && isFieldSpecificError(cat.id);
 
         return (
           <div key={cat.id} className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label className="text-label text-foreground">{name}</Label>
+              <Label className={cn(
+                "text-label",
+                hasError ? "text-error" : "text-foreground"
+              )}>{name}</Label>
               <StatusIcon categoryId={cat.id} />
             </div>
             <Textarea
@@ -331,6 +501,11 @@ export function CheckinForm({
                 className={hasError ? "border-error focus-visible:ring-error" : undefined}
                 aria-invalid={hasError || undefined}
               />
+              {showFieldError && (
+                <p className="text-[11px] text-error" role="alert">
+                  {t("errorFieldSaveFailed")}
+                </p>
+              )}
               {val?.textValue && (
                 <p className="text-[11px] text-muted-foreground text-right">
                   {val.textValue.length}/{cat.maxValue ?? 300}

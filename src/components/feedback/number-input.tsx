@@ -98,7 +98,11 @@ export function NumberInput({
   // Inline mode: just value + unit + stepper (no wrapper, label comes from parent)
   if (inline) {
     return (
-      <div className={cn("flex items-center gap-1.5", className)}>
+      <div className={cn(
+        "flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors",
+        hasError && "ring-1 ring-error/50 bg-error/5",
+        className
+      )}>
         <button
           type="button"
           onClick={() => handleStep(-1)}
@@ -125,16 +129,21 @@ export function NumberInput({
             step={step}
             disabled={disabled}
             placeholder={placeholder}
+            aria-invalid={hasError || undefined}
             className={cn(
               "w-[6ch] bg-transparent text-right text-lg font-semibold",
-              "tabular-nums text-foreground",
+              "tabular-nums",
+              hasError ? "text-error" : "text-foreground",
               "border-none outline-none focus:outline-none",
               "placeholder:text-muted-foreground/30",
               "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             )}
           />
           {unit && (
-            <span className="text-xs text-muted-foreground">{unit}</span>
+            <span className={cn(
+              "text-xs",
+              hasError ? "text-error/70" : "text-muted-foreground"
+            )}>{unit}</span>
           )}
         </div>
 

@@ -197,6 +197,7 @@ export function AthleteCheckinPage({
               existingValues={currentCheckin?.values}
               onFieldSaved={handleFieldSaved}
               onManageCategories={() => setShowCategoryManager(true)}
+              backfillDays={backfillDays}
             />
           </div>
 

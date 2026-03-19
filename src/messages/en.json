@@ -1039,7 +1039,17 @@
     "noTrendData": "No data available yet",
     "selectCategories": "Select categories to show trends",
     "maxCategories": "Max. {max} at once",
-    "tooFewDataPoints": "At least 3 entries needed to show trends"
+    "tooFewDataPoints": "At least 3 entries needed to show trends",
+    "errorBannerBackfillTitle": "Date outside backfill window",
+    "errorBannerBackfill": "Entries can only be backdated up to {days} days. Please choose a more recent date.",
+    "errorBannerFutureDateTitle": "Future date",
+    "errorBannerFutureDate": "Entries for future dates are not possible. Please choose today or a past date.",
+    "errorBannerConsentTitle": "Consent required",
+    "errorBannerConsent": "To save check-ins, you must agree to data processing in your privacy settings.",
+    "errorBannerUnauthorizedTitle": "Session expired",
+    "errorBannerUnauthorized": "Your session has expired. Please sign in again.",
+    "errorFieldSaveFailed": "Save failed — please try again",
+    "errorBannerBackfillProactive": "This date is outside the allowed backfill window of {days} days. Entries cannot be saved."
   },
   "errors": {
     "authPageError": "An error occurred while loading the page.",

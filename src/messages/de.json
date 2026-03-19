@@ -1039,7 +1039,17 @@
     "noTrendData": "Noch keine Daten vorhanden",
     "selectCategories": "Wähle Kategorien aus um Trends anzuzeigen",
     "maxCategories": "Max. {max} gleichzeitig",
-    "tooFewDataPoints": "Mindestens 3 Einträge für eine Trendanzeige nötig"
+    "tooFewDataPoints": "Mindestens 3 Einträge für eine Trendanzeige nötig",
+    "errorBannerBackfillTitle": "Datum außerhalb des Nachtrag-Zeitraums",
+    "errorBannerBackfill": "Einträge können nur bis zu {days} Tage nachgetragen werden. Bitte wähle ein neueres Datum.",
+    "errorBannerFutureDateTitle": "Zukünftiges Datum",
+    "errorBannerFutureDate": "Einträge für zukünftige Tage sind nicht möglich. Bitte wähle das heutige oder ein vergangenes Datum.",
+    "errorBannerConsentTitle": "Einwilligung erforderlich",
+    "errorBannerConsent": "Um Check-ins zu speichern, musst du der Datenverarbeitung unter Datenschutz-Einstellungen zustimmen.",
+    "errorBannerUnauthorizedTitle": "Sitzung abgelaufen",
+    "errorBannerUnauthorized": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
+    "errorFieldSaveFailed": "Speichern fehlgeschlagen — bitte versuche es erneut",
+    "errorBannerBackfillProactive": "Dieses Datum liegt außerhalb des erlaubten Nachtrag-Zeitraums von {days} Tagen. Einträge können nicht gespeichert werden."
   },
   "errors": {
     "authPageError": "Beim Laden der Seite ist ein Fehler aufgetreten.",
