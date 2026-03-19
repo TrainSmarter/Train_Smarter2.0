@@ -60,6 +60,7 @@ export function NumberInput({
   inline = false,
   className,
 }: NumberInputProps) {
+  const t = useTranslations("common");
   const generatedId = React.useId();
   const id = providedId ?? generatedId;
   const errorId = `${id}-error`;
@@ -111,7 +112,7 @@ export function NumberInput({
                      text-muted-foreground hover:text-foreground hover:bg-muted/50
                      active:scale-95 transition-all disabled:opacity-30 disabled:pointer-events-none"
           tabIndex={-1}
-          aria-label={`${label ?? ""} verringern`}
+          aria-label={`${label ?? ""} ${t("decrease")}`}
         >
           <Minus className="h-3 w-3" />
         </button>
@@ -155,7 +156,7 @@ export function NumberInput({
                      text-muted-foreground hover:text-foreground hover:bg-muted/50
                      active:scale-95 transition-all disabled:opacity-30 disabled:pointer-events-none"
           tabIndex={-1}
-          aria-label={`${label ?? ""} erhöhen`}
+          aria-label={`${label ?? ""} ${t("increase")}`}
         >
           <Plus className="h-3 w-3" />
         </button>
