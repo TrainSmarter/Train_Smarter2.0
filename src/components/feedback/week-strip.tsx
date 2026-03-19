@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useLocale } from "next-intl";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Minus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -213,6 +213,19 @@ export function WeekStrip({
           const isFuture = dateStr > today;
           const dotColor = computeDotColor(dateStr, filledDates, requiredCategoryIds, checkinValues, today);
 
+          const statusLabel =
+            dotColor === "green"
+              ? t("dayStatusComplete")
+              : dotColor === "yellow"
+                ? t("dayStatusPartial")
+                : dotColor === "red"
+                  ? t("dayStatusMissing")
+                  : "";
+
+          const ariaLabel = statusLabel
+            ? `${weekdayLabels[i]} ${dayNum}, ${statusLabel}`
+            : `${weekdayLabels[i]} ${dayNum}`;
+
           return (
             <button
               key={dateStr}
@@ -220,6 +233,7 @@ export function WeekStrip({
               role="tab"
               aria-selected={isSelected}
               aria-disabled={isFuture}
+              aria-label={ariaLabel}
               disabled={isFuture}
               onClick={() => onSelectDate(dateStr)}
               className={cn(
@@ -235,23 +249,31 @@ export function WeekStrip({
                 {weekdayLabels[i]}
               </span>
               <span className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full text-sm",
+                "relative flex h-7 w-7 items-center justify-center rounded-full text-sm",
                 isToday && !isSelected && "ring-2 ring-primary",
-                isToday && isSelected && "ring-2 ring-primary bg-primary/10"
+                isToday && isSelected && "ring-2 ring-primary bg-primary/10",
+                dotColor === "green" && "bg-success/20",
+                dotColor === "yellow" && "bg-warning/20",
+                dotColor === "red" && "bg-destructive/20"
               )}>
                 {dayNum}
-              </span>
-              {/* Entry indicator dot — green=complete, yellow=partial, red=missing, none=empty */}
-              <span
-                className={cn(
-                  "mt-0.5 h-1.5 w-1.5 rounded-full",
-                  dotColor === "green" && "bg-success",
-                  dotColor === "yellow" && "bg-warning",
-                  dotColor === "red" && "bg-destructive",
-                  dotColor === "none" && "bg-transparent"
+                {/* Micro icon badge */}
+                {dotColor === "green" && (
+                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success text-success-foreground" aria-hidden="true">
+                    <Check className="h-2 w-2" />
+                  </span>
                 )}
-                aria-hidden="true"
-              />
+                {dotColor === "yellow" && (
+                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-warning text-warning-foreground" aria-hidden="true">
+                    <Minus className="h-2 w-2" />
+                  </span>
+                )}
+                {dotColor === "red" && (
+                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-destructive-foreground" aria-hidden="true">
+                    <X className="h-2 w-2" />
+                  </span>
+                )}
+              </span>
             </button>
           );
         })}

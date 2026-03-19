@@ -307,29 +307,55 @@ describe("number-input: onEnter prop", () => {
 // 6. week-strip: today ring vs entry dot distinction
 // ═══════════════════════════════════════════════════════════════
 
-describe("week-strip: today indicator distinct from entry dot", () => {
+describe("week-strip: today indicator and status badges", () => {
   const strip = readSrc("components/feedback/week-strip.tsx");
 
   it("today gets a ring indicator (not just bold text)", () => {
     expect(strip).toContain("ring-2 ring-primary");
   });
 
-  it("entry dot uses bg-success for filled/complete days", () => {
-    expect(strip).toContain("bg-success");
+  it("day number circle has relative class for badge positioning", () => {
+    expect(strip).toContain("relative flex h-7 w-7");
   });
 
-  it("supports yellow dot for partial required fields (PROJ-18)", () => {
-    expect(strip).toContain("bg-warning");
-    expect(strip).toContain("computeDotColor");
+  it("green status: bg-success/20 background fill on day circle", () => {
+    expect(strip).toContain("bg-success/20");
   });
 
-  it("supports red dot for missing required fields (PROJ-18)", () => {
-    expect(strip).toContain("bg-destructive");
+  it("yellow status: bg-warning/20 background fill on day circle", () => {
+    expect(strip).toContain("bg-warning/20");
   });
 
-  it("empty days have transparent dot (no gray dot)", () => {
-    expect(strip).toContain("bg-transparent");
-    expect(strip).not.toContain("bg-muted-foreground/30");
+  it("red status: bg-destructive/20 background fill on day circle", () => {
+    expect(strip).toContain("bg-destructive/20");
+  });
+
+  it("green badge: solid bg-success with Check icon", () => {
+    expect(strip).toContain("bg-success text-success-foreground");
+    expect(strip).toContain("<Check");
+  });
+
+  it("yellow badge: solid bg-warning with Minus icon", () => {
+    expect(strip).toContain("bg-warning text-warning-foreground");
+    expect(strip).toContain("<Minus");
+  });
+
+  it("red badge: solid bg-destructive with X icon", () => {
+    expect(strip).toContain("bg-destructive text-destructive-foreground");
+    expect(strip).toContain("<X");
+  });
+
+  it("imports Check, Minus, X from lucide-react", () => {
+    expect(strip).toMatch(/import\s*\{[^}]*Check[^}]*\}\s*from\s*"lucide-react"/);
+    expect(strip).toMatch(/import\s*\{[^}]*Minus[^}]*\}\s*from\s*"lucide-react"/);
+    expect(strip).toMatch(/import\s*\{[^}]*\bX\b[^}]*\}\s*from\s*"lucide-react"/);
+  });
+
+  it("badge is aria-hidden (decorative)", () => {
+    // All badges should be aria-hidden="true"
+    const badgeMatches = strip.match(/aria-hidden="true"/g);
+    expect(badgeMatches).not.toBeNull();
+    expect(badgeMatches!.length).toBeGreaterThanOrEqual(3);
   });
 
   it("day number is inside a rounded-full container for ring effect", () => {
@@ -340,6 +366,14 @@ describe("week-strip: today indicator distinct from entry dot", () => {
   it("accepts requiredCategoryIds and checkinValues props", () => {
     expect(strip).toContain("requiredCategoryIds");
     expect(strip).toContain("checkinValues");
+  });
+
+  it("uses computeDotColor for status determination", () => {
+    expect(strip).toContain("computeDotColor");
+  });
+
+  it("does NOT have the old dot element (mt-0.5 h-1.5 w-1.5)", () => {
+    expect(strip).not.toContain("mt-0.5 h-1.5 w-1.5");
   });
 });
 
