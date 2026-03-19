@@ -46,6 +46,24 @@ export function DefaultSettingsPage({
 
   const [savingField, setSavingField] = React.useState<string | null>(null);
 
+  // Sync local state when trainerDefaults prop changes from server revalidation
+  const defaultsKey = React.useMemo(
+    () => trainerDefaults.map((d) => `${d.categoryId}:${d.isActive}:${d.isRequired}`).join(","),
+    [trainerDefaults]
+  );
+
+  React.useEffect(() => {
+    const map: Record<string, LocalDefault> = {};
+    for (const cat of allCategories) {
+      map[cat.id] = { isActive: true, isRequired: false };
+    }
+    for (const def of trainerDefaults) {
+      map[def.categoryId] = { isActive: def.isActive, isRequired: def.isRequired };
+    }
+    setLocalDefaults(map);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultsKey]);
+
   async function handleToggle(
     categoryId: string,
     field: "is_active" | "is_required",
