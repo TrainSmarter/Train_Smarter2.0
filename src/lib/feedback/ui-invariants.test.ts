@@ -239,3 +239,93 @@ describe("Migration 20260319200000_fix_consent_rls_for_trainers.sql", () => {
     expect(migration).toContain("trainer_id = v_caller");
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// 4. checkin-form: null value save on clear + Enter key
+// ═══════════════════════════════════════════════════════════════
+
+describe("checkin-form: save null on clear + Enter key", () => {
+  const form = readSrc("components/feedback/checkin-form.tsx");
+
+  it("handleBlurSave checks for previously existing value (hadPreviousValue)", () => {
+    expect(form).toContain("hadPreviousValue");
+    expect(form).toContain("existingValues?.[categoryId]");
+  });
+
+  it("saves null when field is cleared (hasCurrentValue || hadPreviousValue)", () => {
+    expect(form).toContain("if (hasCurrentValue || hadPreviousValue)");
+  });
+
+  it("handleEnterSave function exists and calls handleBlurSave", () => {
+    expect(form).toContain("function handleEnterSave");
+    expect(form).toContain("handleBlurSave(categoryId)");
+  });
+
+  it("handleEnterSave focuses the next number field via data-category-id", () => {
+    expect(form).toContain("data-category-id");
+    expect(form).toContain('querySelector<HTMLInputElement>');
+    expect(form).toContain("nextInput?.focus()");
+  });
+
+  it("passes onEnter prop to NumberInput", () => {
+    expect(form).toContain("onEnter={() => handleEnterSave(cat.id)}");
+  });
+
+  it("tracks numberCategoryIds for Enter navigation", () => {
+    expect(form).toContain("numberCategoryIds");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 5. number-input: onEnter prop + keydown handler
+// ═══════════════════════════════════════════════════════════════
+
+describe("number-input: onEnter prop", () => {
+  const input = readSrc("components/feedback/number-input.tsx");
+
+  it("accepts onEnter prop in interface", () => {
+    expect(input).toContain("onEnter?: () => void");
+  });
+
+  it("destructures onEnter in component function", () => {
+    expect(input).toMatch(/onEnter,?\s*\n/);
+  });
+
+  it("handles Enter keydown in inline mode input", () => {
+    expect(input).toContain('e.key === "Enter"');
+    expect(input).toContain("onEnter?.()");
+  });
+
+  it("handles Enter keydown in standalone mode Input", () => {
+    // Both inline and standalone inputs should have onKeyDown
+    const keydownCount = (input.match(/onKeyDown/g) || []).length;
+    expect(keydownCount).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 6. week-strip: today ring vs entry dot distinction
+// ═══════════════════════════════════════════════════════════════
+
+describe("week-strip: today indicator distinct from entry dot", () => {
+  const strip = readSrc("components/feedback/week-strip.tsx");
+
+  it("today gets a ring indicator (not just bold text)", () => {
+    expect(strip).toContain("ring-2 ring-primary");
+  });
+
+  it("entry dot uses bg-success only when isFilled", () => {
+    expect(strip).toContain("isFilled");
+    expect(strip).toContain("bg-success");
+  });
+
+  it("empty days have transparent dot (no gray dot)", () => {
+    expect(strip).toContain("bg-transparent");
+    expect(strip).not.toContain("bg-muted-foreground/30");
+  });
+
+  it("day number is inside a rounded-full container for ring effect", () => {
+    expect(strip).toContain("rounded-full");
+    expect(strip).toContain("h-7 w-7");
+  });
+});
