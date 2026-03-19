@@ -318,16 +318,16 @@ describe("week-strip: today indicator and status badges", () => {
     expect(strip).toContain("relative flex h-7 w-7");
   });
 
-  it("green status: bg-success/20 background fill on day circle", () => {
-    expect(strip).toContain("bg-success/20");
+  it("green status: bg-success/20 with dark mode boost", () => {
+    expect(strip).toContain("bg-success/20 dark:bg-success/30");
   });
 
-  it("yellow status: bg-warning/20 background fill on day circle", () => {
-    expect(strip).toContain("bg-warning/20");
+  it("yellow status: bg-warning/20 with dark mode boost", () => {
+    expect(strip).toContain("bg-warning/20 dark:bg-warning/30");
   });
 
-  it("red status: bg-destructive/20 background fill on day circle", () => {
-    expect(strip).toContain("bg-destructive/20");
+  it("red status: bg-destructive/20 with dark mode boost", () => {
+    expect(strip).toContain("bg-destructive/20 dark:bg-destructive/30");
   });
 
   it("green badge: solid bg-success with Check icon and white text", () => {
@@ -335,8 +335,8 @@ describe("week-strip: today indicator and status badges", () => {
     expect(strip).toContain("<Check");
   });
 
-  it("yellow badge: solid bg-warning with Minus icon and white text", () => {
-    expect(strip).toContain("bg-warning text-white");
+  it("yellow badge: solid bg-warning with Minus icon and dark text for contrast", () => {
+    expect(strip).toContain("bg-warning text-amber-950");
     expect(strip).toContain("<Minus");
   });
 

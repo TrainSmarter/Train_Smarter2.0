@@ -924,7 +924,7 @@
     "errorMin": "Minimum value: {min}",
     "errorMax": "Maximum value: {max}",
     "errorMaxLength": "Maximum {max} characters",
-    "streakDays": "{count} days in a row",
+    "streakDays": "{count, plural, one {# day in a row} other {# days in a row}}",
     "checkedIn": "Checked in",
     "partialCheckin": "Partial",
     "noCheckin": "Missing",

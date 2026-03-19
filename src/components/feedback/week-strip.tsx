@@ -252,9 +252,9 @@ export function WeekStrip({
                 "relative flex h-7 w-7 items-center justify-center rounded-full text-sm",
                 isToday && !isSelected && "ring-2 ring-primary",
                 isToday && isSelected && "ring-2 ring-primary bg-primary/10",
-                dotColor === "green" && "bg-success/20",
-                dotColor === "yellow" && "bg-warning/20",
-                dotColor === "red" && "bg-destructive/20"
+                dotColor === "green" && "bg-success/20 dark:bg-success/30",
+                dotColor === "yellow" && "bg-warning/20 dark:bg-warning/30",
+                dotColor === "red" && "bg-destructive/20 dark:bg-destructive/30"
               )}>
                 {dayNum}
                 {/* Micro icon badge */}
@@ -264,7 +264,7 @@ export function WeekStrip({
                   </span>
                 )}
                 {dotColor === "yellow" && (
-                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-warning text-white" aria-hidden="true">
+                  <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-warning text-amber-950" aria-hidden="true">
                     <Minus className="h-2 w-2" />
                   </span>
                 )}
