@@ -72,7 +72,7 @@ export default async function FeedbackPage() {
 
   // Fetch real connection info (canSeeAnalysis, backfillDays, streak)
   const connectionInfo = await getAthleteConnectionInfo(authUser.id);
-  const { canSeeAnalysis, streak, backfillDays } = connectionInfo;
+  const { canSeeAnalysis, streak, backfillMode } = connectionInfo;
 
   // Load trend data if analysis is visible
   const trendData = canSeeAnalysis
@@ -86,7 +86,7 @@ export default async function FeedbackPage() {
       canSeeAnalysis={canSeeAnalysis}
       streak={streak}
       trendData={trendData}
-      backfillDays={backfillDays}
+      backfillMode={backfillMode}
       hasBodyWellnessConsent={hasBodyWellnessConsent}
       initialWeekStart={startDate}
     />

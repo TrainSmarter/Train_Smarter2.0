@@ -1040,8 +1040,8 @@
     "selectCategories": "Wähle Kategorien aus um Trends anzuzeigen",
     "maxCategories": "Max. {max} gleichzeitig",
     "tooFewDataPoints": "Mindestens 3 Einträge für eine Trendanzeige nötig",
-    "errorBannerBackfillTitle": "Datum außerhalb des Nachtrag-Zeitraums",
-    "errorBannerBackfill": "Einträge können nur bis zu {days} Tage nachgetragen werden. Bitte wähle ein neueres Datum.",
+    "errorBannerBackfillTitle": "Nachtragen nicht möglich",
+    "errorBannerBackfill": "Einträge können nur für {period} gemacht werden. Kontaktiere deinen Trainer, wenn du ältere Einträge nachtragen möchtest.",
     "errorBannerFutureDateTitle": "Zukünftiges Datum",
     "errorBannerFutureDate": "Einträge für zukünftige Tage sind nicht möglich. Bitte wähle das heutige oder ein vergangenes Datum.",
     "errorBannerConsentTitle": "Einwilligung erforderlich",
@@ -1049,7 +1049,9 @@
     "errorBannerUnauthorizedTitle": "Sitzung abgelaufen",
     "errorBannerUnauthorized": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
     "errorFieldSaveFailed": "Speichern fehlgeschlagen — bitte versuche es erneut",
-    "errorBannerBackfillProactive": "Dieses Datum liegt außerhalb des erlaubten Nachtrag-Zeitraums von {days} Tagen. Einträge können nicht gespeichert werden."
+    "errorBannerBackfillProactive": "Dieses Datum liegt außerhalb des erlaubten Zeitraums ({period}). Kontaktiere deinen Trainer, um den Zeitraum zu erweitern.",
+    "backfillPeriodCurrentWeek": "die aktuelle Woche",
+    "backfillPeriodTwoWeeks": "diese und letzte Woche"
   },
   "errors": {
     "authPageError": "Beim Laden der Seite ist ein Fehler aufgetreten.",

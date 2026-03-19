@@ -1040,8 +1040,8 @@
     "selectCategories": "Select categories to show trends",
     "maxCategories": "Max. {max} at once",
     "tooFewDataPoints": "At least 3 entries needed to show trends",
-    "errorBannerBackfillTitle": "Date outside backfill window",
-    "errorBannerBackfill": "Entries can only be backdated up to {days} days. Please choose a more recent date.",
+    "errorBannerBackfillTitle": "Backdating not possible",
+    "errorBannerBackfill": "Entries can only be made for {period}. Contact your coach if you need to backdate older entries.",
     "errorBannerFutureDateTitle": "Future date",
     "errorBannerFutureDate": "Entries for future dates are not possible. Please choose today or a past date.",
     "errorBannerConsentTitle": "Consent required",
@@ -1049,7 +1049,9 @@
     "errorBannerUnauthorizedTitle": "Session expired",
     "errorBannerUnauthorized": "Your session has expired. Please sign in again.",
     "errorFieldSaveFailed": "Save failed — please try again",
-    "errorBannerBackfillProactive": "This date is outside the allowed backfill window of {days} days. Entries cannot be saved."
+    "errorBannerBackfillProactive": "This date is outside the allowed period ({period}). Contact your coach to extend the period.",
+    "backfillPeriodCurrentWeek": "the current week",
+    "backfillPeriodTwoWeeks": "this and last week"
   },
   "errors": {
     "authPageError": "An error occurred while loading the page.",

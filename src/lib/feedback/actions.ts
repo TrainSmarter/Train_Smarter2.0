@@ -34,7 +34,7 @@ const toggleAnalysisSchema = z.object({
 
 const updateBackfillSchema = z.object({
   athleteId: z.string().uuid(),
-  days: z.number().int().min(1).max(14),
+  mode: z.enum(["current_week", "two_weeks", "unlimited"]),
 });
 
 const toggleOverrideSchema = z.object({
@@ -76,6 +76,34 @@ const archiveCategorySchema = z.object({
   id: z.string().uuid(),
 });
 
+// ── Helper: Compute backfill minimum date ───────────────────────
+
+type BackfillMode = "current_week" | "two_weeks" | "unlimited";
+
+function computeBackfillMinDate(mode: BackfillMode): string {
+  if (mode === "unlimited") {
+    return "1970-01-01";
+  }
+
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
+  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+  if (mode === "two_weeks") {
+    // Monday of LAST week
+    const thisMonday = new Date(now);
+    thisMonday.setDate(now.getDate() - daysSinceMonday);
+    const lastMonday = new Date(thisMonday);
+    lastMonday.setDate(thisMonday.getDate() - 7);
+    return lastMonday.toISOString().split("T")[0];
+  }
+
+  // "current_week" — Monday of THIS week
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysSinceMonday);
+  return monday.toISOString().split("T")[0];
+}
+
 // ── Save Check-in ───────────────────────────────────────────────
 
 export async function saveCheckin(
@@ -114,23 +142,19 @@ export async function saveCheckin(
     return { success: false, error: "CONSENT_REQUIRED" };
   }
 
-  // Check backfill limit: get the connection to find allowed backfill days
+  // Check backfill limit: get the connection to find allowed backfill mode
   const today = new Date().toISOString().split("T")[0];
   if (checkinDate !== today) {
     // Get the athlete's trainer connection for backfill limit
     const { data: connection } = await supabase
       .from("trainer_athlete_connections")
-      .select("feedback_backfill_days")
+      .select("feedback_backfill_mode")
       .eq("athlete_id", user.id)
       .eq("status", "active")
       .maybeSingle();
 
-    const backfillDays = connection?.feedback_backfill_days ?? 3;
-
-    // Check if the date is within the allowed backfill window
-    const minDate = new Date();
-    minDate.setDate(minDate.getDate() - backfillDays);
-    const minDateStr = minDate.toISOString().split("T")[0];
+    const backfillMode = (connection?.feedback_backfill_mode ?? "current_week") as BackfillMode;
+    const minDateStr = computeBackfillMinDate(backfillMode);
 
     if (checkinDate < minDateStr) {
       return { success: false, error: "BACKFILL_LIMIT_EXCEEDED" };
@@ -249,16 +273,13 @@ export async function autosaveCheckinField(
   if (checkinDate !== today) {
     const { data: connection } = await supabase
       .from("trainer_athlete_connections")
-      .select("feedback_backfill_days")
+      .select("feedback_backfill_mode")
       .eq("athlete_id", user.id)
       .eq("status", "active")
       .maybeSingle();
 
-    const backfillDays = connection?.feedback_backfill_days ?? 3;
-
-    const minDate = new Date();
-    minDate.setDate(minDate.getDate() - backfillDays);
-    const minDateStr = minDate.toISOString().split("T")[0];
+    const backfillMode = (connection?.feedback_backfill_mode ?? "current_week") as BackfillMode;
+    const minDateStr = computeBackfillMinDate(backfillMode);
 
     if (checkinDate < minDateStr) {
       console.error("[autosaveCheckinField] BACKFILL_LIMIT_EXCEEDED — checkinDate:", checkinDate, "minDate:", minDateStr, "today:", today);
@@ -351,11 +372,11 @@ export async function toggleAnalysisVisibility(
   return { success: true };
 }
 
-// ── Update Backfill Days ────────────────────────────────────────
+// ── Update Backfill Mode ────────────────────────────────────────
 
-export async function updateBackfillDays(
+export async function updateBackfillMode(
   athleteId: string,
-  days: number
+  mode: "current_week" | "two_weeks" | "unlimited"
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -368,7 +389,7 @@ export async function updateBackfillDays(
   }
 
   // Validate input
-  const parsed = updateBackfillSchema.safeParse({ athleteId, days });
+  const parsed = updateBackfillSchema.safeParse({ athleteId, mode });
   if (!parsed.success) {
     return { success: false, error: "INVALID_INPUT" };
   }
@@ -376,18 +397,30 @@ export async function updateBackfillDays(
   // Update the connection (RLS ensures only the trainer can update their own connections)
   const { error: updateError } = await supabase
     .from("trainer_athlete_connections")
-    .update({ feedback_backfill_days: days })
+    .update({ feedback_backfill_mode: mode })
     .eq("trainer_id", user.id)
     .eq("athlete_id", athleteId)
     .eq("status", "active");
 
   if (updateError) {
-    console.error("Failed to update backfill days:", updateError);
+    console.error("Failed to update backfill mode:", updateError);
     return { success: false, error: "UPDATE_FAILED" };
   }
 
   revalidatePath("/feedback");
   return { success: true };
+}
+
+/** @deprecated Use updateBackfillMode instead */
+export async function updateBackfillDays(
+  athleteId: string,
+  days: number
+): Promise<ActionResult> {
+  let mode: "current_week" | "two_weeks" | "unlimited";
+  if (days <= 7) mode = "current_week";
+  else if (days <= 14) mode = "two_weeks";
+  else mode = "unlimited";
+  return updateBackfillMode(athleteId, mode);
 }
 
 // ── Load More Check-in History ──────────────────────────────────

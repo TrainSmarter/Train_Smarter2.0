@@ -15,6 +15,7 @@ import type {
   CheckinStatus,
   TrafficLight,
   AlertSeverity,
+  BackfillMode,
 } from "./types";
 
 /**
@@ -271,6 +272,7 @@ export async function getMonitoringOverview(
       athlete_id,
       can_see_analysis,
       feedback_backfill_days,
+      feedback_backfill_mode,
       athlete:profiles!trainer_athlete_connections_athlete_id_fkey (
         id,
         first_name,
@@ -394,6 +396,7 @@ export async function getMonitoringOverview(
         : null,
       canSeeAnalysis: conn.can_see_analysis,
       backfillDays: conn.feedback_backfill_days,
+      backfillMode: (conn.feedback_backfill_mode ?? "current_week") as BackfillMode,
     };
   });
 
@@ -634,12 +637,12 @@ export async function getCheckinsByDateRange(
   return result;
 }
 
-/** Get connection info for an athlete (canSeeAnalysis, backfillDays, streak) */
+/** Get connection info for an athlete (canSeeAnalysis, backfillMode, streak) */
 export async function getAthleteConnectionInfo(
   athleteId: string
 ): Promise<{
   canSeeAnalysis: boolean;
-  backfillDays: number;
+  backfillMode: BackfillMode;
   streak: number;
 }> {
   const supabase = await createClient();
@@ -647,7 +650,7 @@ export async function getAthleteConnectionInfo(
   // Get the trainer connection
   const { data: connection } = await supabase
     .from("trainer_athlete_connections")
-    .select("can_see_analysis, feedback_backfill_days")
+    .select("can_see_analysis, feedback_backfill_mode")
     .eq("athlete_id", athleteId)
     .eq("status", "active")
     .maybeSingle();
@@ -659,9 +662,13 @@ export async function getAthleteConnectionInfo(
     .eq("athlete_id", athleteId)
     .maybeSingle();
 
+  const rawMode = connection?.feedback_backfill_mode;
+  const backfillMode: BackfillMode =
+    rawMode === "two_weeks" || rawMode === "unlimited" ? rawMode : "current_week";
+
   return {
     canSeeAnalysis: connection?.can_see_analysis ?? false,
-    backfillDays: connection?.feedback_backfill_days ?? 3,
+    backfillMode,
     streak: Number(summary?.streak ?? 0),
   };
 }
@@ -698,6 +705,7 @@ export async function getAthleteDetail(
       id,
       can_see_analysis,
       feedback_backfill_days,
+      feedback_backfill_mode,
       athlete:profiles!trainer_athlete_connections_athlete_id_fkey (
         id,
         first_name,
@@ -769,6 +777,7 @@ export async function getAthleteDetail(
       : null,
     canSeeAnalysis: connection.can_see_analysis,
     backfillDays: connection.feedback_backfill_days,
+    backfillMode: (connection.feedback_backfill_mode ?? "current_week") as BackfillMode,
   };
 
   // Get active categories for this athlete

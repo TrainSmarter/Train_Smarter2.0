@@ -19,6 +19,7 @@ import { CategoryManager } from "./category-manager";
 import { loadWeekCheckins } from "@/lib/feedback/actions";
 import type {
   ActiveCategory,
+  BackfillMode,
   CheckinEntry,
   AthleteTrendData,
 } from "@/lib/feedback/types";
@@ -34,8 +35,8 @@ interface AthleteCheckinPageProps {
   streak: number;
   /** Trend data for charts (only loaded if canSeeAnalysis) */
   trendData: AthleteTrendData[];
-  /** Maximum backfill days */
-  backfillDays: number;
+  /** Backfill mode controlling how far back entries can be made */
+  backfillMode: BackfillMode;
   /** Whether athlete has body_wellness_data consent */
   hasBodyWellnessConsent: boolean;
   /** ISO date of the Monday of the initial week */
@@ -48,7 +49,7 @@ export function AthleteCheckinPage({
   canSeeAnalysis,
   streak,
   trendData,
-  backfillDays,
+  backfillMode,
   hasBodyWellnessConsent,
   initialWeekStart,
 }: AthleteCheckinPageProps) {
@@ -197,7 +198,7 @@ export function AthleteCheckinPage({
               existingValues={currentCheckin?.values}
               onFieldSaved={handleFieldSaved}
               onManageCategories={() => setShowCategoryManager(true)}
-              backfillDays={backfillDays}
+              backfillMode={backfillMode}
             />
           </div>
 

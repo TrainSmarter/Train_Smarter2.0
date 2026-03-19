@@ -53,6 +53,10 @@ export interface ActiveCategory extends FeedbackCategory {
   isActive: boolean;
 }
 
+// ── Backfill Mode ────────────────────────────────────────────
+
+export type BackfillMode = "current_week" | "two_weeks" | "unlimited";
+
 // ── Check-in System ──────────────────────────────────────────
 
 export interface FeedbackCheckin {
@@ -116,7 +120,9 @@ export interface MonitoringAthleteSummary {
   weightTrend: number | null; // delta over 7 days
   latestWeight: number | null;
   canSeeAnalysis: boolean;
+  /** @deprecated Use backfillMode instead */
   backfillDays: number;
+  backfillMode: BackfillMode;
 }
 
 export interface MonitoringAlert {

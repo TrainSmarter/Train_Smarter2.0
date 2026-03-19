@@ -18,7 +18,7 @@ import { AlertExtended } from "@/components/alert-extended";
 import { NumberInput } from "./number-input";
 import { autosaveCheckinField } from "@/lib/feedback/actions";
 import { cn } from "@/lib/utils";
-import type { ActiveCategory } from "@/lib/feedback/types";
+import type { ActiveCategory, BackfillMode } from "@/lib/feedback/types";
 
 /** Error codes returned by the server action */
 type ErrorCode =
@@ -50,8 +50,8 @@ interface CheckinFormProps {
   onFieldSaved?: (categoryId: string, numericValue: number | null, textValue: string | null) => void;
   /** Link/callback to open category manager */
   onManageCategories?: () => void;
-  /** Maximum allowed backfill days (for proactive warning) */
-  backfillDays?: number;
+  /** Backfill mode controlling how far back entries can be made */
+  backfillMode?: BackfillMode;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -62,7 +62,7 @@ export function CheckinForm({
   existingValues,
   onFieldSaved,
   onManageCategories,
-  backfillDays,
+  backfillMode,
 }: CheckinFormProps) {
   const t = useTranslations("feedback");
   const locale = useLocale();
@@ -106,15 +106,31 @@ export function CheckinForm({
 
   // Proactive backfill check: is the selected date outside the allowed window?
   const proactiveBackfillWarning = React.useMemo(() => {
-    if (backfillDays == null) return false;
+    if (!backfillMode || backfillMode === "unlimited") return false;
     const today = new Date().toISOString().split("T")[0];
     if (date > today) return false; // Future date has its own error
     if (date === today) return false;
-    const minDate = new Date();
-    minDate.setDate(minDate.getDate() - backfillDays);
+
+    // Calculate the Monday of the relevant week
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const thisMonday = new Date(now);
+    thisMonday.setDate(now.getDate() - mondayOffset);
+
+    let minDate: Date;
+    if (backfillMode === "two_weeks") {
+      // Monday of last week
+      minDate = new Date(thisMonday);
+      minDate.setDate(thisMonday.getDate() - 7);
+    } else {
+      // "current_week" — Monday of this week
+      minDate = thisMonday;
+    }
+
     const minDateStr = minDate.toISOString().split("T")[0];
     return date < minDateStr;
-  }, [date, backfillDays]);
+  }, [date, backfillMode]);
 
   // Proactive future date check
   const proactiveFutureDateWarning = React.useMemo(() => {
@@ -281,13 +297,19 @@ export function CheckinForm({
   const scaleCategories = activeCategories.filter((c) => c.type === "scale");
   const textCategories = activeCategories.filter((c) => c.type === "text");
 
+  // Helper: resolve the human-readable period string for backfill mode
+  function getBackfillPeriodLabel(): string {
+    if (backfillMode === "two_weeks") return t("backfillPeriodTwoWeeks");
+    return t("backfillPeriodCurrentWeek");
+  }
+
   // Helper: get banner info for a global error code
   function getGlobalErrorInfo(code: ErrorCode): { title: string; message: string } | null {
     switch (code) {
       case "BACKFILL_LIMIT_EXCEEDED":
         return {
           title: t("errorBannerBackfillTitle"),
-          message: t("errorBannerBackfill", { days: backfillDays ?? 3 }),
+          message: t("errorBannerBackfill", { period: getBackfillPeriodLabel() }),
         };
       case "FUTURE_DATE":
         return {
@@ -337,7 +359,7 @@ export function CheckinForm({
 
   // For proactive warnings, use a special message
   const proactiveMessage = proactiveBackfillWarning
-    ? t("errorBannerBackfillProactive", { days: backfillDays ?? 3 })
+    ? t("errorBannerBackfillProactive", { period: getBackfillPeriodLabel() })
     : null;
 
   return (
