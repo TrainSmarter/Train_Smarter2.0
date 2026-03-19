@@ -189,7 +189,7 @@ export async function saveCheckin(
     return { success: false, error: "VALUES_FAILED" };
   }
 
-  revalidatePath("/feedback");
+  revalidatePath("/feedback", "layout");
   return { success: true };
 }
 
@@ -355,7 +355,7 @@ export async function toggleAnalysisVisibility(
     return { success: false, error: "UPDATE_FAILED" };
   }
 
-  revalidatePath("/feedback");
+  revalidatePath("/feedback", "layout");
   return { success: true };
 }
 
@@ -394,7 +394,7 @@ export async function updateBackfillMode(
     return { success: false, error: "UPDATE_FAILED" };
   }
 
-  revalidatePath("/feedback");
+  revalidatePath("/feedback", "layout");
   return { success: true };
 }
 
@@ -448,7 +448,7 @@ export async function toggleCategoryOverride(
     return { success: false, error: "UPSERT_FAILED" };
   }
 
-  revalidatePath("/feedback");
+  revalidatePath("/feedback", "layout");
   return { success: true };
 }
 
@@ -532,7 +532,7 @@ export async function createCategory(data: {
     return { success: false, error: "INSERT_FAILED" };
   }
 
-  revalidatePath("/feedback");
+  revalidatePath("/feedback", "layout");
   return { success: true };
 }
 
@@ -594,7 +594,7 @@ export async function updateCategory(data: {
     return { success: false, error: "UPDATE_FAILED" };
   }
 
-  revalidatePath("/feedback");
+  revalidatePath("/feedback", "layout");
   return { success: true };
 }
 
@@ -665,7 +665,7 @@ export async function archiveCategory(
     return { success: false, error: "UPDATE_FAILED" };
   }
 
-  revalidatePath("/feedback");
+  revalidatePath("/feedback", "layout");
   return { success: true };
 }
 
@@ -745,7 +745,7 @@ export async function updateTrainerDefault(
     return { success: false, error: "UPSERT_FAILED" };
   }
 
-  revalidatePath("/feedback");
+  revalidatePath("/feedback", "layout");
   return { success: true };
 }
 
@@ -784,6 +784,6 @@ export async function updateAthleteRequired(
     return { success: false, error: "RPC_FAILED" };
   }
 
-  revalidatePath("/feedback");
+  revalidatePath("/feedback", "layout");
   return { success: true };
 }

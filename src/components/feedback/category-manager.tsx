@@ -62,6 +62,20 @@ export function CategoryManager({
   });
   const [togglingId, setTogglingId] = React.useState<string | null>(null);
 
+  // Sync local states when categories prop changes (e.g. after server revalidation)
+  // Only update when NOT mid-toggle (togglingId === null) to preserve optimistic state
+  React.useEffect(() => {
+    if (togglingId) return; // Don't overwrite optimistic state during in-flight requests
+    const activeStates: Record<string, boolean> = {};
+    const requiredStates: Record<string, boolean> = {};
+    for (const cat of categories) {
+      activeStates[cat.id] = cat.isActive;
+      requiredStates[cat.id] = cat.isEffectivelyRequired;
+    }
+    setLocalStates(activeStates);
+    setLocalRequiredStates(requiredStates);
+  }, [categories, togglingId]);
+
   // Build trainer default map for comparison
   const defaultMap = React.useMemo(() => {
     const map = new Map<string, TrainerCategoryDefault>();
