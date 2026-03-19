@@ -169,12 +169,18 @@ export function WeekStrip({
               <span className="text-[11px] uppercase text-muted-foreground">
                 {weekdayLabels[i]}
               </span>
-              <span className="text-sm">{dayNum}</span>
-              {/* Status dot */}
+              <span className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-full text-sm",
+                isToday && !isSelected && "ring-2 ring-primary",
+                isToday && isSelected && "ring-2 ring-primary bg-primary/10"
+              )}>
+                {dayNum}
+              </span>
+              {/* Entry indicator dot — only shown when day has check-in data */}
               <span
                 className={cn(
                   "mt-0.5 h-1.5 w-1.5 rounded-full",
-                  isFilled ? "bg-success" : "bg-muted-foreground/30"
+                  isFilled ? "bg-success" : "bg-transparent"
                 )}
                 aria-hidden="true"
               />
