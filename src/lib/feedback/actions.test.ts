@@ -29,8 +29,8 @@ describe("computeBackfillMinDate", () => {
   ) => string;
 
   beforeEach(async () => {
-    // Dynamic import to get the exported function
-    const mod = await import("./actions");
+    // Dynamic import to get the exported function (moved to backfill.ts)
+    const mod = await import("./backfill");
     computeBackfillMinDate = mod.computeBackfillMinDate;
   });
 
@@ -281,7 +281,9 @@ describe("actions.ts source-code invariants", () => {
     );
   });
 
-  it("computeBackfillMinDate is exported for testability", () => {
-    expect(actionsSource).toContain("export function computeBackfillMinDate");
+  it("computeBackfillMinDate is imported from backfill.ts", () => {
+    expect(actionsSource).toContain('import { computeBackfillMinDate } from "./backfill"');
+    const backfillSource = readSrc("lib/feedback/backfill.ts");
+    expect(backfillSource).toContain("export function computeBackfillMinDate");
   });
 });
