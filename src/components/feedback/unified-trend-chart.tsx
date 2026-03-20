@@ -521,13 +521,7 @@ export function UnifiedTrendChart({
   const chartHeight = isMobile ? 240 : 360;
   const isSparse = chartData.length < 3;
 
-  // Minimum chart width for mobile scrolling
-  const minChartWidth = React.useMemo(() => {
-    if (!isMobile) return undefined;
-    const axisCount = activeTrends.length;
-    if (axisCount <= 2) return undefined;
-    return Math.max(480, 280 + axisCount * AXIS_WIDTH * 2);
-  }, [isMobile, activeTrends.length]);
+  // No fixed min width — always use 100% responsive width
 
   // Chip scroll state
   const chipsRef = React.useRef<HTMLDivElement>(null);
@@ -569,7 +563,7 @@ export function UnifiedTrendChart({
 
   const chartContent = (
     <ResponsiveContainer
-      width={minChartWidth ?? "100%"}
+      width="100%"
       height={chartHeight}
     >
       <ComposedChart data={chartData} margin={chartMargins}>
@@ -594,15 +588,15 @@ export function UnifiedTrendChart({
             key={axis.categoryId}
             yAxisId={axis.categoryId}
             orientation={axis.orientation}
-            tick={{ fill: axis.color, fontSize: 8 }}
+            tick={{ fill: axis.color, fontSize: 9 }}
             tickFormatter={formatAxisTick}
-            axisLine={{ stroke: axis.color, strokeWidth: 1 }}
-            tickLine={false}
+            axisLine={{ stroke: axis.color, strokeWidth: 1.5 }}
+            tickLine={{ stroke: axis.color, strokeWidth: 0.5 }}
+            tickSize={3}
             width={AXIS_WIDTH}
             domain={axis.domain}
             allowDecimals={false}
-            tickCount={4}
-            mirror
+            tickCount={5}
           />
         ))}
 
@@ -850,17 +844,7 @@ export function UnifiedTrendChart({
                   : ""
               )}
             >
-              {/* Horizontally scrollable wrapper for mobile when 3-4 axes active */}
-              {minChartWidth ? (
-                <div
-                  className="overflow-x-auto"
-                  style={{ scrollbarWidth: "thin" }}
-                >
-                  {chartContent}
-                </div>
-              ) : (
-                chartContent
-              )}
+              {chartContent}
             </div>
 
             {/* Desktop settings panel (hidden on mobile) */}
