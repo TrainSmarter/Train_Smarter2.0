@@ -1083,7 +1083,19 @@
     "moveCategoryUp": "Kategorie nach oben verschieben",
     "moveCategoryDown": "Kategorie nach unten verschieben",
     "sortOrderSaved": "Reihenfolge gespeichert",
-    "sortOrderError": "Fehler beim Speichern der Reihenfolge"
+    "sortOrderError": "Fehler beim Speichern der Reihenfolge",
+    "axisSettings": "Achsen-Einstellungen",
+    "axisMin": "Min",
+    "axisMax": "Max",
+    "axisAuto": "Auto",
+    "axisAutoReset": "Alle Achsen zurücksetzen",
+    "timeRange": "Zeitraum",
+    "days7": "7 Tage",
+    "days14": "14 Tage",
+    "days30": "30 Tage",
+    "days90": "90 Tage",
+    "openSettings": "Einstellungen öffnen",
+    "closeSettings": "Einstellungen schließen"
   },
   "errors": {
     "authPageError": "Beim Laden der Seite ist ein Fehler aufgetreten.",

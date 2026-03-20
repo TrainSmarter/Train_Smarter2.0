@@ -1083,7 +1083,19 @@
     "moveCategoryUp": "Move category up",
     "moveCategoryDown": "Move category down",
     "sortOrderSaved": "Order saved",
-    "sortOrderError": "Error saving order"
+    "sortOrderError": "Error saving order",
+    "axisSettings": "Axis Settings",
+    "axisMin": "Min",
+    "axisMax": "Max",
+    "axisAuto": "Auto",
+    "axisAutoReset": "Reset all axes",
+    "timeRange": "Time Range",
+    "days7": "7 days",
+    "days14": "14 days",
+    "days30": "30 days",
+    "days90": "90 days",
+    "openSettings": "Open settings",
+    "closeSettings": "Close settings"
   },
   "errors": {
     "authPageError": "An error occurred while loading the page.",

@@ -13,8 +13,23 @@ import {
   CartesianGrid,
   Brush,
 } from "recharts";
-import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  Maximize2,
+  Settings2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { AthleteTrendData } from "@/lib/feedback/types";
@@ -34,12 +49,49 @@ const CHART_COLORS = [
 const MAX_ACTIVE = 4;
 
 /** Axis width for each Y-axis */
-const AXIS_WIDTH = 42;
+const AXIS_WIDTH = 45;
+
+const STORAGE_KEY = "feedback-chart-axis-settings";
+
+type XRange = "7" | "14" | "30" | "90";
+
+interface AxisSettingsData {
+  [categoryId: string]: { min: number; max: number } | null;
+}
+
+interface StoredSettings {
+  axes: AxisSettingsData;
+  xRange: XRange;
+}
+
+function loadSettings(): StoredSettings {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        axes: parsed.axes ?? {},
+        xRange: parsed.xRange ?? "7",
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return { axes: {}, xRange: "7" };
+}
+
+function saveSettings(settings: StoredSettings) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // ignore
+  }
+}
 
 interface UnifiedTrendChartProps {
   trendData: AthleteTrendData[];
   className?: string;
-  /** Callback to open fullscreen view — renders expand button inside chart area */
+  /** Callback to open fullscreen view */
   onExpand?: () => void;
 }
 
@@ -102,6 +154,172 @@ function CustomTooltip({
   );
 }
 
+/** Number input with chevron up/down buttons */
+function AxisNumberInput({
+  value,
+  onChange,
+  label,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-xs text-muted-foreground w-8 shrink-0">
+        {label}
+      </span>
+      <div className="flex items-center border rounded-md">
+        <input
+          type="number"
+          value={value}
+          onChange={(e) => {
+            const v = parseFloat(e.target.value);
+            if (!isNaN(v)) onChange(v);
+          }}
+          className="w-16 px-1.5 py-1 text-xs text-center bg-transparent focus:outline-none tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          aria-label={label}
+        />
+        <div className="flex flex-col border-l">
+          <button
+            type="button"
+            onClick={() => onChange(value + 1)}
+            className="px-1 py-0 hover:bg-muted transition-colors"
+            aria-label={`${label} +1`}
+          >
+            <ChevronUp className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange(value - 1)}
+            className="px-1 py-0 hover:bg-muted transition-colors border-t"
+            aria-label={`${label} -1`}
+          >
+            <ChevronDown className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Settings panel content (shared between desktop inline and mobile sheet) */
+function SettingsPanelContent({
+  activeTrends,
+  colorMap,
+  getName,
+  axisOverrides,
+  autoRanges,
+  xRange,
+  onAxisChange,
+  onXRangeChange,
+  onResetAll,
+  t,
+}: {
+  activeTrends: AthleteTrendData[];
+  colorMap: Map<string, string>;
+  getName: (td: AthleteTrendData) => string;
+  axisOverrides: AxisSettingsData;
+  autoRanges: Map<string, { min: number; max: number }>;
+  xRange: XRange;
+  onAxisChange: (
+    categoryId: string,
+    field: "min" | "max",
+    value: number
+  ) => void;
+  onXRangeChange: (range: XRange) => void;
+  onResetAll: () => void;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const hasManualOverrides = activeTrends.some(
+    (td) => axisOverrides[td.categoryId] != null
+  );
+
+  const xRangeOptions: { value: XRange; labelKey: string }[] = [
+    { value: "7", labelKey: "days7" },
+    { value: "14", labelKey: "days14" },
+    { value: "30", labelKey: "days30" },
+    { value: "90", labelKey: "days90" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* X-axis time range */}
+      <div>
+        <p className="text-xs font-medium text-muted-foreground mb-2">
+          {t("timeRange")}
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {xRangeOptions.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onXRangeChange(opt.value)}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                xRange === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t(opt.labelKey)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Per-category axis settings */}
+      {activeTrends.map((td) => {
+        const color = colorMap.get(td.categoryId)!;
+        const name = getName(td);
+        const autoRange = autoRanges.get(td.categoryId) ?? {
+          min: 0,
+          max: 100,
+        };
+        const override = axisOverrides[td.categoryId];
+        const currentMin = override?.min ?? autoRange.min;
+        const currentMax = override?.max ?? autoRange.max;
+
+        return (
+          <div key={td.categoryId} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: color }}
+              />
+              <span className="text-sm font-medium truncate">{name}</span>
+            </div>
+            <div className="flex items-center gap-3 pl-4">
+              <AxisNumberInput
+                value={currentMin}
+                onChange={(v) => onAxisChange(td.categoryId, "min", v)}
+                label={t("axisMin")}
+              />
+              <AxisNumberInput
+                value={currentMax}
+                onChange={(v) => onAxisChange(td.categoryId, "max", v)}
+                label={t("axisMax")}
+              />
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Auto reset button */}
+      {hasManualOverrides && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onResetAll}
+          className="w-full"
+        >
+          {t("axisAutoReset")}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function UnifiedTrendChart({
   trendData,
   className,
@@ -118,6 +336,15 @@ export function UnifiedTrendChart({
     }
     return initial;
   });
+
+  // Settings panel state
+  const [showSettings, setShowSettings] = React.useState(false);
+  const [axisOverrides, setAxisOverrides] = React.useState<AxisSettingsData>(
+    () => loadSettings().axes
+  );
+  const [xRange, setXRange] = React.useState<XRange>(
+    () => loadSettings().xRange
+  );
 
   function toggleCategory(id: string) {
     setActiveIds((prev) => {
@@ -155,8 +382,8 @@ export function UnifiedTrendChart({
     return ordered;
   }, [activeIds, trendData]);
 
-  // Build unified chart data
-  const chartData = React.useMemo(() => {
+  // Build unified chart data (all dates)
+  const allChartData = React.useMemo(() => {
     const dateMap = new Map<string, Record<string, number | null>>();
     for (const trend of activeTrends) {
       for (const point of trend.data) {
@@ -178,15 +405,79 @@ export function UnifiedTrendChart({
       }));
   }, [activeTrends, locale]);
 
-  // Compute axis layout: alternating left/right, with offsets for 3rd/4th
+  // Filter chart data by xRange
+  const chartData = React.useMemo(() => {
+    const days = parseInt(xRange, 10);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().split("T")[0];
+    return allChartData.filter((d) => d.date >= cutoffStr);
+  }, [allChartData, xRange]);
+
+  // Compute auto min/max ranges for each active category
+  const autoRanges = React.useMemo(() => {
+    const map = new Map<string, { min: number; max: number }>();
+    for (const td of activeTrends) {
+      const values = td.data
+        .map((d) => d.value)
+        .filter((v): v is number => v !== null);
+      if (values.length > 0) {
+        map.set(td.categoryId, {
+          min: Math.floor(Math.min(...values)),
+          max: Math.ceil(Math.max(...values)),
+        });
+      } else {
+        map.set(td.categoryId, { min: 0, max: 100 });
+      }
+    }
+    return map;
+  }, [activeTrends]);
+
+  // Save settings to localStorage
+  function handleAxisChange(
+    categoryId: string,
+    field: "min" | "max",
+    value: number
+  ) {
+    setAxisOverrides((prev) => {
+      const autoRange = autoRanges.get(categoryId) ?? { min: 0, max: 100 };
+      const current = prev[categoryId] ?? autoRange;
+      const updated = { ...current, [field]: value };
+      const next = { ...prev, [categoryId]: updated };
+      saveSettings({ axes: next, xRange });
+      return next;
+    });
+  }
+
+  function handleXRangeChange(range: XRange) {
+    setXRange(range);
+    saveSettings({ axes: axisOverrides, xRange: range });
+  }
+
+  function handleResetAll() {
+    setAxisOverrides({});
+    saveSettings({ axes: {}, xRange });
+  }
+
+  // Compute axis layout: alternating left/right
   const axisLayout = React.useMemo(() => {
     return activeTrends.map((td, index) => {
       const color = colorMap.get(td.categoryId)!;
       const isScale = td.categoryType === "scale";
-      // 0 → left, 1 → right, 2 → left (outer), 3 → right (outer)
+      // 0 -> left, 1 -> right, 2 -> left (outer), 3 -> right (outer)
       const orientation: "left" | "right" =
         index % 2 === 0 ? "left" : "right";
-      const isOuter = index >= 2;
+
+      // Determine domain: manual override > scale default > auto
+      const override = axisOverrides[td.categoryId];
+      let domain: [number | string, number | string];
+      if (override) {
+        domain = [override.min, override.max];
+      } else if (isScale) {
+        domain = [0, "dataMax + 1"];
+      } else {
+        domain = ["auto", "auto"];
+      }
 
       return {
         categoryId: td.categoryId,
@@ -194,43 +485,42 @@ export function UnifiedTrendChart({
         unit: td.unit,
         color,
         orientation,
-        isOuter,
         isScale,
-        domain: isScale
-          ? ([0, "dataMax + 1"] as [number, string])
-          : (["auto", "auto"] as [string, string]),
+        domain,
       };
     });
-  }, [activeTrends, colorMap]);
+  }, [activeTrends, colorMap, axisOverrides]);
 
-  // Dynamic margins based on number of axes
+  // Dynamic margins: stack axes from outer edge inward
   const chartMargins = React.useMemo(() => {
-    const leftAxes = axisLayout.filter((a) => a.orientation === "left").length;
-    const rightAxes = axisLayout.filter(
+    const leftAxesCount = axisLayout.filter(
+      (a) => a.orientation === "left"
+    ).length;
+    const rightAxesCount = axisLayout.filter(
       (a) => a.orientation === "right"
     ).length;
 
     return {
       top: 8,
-      right: rightAxes > 0 ? rightAxes * AXIS_WIDTH : 12,
+      right:
+        rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH + 40 : 52, // +40 for expand/settings buttons
       bottom: isMobile ? 4 : 8,
-      left: leftAxes > 0 ? leftAxes * AXIS_WIDTH : 12,
+      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH : 12,
     };
   }, [axisLayout, isMobile]);
 
   const chartHeight = isMobile ? 240 : 360;
   const isSparse = chartData.length < 3;
 
-  // Minimum chart width for mobile scrolling: ensure all axes fit
+  // Minimum chart width for mobile scrolling
   const minChartWidth = React.useMemo(() => {
     if (!isMobile) return undefined;
     const axisCount = activeTrends.length;
-    if (axisCount <= 2) return undefined; // fits fine
-    // For 3-4 axes on mobile, ensure minimum width
+    if (axisCount <= 2) return undefined;
     return Math.max(480, 280 + axisCount * AXIS_WIDTH * 2);
   }, [isMobile, activeTrends.length]);
 
-  // Chip scroll state — must be declared before any early returns (React hooks rules)
+  // Chip scroll state
   const chipsRef = React.useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = React.useState(false);
   const [canScrollRight, setCanScrollRight] = React.useState(false);
@@ -289,33 +579,18 @@ export function UnifiedTrendChart({
           height={chartData.length > 14 && isMobile ? 40 : 30}
         />
 
-        {/* Independent Y-axis per active category */}
+        {/* Independent Y-axis per active category — no unit labels (Change 3) */}
         {axisLayout.map((axis) => (
           <YAxis
             key={axis.categoryId}
             yAxisId={axis.categoryId}
             orientation={axis.orientation}
-            tick={{ fill: axis.color, fontSize: 10 }}
+            tick={{ fill: axis.color, fontSize: 11 }}
             axisLine={{ stroke: axis.color, strokeWidth: 1.5 }}
             tickLine={{ stroke: axis.color }}
             width={AXIS_WIDTH}
             domain={axis.domain}
             allowDecimals={!axis.isScale}
-            label={
-              axis.unit
-                ? {
-                    value: axis.unit,
-                    angle: axis.orientation === "left" ? -90 : 90,
-                    position:
-                      axis.orientation === "left"
-                        ? "insideLeft"
-                        : "insideRight",
-                    fill: axis.color,
-                    fontSize: 10,
-                    dy: -10,
-                  }
-                : undefined
-            }
           />
         ))}
 
@@ -385,6 +660,22 @@ export function UnifiedTrendChart({
     </ResponsiveContainer>
   );
 
+  // Settings panel content (reusable for both desktop inline and mobile sheet)
+  const settingsContent = (
+    <SettingsPanelContent
+      activeTrends={activeTrends}
+      colorMap={colorMap}
+      getName={getName}
+      axisOverrides={axisOverrides}
+      autoRanges={autoRanges}
+      xRange={xRange}
+      onAxisChange={handleAxisChange}
+      onXRangeChange={handleXRangeChange}
+      onResetAll={handleResetAll}
+      t={t}
+    />
+  );
+
   return (
     <div className={cn("space-y-3", className)}>
       {/* Toggle chips — scrollable row with arrows on desktop */}
@@ -412,6 +703,7 @@ export function UnifiedTrendChart({
             const isActive = activeIds.has(td.categoryId);
             const color = colorMap.get(td.categoryId)!;
             const name = getName(td);
+            const chipLabel = td.unit ? `${name} (${td.unit})` : name;
             const isFull = !isActive && activeIds.size >= MAX_ACTIVE;
 
             return (
@@ -443,7 +735,7 @@ export function UnifiedTrendChart({
                     opacity: isFull ? 0.3 : 1,
                   }}
                 />
-                {name}
+                {chipLabel}
               </button>
             );
           })}
@@ -507,52 +799,95 @@ export function UnifiedTrendChart({
       ) : (
         /* Chart with data */
         <div className="relative rounded-lg border bg-card p-3 sm:p-4">
-          {/* Expand button — top-right inside chart area */}
-          {onExpand && (
+          {/* Top-right buttons: settings + expand */}
+          <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
             <button
               type="button"
-              onClick={onExpand}
-              className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-md border bg-card/90 backdrop-blur-sm shadow-sm hover:bg-muted transition-colors"
-              aria-label={t("expandChart")}
+              onClick={() => setShowSettings((prev) => !prev)}
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-md border bg-card/90 backdrop-blur-sm shadow-sm hover:bg-muted transition-colors",
+                showSettings && "bg-muted"
+              )}
+              aria-label={t("openSettings")}
             >
-              <Maximize2 className="h-4 w-4 text-foreground" />
+              <Settings2 className="h-4 w-4 text-foreground" />
             </button>
-          )}
-
-          {/* Horizontally scrollable wrapper for mobile when 3-4 axes active */}
-          {minChartWidth ? (
-            <div
-              className="overflow-x-auto -mx-3 px-3 sm:-mx-4 sm:px-4"
-              style={{ scrollbarWidth: "thin" }}
-            >
-              {chartContent}
-            </div>
-          ) : (
-            chartContent
-          )}
-
-          {/* Color legend below chart */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 px-1">
-            {activeTrends.map((td) => {
-              const color = colorMap.get(td.categoryId)!;
-              const name = getName(td);
-              return (
-                <div
-                  key={td.categoryId}
-                  className="flex items-center gap-1.5"
-                >
-                  <span
-                    className="h-2.5 w-2.5 rounded-sm shrink-0"
-                    style={{ backgroundColor: color }}
-                  />
-                  <span className="text-[11px] text-muted-foreground">
-                    {name}
-                    {td.unit ? ` (${td.unit})` : ""}
-                  </span>
-                </div>
-              );
-            })}
+            {onExpand && (
+              <button
+                type="button"
+                onClick={onExpand}
+                className="flex h-8 w-8 items-center justify-center rounded-md border bg-card/90 backdrop-blur-sm shadow-sm hover:bg-muted transition-colors"
+                aria-label={t("expandChart")}
+              >
+                <Maximize2 className="h-4 w-4 text-foreground" />
+              </button>
+            )}
           </div>
+
+          {/* Desktop/Tablet: inline settings panel */}
+          <div
+            className={cn(
+              "flex gap-4",
+              showSettings && !isMobile ? "flex-row" : ""
+            )}
+          >
+            {/* Chart area */}
+            <div
+              className={cn(
+                "min-w-0",
+                showSettings && !isMobile
+                  ? "w-[calc(100%-280px)]"
+                  : "w-full"
+              )}
+            >
+              {/* Horizontally scrollable wrapper for mobile when 3-4 axes active */}
+              {minChartWidth ? (
+                <div
+                  className="overflow-x-auto -mx-3 px-3 sm:-mx-4 sm:px-4"
+                  style={{ scrollbarWidth: "thin" }}
+                >
+                  {chartContent}
+                </div>
+              ) : (
+                chartContent
+              )}
+            </div>
+
+            {/* Desktop settings panel (hidden on mobile) */}
+            {showSettings && !isMobile && (
+              <div className="w-[264px] shrink-0 border-l pl-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold">
+                    {t("axisSettings")}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowSettings(false)}
+                    className="flex h-6 w-6 items-center justify-center rounded-sm hover:bg-muted transition-colors"
+                    aria-label={t("closeSettings")}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {settingsContent}
+              </div>
+            )}
+          </div>
+
+          {/* Mobile: bottom sheet for settings */}
+          {isMobile && (
+            <Sheet open={showSettings} onOpenChange={setShowSettings}>
+              <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>{t("axisSettings")}</SheetTitle>
+                  <SheetDescription className="sr-only">
+                    {t("axisSettings")}
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="mt-4">{settingsContent}</div>
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       )}
     </div>
