@@ -48,8 +48,15 @@ const CHART_COLORS = [
 
 const MAX_ACTIVE = 4;
 
-/** Axis width for each Y-axis */
-const AXIS_WIDTH = 45;
+/** Axis width for each Y-axis — kept narrow for max plot area */
+const AXIS_WIDTH = 32;
+
+/** Format large numbers compactly: 14000 → 14k, 2200 → 2.2k */
+function formatAxisTick(value: number): string {
+  if (Math.abs(value) >= 10000) return `${Math.round(value / 1000)}k`;
+  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1)}k`;
+  return String(value);
+}
 
 const STORAGE_KEY = "feedback-chart-axis-settings";
 
@@ -503,7 +510,7 @@ export function UnifiedTrendChart({
     return {
       top: 8,
       right:
-        rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH + 50 : 50, // +50 for expand/settings buttons area
+        rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH + 4 : 8,
       bottom: isMobile ? 4 : 8,
       left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH + 4 : 8,
     };
@@ -585,12 +592,15 @@ export function UnifiedTrendChart({
             key={axis.categoryId}
             yAxisId={axis.categoryId}
             orientation={axis.orientation}
-            tick={{ fill: axis.color, fontSize: 11 }}
+            tick={{ fill: axis.color, fontSize: 9 }}
+            tickFormatter={formatAxisTick}
             axisLine={{ stroke: axis.color, strokeWidth: 1.5 }}
-            tickLine={{ stroke: axis.color }}
+            tickLine={{ stroke: axis.color, strokeWidth: 0.5 }}
+            tickSize={3}
             width={AXIS_WIDTH}
             domain={axis.domain}
             allowDecimals={!axis.isScale}
+            tickCount={5}
           />
         ))}
 
