@@ -519,11 +519,13 @@ export function UnifiedTrendChart({
       (a) => a.orientation === "right"
     ).length;
 
+    // Margins are ADDITIONAL space beyond the YAxis width — keep minimal
+    // Recharts: total left space = margin.left + sum of left YAxis widths
     return {
       top: 4,
-      right: rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH + 4 : 24,
+      right: rightAxesCount > 0 ? 4 : 20,
       bottom: 4,
-      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH + 4 : 4,
+      left: 4,
     };
   }, [axisLayout, isMobile]);
 
