@@ -6,7 +6,6 @@ import {
   ResponsiveContainer,
   ComposedChart,
   Line,
-  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -631,23 +630,6 @@ export function UnifiedTrendChart({
           const label = td.unit ? `${name} (${td.unit})` : name;
           const dotSize =
             chartData.length < 7 ? 4 : isMobile ? 2 : 3;
-
-          if (td.categoryType === "scale") {
-            return (
-              <Bar
-                key={td.categoryId}
-                dataKey={td.categoryId}
-                yAxisId={td.categoryId}
-                name={label}
-                fill={color}
-                fillOpacity={0.25}
-                stroke={color}
-                strokeWidth={1}
-                radius={[3, 3, 0, 0]}
-                maxBarSize={20}
-              />
-            );
-          }
 
           return (
             <Line
