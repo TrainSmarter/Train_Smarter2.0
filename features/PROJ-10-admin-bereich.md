@@ -1,6 +1,6 @@
 # PROJ-10: Admin-Bereich (Benutzerverwaltung)
 
-## Status: Planned
+## Status: Deployed
 **Created:** 2026-03-12
 **Last Updated:** 2026-03-20
 

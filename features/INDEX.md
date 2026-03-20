@@ -21,7 +21,7 @@
 | PROJ-7 | Training Workspace & Periodisierung | Planned | [PROJ-7-trainingsplaene-programme.md](PROJ-7-trainingsplaene-programme.md) | 2026-03-12 |
 | PROJ-8 | Trainingskalender | Planned | [PROJ-8-trainingskalender.md](PROJ-8-trainingskalender.md) | 2026-03-12 |
 | PROJ-9 | Team-Verwaltung (+ Unified View) | Deployed | [PROJ-9-club-verwaltung.md](PROJ-9-club-verwaltung.md) | 2026-03-12 |
-| PROJ-10 | Admin-Bereich (Benutzerverwaltung) | Planned | [PROJ-10-admin-bereich.md](PROJ-10-admin-bereich.md) | 2026-03-12 |
+| PROJ-10 | Admin-Bereich (Benutzerverwaltung) | Deployed | [PROJ-10-admin-bereich.md](PROJ-10-admin-bereich.md) | 2026-03-12 |
 | PROJ-11 | DSGVO-Compliance & Datenschutz | Deployed | [PROJ-11-dsgvo-datenschutz.md](PROJ-11-dsgvo-datenschutz.md) | 2026-03-12 |
 | PROJ-12 | Übungsbibliothek | Deployed | [PROJ-12-uebungsbibliothek.md](PROJ-12-uebungsbibliothek.md) | 2026-03-12 |
 | PROJ-13 | E-Mail & Transaktions-Benachrichtigungen | Deployed | [PROJ-13-email-benachrichtigungen.md](PROJ-13-email-benachrichtigungen.md) | 2026-03-12 |
