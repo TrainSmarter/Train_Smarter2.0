@@ -48,8 +48,8 @@ const CHART_COLORS = [
 
 const MAX_ACTIVE = 4;
 
-/** Axis width for each Y-axis — kept narrow for max plot area */
-const AXIS_WIDTH = 28;
+/** Axis width for each Y-axis — tight fit, compact number formatter handles overflow */
+const AXIS_WIDTH = 24;
 
 /** Format numbers compactly for narrow axes: 14000→14k, 2200→2.2k, 150→150 */
 function formatAxisTick(value: number): string {
@@ -511,10 +511,10 @@ export function UnifiedTrendChart({
     ).length;
 
     return {
-      top: 8,
-      right: rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH : 4,
-      bottom: isMobile ? 4 : 8,
-      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH : 4,
+      top: 4,
+      right: rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH : 2,
+      bottom: 4,
+      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH : 2,
     };
   }, [axisLayout, isMobile]);
 
@@ -588,7 +588,7 @@ export function UnifiedTrendChart({
             key={axis.categoryId}
             yAxisId={axis.categoryId}
             orientation={axis.orientation}
-            tick={{ fill: axis.color, fontSize: 9 }}
+            tick={{ fill: axis.color, fontSize: 10 }}
             tickFormatter={formatAxisTick}
             axisLine={{ stroke: axis.color, strokeWidth: 1.5 }}
             tickLine={{ stroke: axis.color, strokeWidth: 0.5 }}
