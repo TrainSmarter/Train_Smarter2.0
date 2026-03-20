@@ -194,7 +194,9 @@ export async function saveCheckin(
     return { success: false, error: "VALUES_FAILED" };
   }
 
-  revalidatePath("/feedback", "layout");
+  // Only revalidate the page, not the entire layout tree — the client
+  // already applies optimistic state so a full layout cascade is wasteful.
+  revalidatePath("/feedback", "page");
   return { success: true };
 }
 
@@ -360,7 +362,7 @@ export async function toggleAnalysisVisibility(
     return { success: false, error: "UPDATE_FAILED" };
   }
 
-  revalidatePath("/feedback", "layout");
+  revalidatePath("/feedback", "page");
   return { success: true };
 }
 
@@ -399,7 +401,7 @@ export async function updateBackfillMode(
     return { success: false, error: "UPDATE_FAILED" };
   }
 
-  revalidatePath("/feedback", "layout");
+  revalidatePath("/feedback", "page");
   return { success: true };
 }
 
@@ -453,7 +455,7 @@ export async function toggleCategoryOverride(
     return { success: false, error: "UPSERT_FAILED" };
   }
 
-  revalidatePath("/feedback", "layout");
+  revalidatePath("/feedback", "page");
   return { success: true };
 }
 
@@ -537,7 +539,7 @@ export async function createCategory(data: {
     return { success: false, error: "INSERT_FAILED" };
   }
 
-  revalidatePath("/feedback", "layout");
+  revalidatePath("/feedback", "page");
   return { success: true };
 }
 
@@ -599,7 +601,7 @@ export async function updateCategory(data: {
     return { success: false, error: "UPDATE_FAILED" };
   }
 
-  revalidatePath("/feedback", "layout");
+  revalidatePath("/feedback", "page");
   return { success: true };
 }
 
@@ -670,7 +672,7 @@ export async function archiveCategory(
     return { success: false, error: "UPDATE_FAILED" };
   }
 
-  revalidatePath("/feedback", "layout");
+  revalidatePath("/feedback", "page");
   return { success: true };
 }
 
@@ -750,7 +752,7 @@ export async function updateTrainerDefault(
     return { success: false, error: "UPSERT_FAILED" };
   }
 
-  revalidatePath("/feedback", "layout");
+  revalidatePath("/feedback", "page");
   return { success: true };
 }
 
@@ -789,7 +791,7 @@ export async function updateAthleteRequired(
     return { success: false, error: "RPC_FAILED" };
   }
 
-  revalidatePath("/feedback", "layout");
+  revalidatePath("/feedback", "page");
   return { success: true };
 }
 
@@ -826,6 +828,6 @@ export async function updateCategorySortOrder(
     return { success: false, error: "UPDATE_FAILED" };
   }
 
-  revalidatePath("/feedback", "layout");
+  revalidatePath("/feedback", "page");
   return { success: true };
 }

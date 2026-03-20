@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { toAuthUser } from "@/lib/auth-user";
 import { FeedbackTrainerPage } from "@/components/feedback/feedback-trainer-page";
 import { AthleteCheckinPage } from "@/components/feedback/athlete-checkin-page";
-import { getActiveCategories, getCheckinsByDateRange, getMonitoringOverview, getAthleteTrendData, getAthleteConnectionInfo, getTrainerDefaults, getRequiredCategoryIds } from "@/lib/feedback/queries";
+import { getActiveCategories, getCheckinsByDateRange, getMonitoringOverview, getAthleteTrendData, getAthleteConnectionInfo, getTrainerDefaults } from "@/lib/feedback/queries";
 import type { FeedbackCategory } from "@/lib/feedback/types";
 
 export async function generateMetadata({
@@ -54,10 +54,13 @@ export default async function FeedbackPage() {
   }
 
   // Athlete: Check-in Page
-  const [categories, requiredCategoryIds] = await Promise.all([
-    getActiveCategories(authUser.id),
-    getRequiredCategoryIds(authUser.id),
-  ]);
+  const categories = await getActiveCategories(authUser.id);
+
+  // Derive required category IDs from the already-fetched categories
+  // instead of a separate DB query (getRequiredCategoryIds duplicated the same data).
+  const requiredCategoryIds = categories
+    .filter((c) => c.isActive && c.isEffectivelyRequired && c.type !== "text")
+    .map((c) => c.id);
 
   // Calculate current week range (Monday through today)
   const today = new Date();

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ActiveCategory,
@@ -29,27 +30,31 @@ import type {
 // ── Helper: Check body_wellness_data consent ─────────────────────
 // RLS policy "Trainers can read connected athlete consents" allows
 // trainers to read consent for their connected athletes directly.
+//
+// Wrapped with React cache() to deduplicate within a single server
+// request — multiple query functions call this with the same userId,
+// and without caching each call hits the database independently.
 
-async function hasBodyWellnessConsent(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("user_consents")
-    .select("granted")
-    .eq("user_id", userId)
-    .eq("consent_type", "body_wellness_data")
-    .order("granted_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+const hasBodyWellnessConsent = cache(
+  async (userId: string): Promise<boolean> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("user_consents")
+      .select("granted")
+      .eq("user_id", userId)
+      .eq("consent_type", "body_wellness_data")
+      .order("granted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (error) {
-    console.error("Failed to check consent:", error);
-    return false;
+    if (error) {
+      console.error("Failed to check consent:", error);
+      return false;
+    }
+
+    return data?.granted === true;
   }
-
-  return data?.granted === true;
-}
+);
 
 // ── Helper: Map DB row to FeedbackCategory ───────────────────────
 
@@ -152,7 +157,7 @@ export async function getCheckin(
 
   // DSGVO consent check — if querying own data, check consent
   if (athleteId === user.id) {
-    const hasConsent = await hasBodyWellnessConsent(supabase, user.id);
+    const hasConsent = await hasBodyWellnessConsent(user.id);
     if (!hasConsent) return null;
   }
 
@@ -206,7 +211,7 @@ export async function getCheckinHistory(
 
   // DSGVO consent check — for own data or trainer viewing athlete data
   const consentUserId = athleteId === user.id ? user.id : athleteId;
-  const hasConsent = await hasBodyWellnessConsent(supabase, consentUserId);
+  const hasConsent = await hasBodyWellnessConsent(consentUserId);
   if (!hasConsent) return { entries: [], hasMore: false };
 
   const limit = options.limit ?? 20;
@@ -524,7 +529,7 @@ export async function getAthleteTrendData(
 
   // DSGVO consent check — if trainer viewing athlete data, check athlete's consent
   const consentUserId = athleteId === user.id ? user.id : athleteId;
-  const hasConsent = await hasBodyWellnessConsent(supabase, consentUserId);
+  const hasConsent = await hasBodyWellnessConsent(consentUserId);
   if (!hasConsent) return [];
 
   const days = parseInt(range) || 30;
@@ -606,7 +611,7 @@ export async function getCheckinsByDateRange(
 
   // DSGVO consent check
   const consentUserId = athleteId === user.id ? user.id : athleteId;
-  const hasConsent = await hasBodyWellnessConsent(supabase, consentUserId);
+  const hasConsent = await hasBodyWellnessConsent(consentUserId);
   if (!hasConsent) return new Map();
 
   const { data, error } = await supabase
@@ -708,7 +713,7 @@ export async function getAthleteDetail(
   const supabase = await createClient();
 
   // DSGVO consent check — check athlete's body_wellness_data consent
-  const athleteConsent = await hasBodyWellnessConsent(supabase, athleteId);
+  const athleteConsent = await hasBodyWellnessConsent(athleteId);
 
   // Verify trainer is connected to this athlete
   const { data: connection, error: connError } = await supabase

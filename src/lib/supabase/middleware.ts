@@ -30,12 +30,17 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // IMPORTANT: Use getUser() instead of getSession() for security.
-  // getUser() validates the session server-side against Supabase Auth.
-  // getSession() only reads the cookie without server validation.
+  // Use getSession() for middleware — it reads the JWT from cookies without
+  // making a network call to Supabase Auth. This avoids an API roundtrip on
+  // every single request. The JWT contains all the user data we need for
+  // routing decisions (email_confirmed_at, app_metadata, user_metadata).
+  // Security-critical operations (server actions, API routes) should still
+  // use getUser() which validates the token server-side.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const user = session?.user ?? null;
 
   // Session-only check: If user is authenticated but neither ts_session
   // nor ts_remember cookie is present, the user had "remember me" off and

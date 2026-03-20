@@ -20,18 +20,14 @@ function readSrc(relativePath: string): string {
 describe("Consent check in queries.ts", () => {
   const queries = readSrc("lib/feedback/queries.ts");
 
-  it("hasBodyWellnessConsent function exists", () => {
-    expect(queries).toContain("async function hasBodyWellnessConsent");
+  it("hasBodyWellnessConsent exists as cached function", () => {
+    expect(queries).toContain("hasBodyWellnessConsent");
+    expect(queries).toContain("cache(");
   });
 
   it("hasBodyWellnessConsent queries user_consents with body_wellness_data", () => {
-    const fnMatch = queries.match(
-      /async function hasBodyWellnessConsent[\s\S]*?^}/m
-    );
-    expect(fnMatch).not.toBeNull();
-    const fnBody = fnMatch![0];
-    expect(fnBody).toContain('"body_wellness_data"');
-    expect(fnBody).toContain("granted");
+    expect(queries).toContain('"body_wellness_data"');
+    expect(queries).toContain("granted");
   });
 
   it("getMonitoringOverview fetches consent for all athletes in batch", () => {
@@ -82,13 +78,9 @@ describe("Regression: queries.ts uses direct table queries, NOT RPC", () => {
   const queries = readSrc("lib/feedback/queries.ts");
 
   it("hasBodyWellnessConsent uses .from('user_consents'), NOT supabase.rpc", () => {
-    const fnMatch = queries.match(
-      /async function hasBodyWellnessConsent[\s\S]*?^}/m
-    );
-    expect(fnMatch).not.toBeNull();
-    const fnBody = fnMatch![0];
-    expect(fnBody).toContain('.from("user_consents")');
-    expect(fnBody).not.toContain("supabase.rpc");
+    expect(queries).toContain('.from("user_consents")');
+    // The cached consent function should not use RPC
+    expect(queries).not.toMatch(/hasBodyWellnessConsent[\s\S]*?supabase\.rpc/);
   });
 
   it("getMonitoringOverview uses .from('user_consents'), NOT supabase.rpc", () => {

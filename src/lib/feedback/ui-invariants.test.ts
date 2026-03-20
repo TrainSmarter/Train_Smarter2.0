@@ -658,29 +658,27 @@ describe("category-manager.tsx PROJ-18 extensions", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// 12. PROJ-18: actions.ts — revalidatePath uses layout
+// 12. actions.ts — revalidatePath uses "page" (optimized from "layout")
 // ═══════════════════════════════════════════════════════════════
 
-describe("actions.ts revalidatePath uses layout (PROJ-18 fix)", () => {
+describe("actions.ts revalidatePath optimization", () => {
   const actions = readSrc("lib/feedback/actions.ts");
 
-  it("all revalidatePath calls use 'layout' to invalidate sub-routes", () => {
-    // Every revalidatePath in feedback actions must use "layout"
+  it("all revalidatePath calls use 'page' (not 'layout') to reduce cascade", () => {
     const revalidateCalls = actions.match(/revalidatePath\([^)]+\)/g) ?? [];
-    // Filter out comments
-    const actualCalls = revalidateCalls.filter(
-      (c) => !c.includes("//")
-    );
+    const actualCalls = revalidateCalls.filter((c) => !c.includes("//"));
     expect(actualCalls.length).toBeGreaterThan(0);
     for (const call of actualCalls) {
-      expect(call).toContain('"layout"');
+      expect(call).toContain('"page"');
     }
   });
 
-  it("does NOT have any revalidatePath without layout param", () => {
-    // The old pattern was revalidatePath("/feedback") without second arg
-    // Regex: revalidatePath("/feedback") NOT followed by comma
-    expect(actions).not.toMatch(/revalidatePath\("\/feedback"\)\s*;/);
+  it("does NOT use revalidatePath with 'layout' (was causing cascade)", () => {
+    expect(actions).not.toMatch(/revalidatePath\([^)]*"layout"[^)]*\)/);
+  });
+
+  it("autosaveCheckinField has comment confirming no revalidation", () => {
+    expect(actions).toContain("autosave should be silent, no full page refresh");
   });
 });
 
