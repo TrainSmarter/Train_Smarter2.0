@@ -521,9 +521,9 @@ export function UnifiedTrendChart({
 
     return {
       top: 4,
-      right: rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH : 24,
+      right: rightAxesCount > 0 ? 4 : 24,
       bottom: 4,
-      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH : 2,
+      left: leftAxesCount > 0 ? 4 : 2,
     };
   }, [axisLayout, isMobile]);
 
@@ -597,12 +597,12 @@ export function UnifiedTrendChart({
             key={axis.categoryId}
             yAxisId={axis.categoryId}
             orientation={axis.orientation}
-            tick={{ fill: axis.color, fontSize: axis.isOuter ? 9 : 11, dx: axis.orientation === "left" ? -2 : 2 }}
+            tick={{ fill: axis.color, fontSize: axis.isOuter ? 9 : 11, dx: axis.orientation === "left" ? -4 : 4 }}
             tickFormatter={formatAxisTick}
             axisLine={{ stroke: axis.color, strokeWidth: 1.5 }}
             tickLine={{ stroke: axis.color, strokeWidth: 0.5 }}
-            tickSize={4}
-            width={AXIS_WIDTH}
+            tickSize={3}
+            width={1}
             domain={axis.domain}
             allowDecimals={false}
             tickCount={5}
@@ -812,8 +812,8 @@ export function UnifiedTrendChart({
           </div>
         </div>
       ) : (
-        /* Chart with data — no horizontal padding so axes sit at container edge */
-        <div className="relative rounded-lg border bg-card py-3 sm:py-4">
+        /* Chart with data — axes overflow outside the plot area via width:1 + overflow:visible */
+        <div className="relative rounded-lg border bg-card py-3 sm:py-4 [&_.recharts-surface]:overflow-visible [&_.recharts-wrapper]:overflow-visible">
           {/* Top-right buttons: settings + expand */}
           <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5">
             <button
