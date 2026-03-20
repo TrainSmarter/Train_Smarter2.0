@@ -48,8 +48,8 @@ const CHART_COLORS = [
 
 const MAX_ACTIVE = 4;
 
-/** Axis width — minimal, tick labels may overflow slightly (SVG clips are disabled) */
-const AXIS_WIDTH = 18;
+/** Axis width — enough spacing between stacked axes on the same side */
+const AXIS_WIDTH = 22;
 
 /** Format numbers compactly for narrow axes: 14000→14k, 2200→2.2k, 150→150 */
 function formatAxisTick(value: number): string {
@@ -512,7 +512,7 @@ export function UnifiedTrendChart({
 
     return {
       top: 4,
-      right: rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH : 2,
+      right: rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH : 12,
       bottom: 4,
       left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH : 2,
     };
@@ -588,11 +588,11 @@ export function UnifiedTrendChart({
             key={axis.categoryId}
             yAxisId={axis.categoryId}
             orientation={axis.orientation}
-            tick={{ fill: axis.color, fontSize: 11 }}
+            tick={{ fill: axis.color, fontSize: 11, dx: axis.orientation === "left" ? -2 : 2 }}
             tickFormatter={formatAxisTick}
             axisLine={{ stroke: axis.color, strokeWidth: 1.5 }}
             tickLine={{ stroke: axis.color, strokeWidth: 0.5 }}
-            tickSize={3}
+            tickSize={4}
             width={AXIS_WIDTH}
             domain={axis.domain}
             allowDecimals={false}
