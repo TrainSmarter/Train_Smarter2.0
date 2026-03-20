@@ -508,12 +508,14 @@ describe("PROJ-10 Nav Config admin entry", () => {
     navConfig = readSrc("lib/nav-config.ts");
   });
 
-  it("should have admin nav item with requiresPlatformAdmin", () => {
+  it("should have admin nav section with requiresPlatformAdmin", () => {
     expect(navConfig).toContain('labelKey: "admin"');
     expect(navConfig).toContain("requiresPlatformAdmin: true");
+    expect(navConfig).toContain('basePath: "/admin"');
   });
 
-  it('should point to /admin path', () => {
-    expect(navConfig).toContain('path: "/admin"');
+  it('should have users sub-item under admin section', () => {
+    expect(navConfig).toContain('labelKey: "adminUsers"');
+    expect(navConfig).toContain('path: "/admin/users"');
   });
 });

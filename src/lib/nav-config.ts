@@ -6,6 +6,7 @@ import {
   User,
   Shield,
   Library,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/auth-user";
@@ -90,12 +91,19 @@ export const navConfig: NavEntry[] = [
     },
   },
   {
-    type: "item",
-    item: {
+    type: "section",
+    section: {
       labelKey: "admin",
       icon: Shield,
-      path: "/admin",
+      basePath: "/admin",
       requiresPlatformAdmin: true,
+      items: [
+        {
+          labelKey: "adminUsers",
+          icon: UsersRound,
+          path: "/admin/users",
+        },
+      ],
     },
   },
   {
