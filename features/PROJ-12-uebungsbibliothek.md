@@ -1,6 +1,6 @@
 # PROJ-12: Übungsbibliothek
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-03-12
 **Last Updated:** 2026-03-20
 
@@ -667,4 +667,8 @@ All 4 were fixed before Round 2.
 **Verdict: PROJ-12 is ready for deployment.**
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://www.train-smarter.at/training/exercises
+- **Deployed:** 2026-03-20
+- **Vercel Deployment:** `dpl_4Nd1EefyBDckAGsLwE3vqWE6h1TD`
+- **Commit:** `184d4bd` (feat(PROJ-12): Übungsbibliothek — full implementation)
+- **Migration:** `20260320200000_proj12_exercise_library.sql` — applied via Supabase MCP
