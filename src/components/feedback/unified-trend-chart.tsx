@@ -503,9 +503,9 @@ export function UnifiedTrendChart({
     return {
       top: 8,
       right:
-        rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH + 40 : 52, // +40 for expand/settings buttons
+        rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH + 50 : 50, // +50 for expand/settings buttons area
       bottom: isMobile ? 4 : 8,
-      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH : 12,
+      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH + 4 : 8,
     };
   }, [axisLayout, isMobile]);
 
@@ -797,10 +797,10 @@ export function UnifiedTrendChart({
           </div>
         </div>
       ) : (
-        /* Chart with data */
-        <div className="relative rounded-lg border bg-card p-3 sm:p-4">
+        /* Chart with data — no horizontal padding so axes sit at container edge */
+        <div className="relative rounded-lg border bg-card py-3 sm:py-4">
           {/* Top-right buttons: settings + expand */}
-          <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+          <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setShowSettings((prev) => !prev)}
@@ -843,7 +843,7 @@ export function UnifiedTrendChart({
               {/* Horizontally scrollable wrapper for mobile when 3-4 axes active */}
               {minChartWidth ? (
                 <div
-                  className="overflow-x-auto -mx-3 px-3 sm:-mx-4 sm:px-4"
+                  className="overflow-x-auto"
                   style={{ scrollbarWidth: "thin" }}
                 >
                   {chartContent}
