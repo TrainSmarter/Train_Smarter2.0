@@ -6,6 +6,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "training": "Training",
+    "trainingExercises": "Übungsbibliothek",
     "feedbackMonitoring": "Feedback & Monitoring",
     "organisation": "Athleten & Teams",
     "athletes": "Athleten",
@@ -1164,12 +1165,6 @@
     "noDescription": "Keine Beschreibung vorhanden",
     "taxonomyUpdated": "Erfolgreich aktualisiert",
     "taxonomyDeleted": "Erfolgreich gelöscht"
-  },
-  "training": {
-    "tabWorkspace": "Workspace",
-    "tabCalendar": "Kalender",
-    "tabExercises": "Übungen",
-    "comingSoon": "Demnächst"
   },
   "errors": {
     "authPageError": "Beim Laden der Seite ist ein Fehler aufgetreten.",

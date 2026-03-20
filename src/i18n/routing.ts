@@ -12,7 +12,7 @@ export const routing = defineRouting({
     "/reset-password": "/reset-password",
     "/verify-email": "/verify-email",
     "/dashboard": "/dashboard",
-    "/training": "/training",
+    "/training/exercises": "/training/exercises",
     "/feedback": "/feedback",
     "/feedback/[athleteId]": "/feedback/[athleteId]",
     "/account": { de: "/konto", en: "/account" },
@@ -21,7 +21,6 @@ export const routing = defineRouting({
     "/organisation/athletes": "/organisation/athletes",
     "/organisation/athletes/[id]": "/organisation/athletes/[id]",
     "/organisation/teams/[id]": "/organisation/teams/[id]",
-    "/training/exercises": "/training/exercises",
     "/components": "/components",
     // Localized paths (German → English)
     "/datenschutz": { de: "/datenschutz", en: "/privacy" },

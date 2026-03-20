@@ -6,6 +6,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "training": "Training",
+    "trainingExercises": "Exercise Library",
     "feedbackMonitoring": "Feedback & Monitoring",
     "organisation": "Athletes & Teams",
     "athletes": "Athletes",
@@ -1164,12 +1165,6 @@
     "noDescription": "No description available",
     "taxonomyUpdated": "Successfully updated",
     "taxonomyDeleted": "Successfully deleted"
-  },
-  "training": {
-    "tabWorkspace": "Workspace",
-    "tabCalendar": "Calendar",
-    "tabExercises": "Exercises",
-    "comingSoon": "Soon"
   },
   "errors": {
     "authPageError": "An error occurred while loading the page.",

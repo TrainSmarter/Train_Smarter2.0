@@ -5,6 +5,7 @@ import {
   Users,
   User,
   Shield,
+  Library,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/auth-user";
@@ -56,12 +57,19 @@ export const navConfig: NavEntry[] = [
     },
   },
   {
-    type: "item",
-    item: {
+    type: "section",
+    section: {
       labelKey: "training",
       icon: Dumbbell,
-      path: "/training",
+      basePath: "/training",
       allowedRoles: ["TRAINER"],
+      items: [
+        {
+          labelKey: "trainingExercises",
+          icon: Library,
+          path: "/training/exercises",
+        },
+      ],
     },
   },
   {

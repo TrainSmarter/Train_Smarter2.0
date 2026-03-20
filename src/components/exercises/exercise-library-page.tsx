@@ -20,7 +20,6 @@ import type {
   ExerciseSourceFilter,
   ExerciseSortOption,
 } from "./exercise-filters";
-import { TrainingTabs } from "@/components/training/training-tabs";
 import { cn } from "@/lib/utils";
 
 interface ExerciseLibraryPageProps {
@@ -151,9 +150,6 @@ export function ExerciseLibraryPage({
 
   return (
     <div className="space-y-6">
-      {/* Training Section Tabs */}
-      <TrainingTabs />
-
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
