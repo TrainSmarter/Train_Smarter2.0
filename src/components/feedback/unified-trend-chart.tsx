@@ -48,8 +48,8 @@ const CHART_COLORS = [
 
 const MAX_ACTIVE = 4;
 
-/** Axis width — enough spacing between stacked axes on the same side */
-const AXIS_WIDTH = 22;
+/** Width per axis — Recharts uses this for position calc + spacing between stacked axes */
+const AXIS_WIDTH = 35;
 
 /** Format numbers compactly for narrow axes: 14000→14k, 2200→2.2k, 150→150 */
 function formatAxisTick(value: number): string {
@@ -521,9 +521,9 @@ export function UnifiedTrendChart({
 
     return {
       top: 4,
-      right: rightAxesCount > 0 ? 4 : 24,
+      right: rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH + 4 : 24,
       bottom: 4,
-      left: leftAxesCount > 0 ? 4 : 2,
+      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH + 4 : 4,
     };
   }, [axisLayout, isMobile]);
 
@@ -532,86 +532,8 @@ export function UnifiedTrendChart({
 
   // No fixed min width — always use 100% responsive width
 
-  // Ref for chart container — used to pin axes to edges after render
-  const chartContainerRef = React.useRef<HTMLDivElement>(null);
-
-  // Pin Y-axes to edges using MutationObserver — catches Recharts re-renders
-  React.useEffect(() => {
-    const container = chartContainerRef.current;
-    if (!container) return;
-
-    const EDGE_OFFSET = 30;
-    const AXIS_SPACING = 28;
-
-    function pinAxes() {
-      const svg = container!.querySelector<SVGSVGElement>(".recharts-surface");
-      if (!svg) return;
-
-      const svgWidth = svg.getBoundingClientRect().width;
-      if (svgWidth === 0) return;
-
-      const yAxes = container!.querySelectorAll<SVGGElement>(
-        "g.recharts-yAxis.yAxis"
-      );
-      if (yAxes.length === 0) return;
-
-      // Sort into left/right by current X
-      const leftAxes: SVGGElement[] = [];
-      const rightAxes: SVGGElement[] = [];
-
-      yAxes.forEach((g) => {
-        const t = g.getAttribute("transform") || "";
-        const m = t.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
-        if (!m) return;
-        if (parseFloat(m[1]) > svgWidth / 2) rightAxes.push(g);
-        else leftAxes.push(g);
-      });
-
-      // Pin left axes
-      leftAxes.forEach((g, i) => {
-        const t = g.getAttribute("transform") || "";
-        const m = t.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
-        if (!m) return;
-        const targetX = EDGE_OFFSET + i * AXIS_SPACING;
-        if (Math.abs(parseFloat(m[1]) - targetX) > 1) {
-          g.setAttribute("transform", `translate(${targetX}, ${m[2]})`);
-        }
-      });
-
-      // Pin right axes
-      rightAxes.forEach((g, i) => {
-        const t = g.getAttribute("transform") || "";
-        const m = t.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
-        if (!m) return;
-        const targetX = svgWidth - EDGE_OFFSET - i * AXIS_SPACING;
-        if (Math.abs(parseFloat(m[1]) - targetX) > 1) {
-          g.setAttribute("transform", `translate(${targetX}, ${m[2]})`);
-        }
-      });
-    }
-
-    // Initial pin after Recharts renders
-    const raf1 = requestAnimationFrame(() => {
-      const raf2 = requestAnimationFrame(pinAxes);
-      return () => cancelAnimationFrame(raf2);
-    });
-
-    // Watch for Recharts transform changes and re-pin
-    const observer = new MutationObserver(pinAxes);
-    const svg = container.querySelector<SVGSVGElement>(".recharts-surface");
-    if (svg) {
-      observer.observe(svg, {
-        subtree: true,
-        attributes: true,
-        attributeFilter: ["transform"],
-      });
-    }
-
-    return () => {
-      cancelAnimationFrame(raf1);
-      observer.disconnect();
-    };
-  }, [activeTrends, chartData, axisLayout]);
+  // Recharts handles axis positioning natively with width={AXIS_WIDTH}
+  // and margins = count * AXIS_WIDTH. No DOM manipulation needed.
 
   // Chip scroll state
   const chipsRef = React.useRef<HTMLDivElement>(null);
@@ -683,7 +605,7 @@ export function UnifiedTrendChart({
             axisLine={{ stroke: axis.color, strokeWidth: 1.5 }}
             tickLine={{ stroke: axis.color, strokeWidth: 0.5 }}
             tickSize={3}
-            width={1}
+            width={AXIS_WIDTH}
             domain={axis.domain}
             allowDecimals={false}
             tickCount={5}
@@ -893,8 +815,8 @@ export function UnifiedTrendChart({
           </div>
         </div>
       ) : (
-        /* Chart with data — axes pinned to edges */
-        <div ref={chartContainerRef} className="relative rounded-lg border bg-card py-3 sm:py-4 [&_.recharts-surface]:overflow-visible [&_.recharts-wrapper]:overflow-visible">
+        /* Chart with data */
+        <div className="relative rounded-lg border bg-card py-3 sm:py-4">
           {/* Top-right buttons: settings + expand */}
           <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5">
             <button
