@@ -837,17 +837,15 @@ export function UnifiedTrendChart({
           {/* Desktop/Tablet: inline settings panel */}
           <div
             className={cn(
-              "flex gap-4",
-              showSettings && !isMobile ? "flex-row" : ""
+              showSettings && !isMobile ? "flex flex-row gap-4" : ""
             )}
           >
             {/* Chart area */}
             <div
               className={cn(
-                "min-w-0",
                 showSettings && !isMobile
-                  ? "w-[calc(100%-280px)]"
-                  : "w-full"
+                  ? "min-w-0 w-[calc(100%-280px)]"
+                  : ""
               )}
             >
               {/* Horizontally scrollable wrapper for mobile when 3-4 axes active */}
