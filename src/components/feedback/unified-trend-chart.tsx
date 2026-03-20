@@ -535,59 +535,82 @@ export function UnifiedTrendChart({
   // Ref for chart container — used to pin axes to edges after render
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
 
-  // Pin Y-axes to the container edges after each render
-  // Recharts auto-shifts stacked axes inward — we override the transform
-  // When 2 axes share a side, the outer one is at the edge and the inner one offset by AXIS_SPACING
+  // Pin Y-axes to edges using MutationObserver — catches Recharts re-renders
   React.useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
 
+    const EDGE_OFFSET = 30;
+    const AXIS_SPACING = 28;
+
+    function pinAxes() {
+      const svg = container!.querySelector<SVGSVGElement>(".recharts-surface");
+      if (!svg) return;
+
+      const svgWidth = svg.getBoundingClientRect().width;
+      if (svgWidth === 0) return;
+
+      const yAxes = container!.querySelectorAll<SVGGElement>(
+        "g.recharts-yAxis.yAxis"
+      );
+      if (yAxes.length === 0) return;
+
+      // Sort into left/right by current X
+      const leftAxes: SVGGElement[] = [];
+      const rightAxes: SVGGElement[] = [];
+
+      yAxes.forEach((g) => {
+        const t = g.getAttribute("transform") || "";
+        const m = t.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
+        if (!m) return;
+        if (parseFloat(m[1]) > svgWidth / 2) rightAxes.push(g);
+        else leftAxes.push(g);
+      });
+
+      // Pin left axes
+      leftAxes.forEach((g, i) => {
+        const t = g.getAttribute("transform") || "";
+        const m = t.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
+        if (!m) return;
+        const targetX = EDGE_OFFSET + i * AXIS_SPACING;
+        if (Math.abs(parseFloat(m[1]) - targetX) > 1) {
+          g.setAttribute("transform", `translate(${targetX}, ${m[2]})`);
+        }
+      });
+
+      // Pin right axes
+      rightAxes.forEach((g, i) => {
+        const t = g.getAttribute("transform") || "";
+        const m = t.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
+        if (!m) return;
+        const targetX = svgWidth - EDGE_OFFSET - i * AXIS_SPACING;
+        if (Math.abs(parseFloat(m[1]) - targetX) > 1) {
+          g.setAttribute("transform", `translate(${targetX}, ${m[2]})`);
+        }
+      });
+    }
+
+    // Initial pin after Recharts renders
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(pinAxes);
+      return () => cancelAnimationFrame(raf2);
+    });
+
+    // Watch for Recharts transform changes and re-pin
+    const observer = new MutationObserver(pinAxes);
     const svg = container.querySelector<SVGSVGElement>(".recharts-surface");
-    if (!svg) return;
+    if (svg) {
+      observer.observe(svg, {
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["transform"],
+      });
+    }
 
-    const svgWidth = svg.getBoundingClientRect().width;
-    const yAxes = container.querySelectorAll<SVGGElement>(
-      "g.recharts-yAxis.yAxis"
-    );
-
-    // Sort axes into left/right groups by their current X position
-    const leftAxes: SVGGElement[] = [];
-    const rightAxes: SVGGElement[] = [];
-
-    yAxes.forEach((g) => {
-      const currentTransform = g.getAttribute("transform") || "";
-      const match = currentTransform.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
-      if (!match) return;
-      const currentX = parseFloat(match[1]);
-      if (currentX > svgWidth / 2) {
-        rightAxes.push(g);
-      } else {
-        leftAxes.push(g);
-      }
-    });
-
-    const EDGE_OFFSET = 30; // enough space for tick labels to be visible
-    const AXIS_SPACING = 28; // gap between 2 axes on same side
-
-    // Left axes: outermost at EDGE_OFFSET, 2nd one at EDGE_OFFSET + AXIS_SPACING
-    leftAxes.forEach((g, i) => {
-      const transform = g.getAttribute("transform") || "";
-      const match = transform.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
-      if (!match) return;
-      const y = match[2];
-      const x = EDGE_OFFSET + i * AXIS_SPACING;
-      g.setAttribute("transform", `translate(${x}, ${y})`);
-    });
-
-    // Right axes: outermost at svgWidth - EDGE_OFFSET, 2nd one at svgWidth - EDGE_OFFSET - AXIS_SPACING
-    rightAxes.forEach((g, i) => {
-      const transform = g.getAttribute("transform") || "";
-      const match = transform.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
-      if (!match) return;
-      const y = match[2];
-      const x = svgWidth - EDGE_OFFSET - i * AXIS_SPACING;
-      g.setAttribute("transform", `translate(${x}, ${y})`);
-    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      observer.disconnect();
+    };
   }, [activeTrends, chartData, axisLayout]);
 
   // Chip scroll state
