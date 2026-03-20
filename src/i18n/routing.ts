@@ -21,6 +21,7 @@ export const routing = defineRouting({
     "/organisation/athletes": "/organisation/athletes",
     "/organisation/athletes/[id]": "/organisation/athletes/[id]",
     "/organisation/teams/[id]": "/organisation/teams/[id]",
+    "/admin/users": "/admin/users",
     "/components": "/components",
     // Localized paths (German → English)
     "/datenschutz": { de: "/datenschutz", en: "/privacy" },

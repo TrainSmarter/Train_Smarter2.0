@@ -7,6 +7,7 @@
 ## Dependencies
 - Requires: PROJ-1–PROJ-4 (Fundament)
 - Requires: PROJ-5 (Athleten-Management) — Trainer weist Pläne zu
+- Requires: PROJ-12 (Übungsbibliothek) — Übungen werden in Trainingseinheiten referenziert
 - Soft dependency: PROJ-8 (Trainingskalender) — Mikrozyklen werden im Kalender sichtbar
 
 ## Training Workspace Konzept
@@ -65,9 +66,16 @@ Universal-Selector (Dropdown)
 - Nach „Speichern & Schließen": Plan erscheint aktualisiert in der Eigene-Pläne-Sektion
 - Unterschied Draft vs. Gespeichert: Draft = nur für Trainer sichtbar; Gespeichert = für zugewiesene Athleten sichtbar
 
-## Platform Templates — Konzept
+## Platform Templates — Konzept (Admin/Trainer-Scope-Pattern)
 
-Platform Templates werden von Platform-Admins (PROJ-10) erstellt und gepflegt. Sie sind für alle registrierten Trainer lesend zugänglich und können auf allen Planungsebenen existieren.
+Platform Templates folgen dem **identischen Admin/Trainer-Scope-Pattern wie Übungen (PROJ-12)**:
+- Admin erstellt globale Templates (`scope='global'`) — sichtbar für alle Trainer
+- Trainer erstellt eigene Templates (`scope='trainer'`) — nur für sich sichtbar
+- Trainer kann globale Templates klonen und frei bearbeiten (isolierte Kopie)
+- Die Template-Erstellung erfolgt im **selben Training Workspace** — der Admin nutzt dieselbe UI wie ein Trainer
+- **Keine separate Admin-UI für Templates nötig** (PROJ-10 verwaltet nur Übungen/Kategorien, User, Audit)
+
+Platform Templates sind für alle registrierten Trainer lesend zugänglich und können auf allen Planungsebenen existieren.
 
 **Alle Template-Ebenen verfügbar:**
 - Mehrjahresplan-Templates (z.B. "4-Jahres-Olympia-Zyklus")
@@ -82,21 +90,33 @@ Platform Templates werden von Platform-Admins (PROJ-10) erstellt und gepflegt. S
 - Kein Versions-Tracking: Geklonte Templates sind isolierte Kopien, unabhängig vom Original
 - Keine Genehmigung nötig — sofort nutzbar nach Klonen
 
-**Datenbankschema (Phase 2):**
+**Datenbankschema (Admin/Trainer-Scope-Pattern — wie PROJ-12 Übungen):**
 ```
-platform_templates
+training_templates
 ├── id: uuid (PK)
-├── created_by: uuid (FK → auth.users, must have is_platform_admin = true)
+├── scope: "global" | "trainer"          — global = Admin, trainer = eigene
+├── created_by: uuid | null              — null = Platform (Admin), uuid = Trainer-ID
+├── cloned_from: uuid | null             — FK → training_templates.id (wenn Klon)
 ├── level: "multi_year" | "year" | "macro" | "meso" | "micro"
-├── title: text
-├── description: text
+├── title: jsonb { de, en }              — zweisprachig (wie Übungen)
+├── description: jsonb { de, en } | null
 ├── sport_type: text (z.B. "Kraft", "Ausdauer", "Kampfsport")
 ├── difficulty: "beginner" | "intermediate" | "advanced"
 ├── duration_weeks: integer | null
-├── payload: jsonb  ← serialisiertes Plan-Objekt (gleiche Struktur wie Trainer-Templates)
-├── is_published: boolean (default: false — Admin kann Entwürfe haben)
-└── created_at: timestamp
+├── payload: jsonb                       — serialisiertes Plan-Objekt
+├── is_published: boolean (default: false)
+├── is_deleted: boolean (default: false)
+├── deleted_at: timestamptz | null
+├── created_at: timestamptz
+└── updated_at: timestamptz
 ```
+
+**RLS (identisches Muster wie PROJ-12):**
+| Entity | Read | Write |
+|--------|------|-------|
+| scope='global', is_published=true | Alle Trainer | Nur Admin (is_platform_admin) |
+| scope='global', is_published=false | Nur Admin | Nur Admin |
+| scope='trainer', created_by=X | Nur Trainer X | Nur Trainer X |
 
 ## Timezone-Strategie
 
@@ -264,7 +284,7 @@ Mehrjahresplan (1–4 Jahre)
 
 ### Zoom-Ebene: Trainingseinheit
 - [ ] Route: `/training/[plan-id]/macro/[macro-id]/meso/[meso-id]/week/[week-id]/day/[day-id]`
-- [ ] Übung hinzufügen: Suche aus globaler Übungsdatenbank (PROJ-10) oder Freitext
+- [ ] Übung hinzufügen: Suche aus Übungsbibliothek (PROJ-12) oder Freitext
 - [ ] Je Übung: Sets × Reps/Dauer, % 1RM oder absolutes Gewicht, RPE-Ziel (1–10), Pausendauer (s), Notiz
 
 ### Platform Templates — Klonen
