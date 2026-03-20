@@ -532,6 +532,45 @@ export function UnifiedTrendChart({
 
   // No fixed min width — always use 100% responsive width
 
+  // Ref for chart container — used to pin axes to edges after render
+  const chartContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Pin Y-axes to the container edges after each render
+  // Recharts auto-shifts stacked axes inward — we override the transform
+  React.useEffect(() => {
+    const container = chartContainerRef.current;
+    if (!container) return;
+
+    const svg = container.querySelector<SVGSVGElement>(".recharts-surface");
+    if (!svg) return;
+
+    const svgWidth = svg.getBoundingClientRect().width;
+    const yAxes = container.querySelectorAll<SVGGElement>(
+      "g.recharts-yAxis.yAxis"
+    );
+
+    yAxes.forEach((g) => {
+      // Read current transform to get the Y value (vertical position)
+      const currentTransform = g.getAttribute("transform") || "";
+      const match = currentTransform.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
+      if (!match) return;
+
+      const currentX = parseFloat(match[1]);
+      const y = match[2];
+
+      // Determine if this is a left or right axis by its current X position
+      const isRightSide = currentX > svgWidth / 2;
+
+      if (isRightSide) {
+        // Pin to right edge: X = svgWidth - small offset
+        g.setAttribute("transform", `translate(${svgWidth - 2}, ${y})`);
+      } else {
+        // Pin to left edge: X = small offset
+        g.setAttribute("transform", `translate(2, ${y})`);
+      }
+    });
+  }, [activeTrends, chartData, axisLayout]);
+
   // Chip scroll state
   const chipsRef = React.useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = React.useState(false);
@@ -812,8 +851,8 @@ export function UnifiedTrendChart({
           </div>
         </div>
       ) : (
-        /* Chart with data — axes overflow outside the plot area via width:1 + overflow:visible */
-        <div className="relative rounded-lg border bg-card py-3 sm:py-4 [&_.recharts-surface]:overflow-visible [&_.recharts-wrapper]:overflow-visible">
+        /* Chart with data — axes pinned to edges */
+        <div ref={chartContainerRef} className="relative rounded-lg border bg-card py-3 sm:py-4 [&_.recharts-surface]:overflow-visible [&_.recharts-wrapper]:overflow-visible">
           {/* Top-right buttons: settings + expand */}
           <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5">
             <button
