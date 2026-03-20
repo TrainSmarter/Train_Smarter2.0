@@ -6,6 +6,7 @@ import {
   ResponsiveContainer,
   ComposedChart,
   Line,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -623,29 +624,52 @@ export function UnifiedTrendChart({
           }
         />
 
-        {/* Series */}
-        {activeTrends.map((td) => {
-          const color = colorMap.get(td.categoryId)!;
-          const name = getName(td);
-          const label = td.unit ? `${name} (${td.unit})` : name;
-          const dotSize =
-            chartData.length < 7 ? 4 : isMobile ? 2 : 3;
+        {/* Series — lines for number types, bars for scale types */}
+        {(() => {
+          const scaleCount = activeTrends.filter((td) => td.categoryType === "scale").length;
+          const totalBarWidth = 20; // constant total width for all bars combined
+          const barSize = scaleCount > 0 ? Math.floor(totalBarWidth / scaleCount) : totalBarWidth;
 
-          return (
-            <Line
-              key={td.categoryId}
-              type="monotone"
-              dataKey={td.categoryId}
-              yAxisId={td.categoryId}
-              name={label}
-              stroke={color}
-              strokeWidth={2}
-              dot={{ r: dotSize, fill: color }}
-              activeDot={{ r: 6 }}
-              connectNulls
-            />
-          );
-        })}
+          return activeTrends.map((td) => {
+            const color = colorMap.get(td.categoryId)!;
+            const name = getName(td);
+            const label = td.unit ? `${name} (${td.unit})` : name;
+            const dotSize =
+              chartData.length < 7 ? 4 : isMobile ? 2 : 3;
+
+            if (td.categoryType === "scale") {
+              return (
+                <Bar
+                  key={td.categoryId}
+                  dataKey={td.categoryId}
+                  yAxisId={td.categoryId}
+                  name={label}
+                  fill={color}
+                  fillOpacity={0.35}
+                  stroke={color}
+                  strokeWidth={1}
+                  radius={[2, 2, 0, 0]}
+                  barSize={barSize}
+                />
+              );
+            }
+
+            return (
+              <Line
+                key={td.categoryId}
+                type="monotone"
+                dataKey={td.categoryId}
+                yAxisId={td.categoryId}
+                name={label}
+                stroke={color}
+                strokeWidth={2}
+                dot={{ r: dotSize, fill: color }}
+                activeDot={{ r: 6 }}
+                connectNulls
+              />
+            );
+          });
+        })()}
 
         {/* Brush zoom (desktop, >14 points) */}
         {!isMobile && chartData.length > 14 && (
