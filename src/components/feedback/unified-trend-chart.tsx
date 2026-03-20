@@ -347,13 +347,14 @@ export function UnifiedTrendChart({
     return initial;
   });
 
-  // Settings panel state
+  // Settings panel state — load once from localStorage
   const [showSettings, setShowSettings] = React.useState(false);
+  const initialSettings = React.useRef(loadSettings());
   const [axisOverrides, setAxisOverrides] = React.useState<AxisSettingsData>(
-    () => loadSettings().axes
+    initialSettings.current.axes
   );
   const [xRange, setXRange] = React.useState<XRange>(
-    () => loadSettings().xRange
+    initialSettings.current.xRange
   );
 
   function toggleCategory(id: string) {
@@ -526,7 +527,7 @@ export function UnifiedTrendChart({
       bottom: 4,
       left: 4,
     };
-  }, [axisLayout, isMobile]);
+  }, [axisLayout]);
 
   const chartHeight = isMobile ? 240 : 360;
   const isSparse = chartData.length < 3;

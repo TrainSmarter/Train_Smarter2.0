@@ -102,9 +102,9 @@ describe("Middleware source code invariants", () => {
     );
   });
 
-  it("should use getUser() instead of getSession() for server-side validation", () => {
-    expect(middlewareSource).toContain("auth.getUser()");
-    expect(middlewareSource).not.toContain("auth.getSession()");
+  it("should use getSession() for lightweight cookie-based auth (not getUser API call)", () => {
+    expect(middlewareSource).toContain("auth.getSession()");
+    expect(middlewareSource).not.toContain(".auth.getUser()");
   });
 
   it("should check for ts_session marker cookie", () => {

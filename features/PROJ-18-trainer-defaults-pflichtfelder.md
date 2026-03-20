@@ -1,6 +1,6 @@
 # PROJ-18: Trainer Default-Kategorien & Pflichtfeld-System
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-03-19
 **Last Updated:** 2026-03-19
 

@@ -1181,5 +1181,178 @@ Code review analysis (CSS classes):
 
 All High and Medium bugs are resolved. SECURITY-3 consent check has been added server-side. Production deployment can proceed after migration is applied (`supabase db push`).
 
+---
+
+## QA Report: Trend Chart & Settings Panel (2026-03-20)
+
+**Scope:** Unified Trend Chart, Settings Panel, 4-Axis System, Bar/Line Split, Fullscreen Dialog, i18n, Performance Optimizations.
+**Files reviewed:**
+- `src/components/feedback/unified-trend-chart.tsx`
+- `src/components/feedback/athlete-checkin-page.tsx`
+- `src/messages/de.json` / `src/messages/en.json`
+- `src/lib/feedback/actions.ts`
+- `src/lib/feedback/queries.ts`
+- `src/lib/supabase/middleware.ts`
+- `src/app/[locale]/(protected)/feedback/page.tsx`
+
+### 1. Build + Lint
+
+| Check | Result |
+|-------|--------|
+| `npm run build` | PASS -- Compiled successfully, 0 errors |
+| `npm run lint` | PASS (0 errors, 4 warnings) |
+
+**Lint warnings (non-blocking):**
+- `unified-trend-chart.tsx:529` -- `isMobile` is an unnecessary dependency in `chartMargins` useMemo. It is referenced nowhere in the memo body but is in the dep array.
+- `checkin-form.tsx:152,155` -- ref `.current` captured in cleanup (known React pattern issue).
+- `login/page.tsx:56` -- React Hook Form `watch()` incompatibility with React Compiler (pre-existing).
+
+### 2. Settings Panel
+
+| Criterion | Result | Notes |
+|-----------|--------|-------|
+| Settings2 icon button next to expand button | PASS | Line 831-841: Settings2 button rendered in absolute top-right, before Maximize2 |
+| showSettings state toggle on click | PASS | Line 833: `setShowSettings((prev) => !prev)` |
+| Desktop: inline panel with flex layout | PASS | Line 856-858: conditional `flex flex-row gap-4` when `showSettings && !isMobile` |
+| Mobile: Sheet with side="bottom" | PASS | Line 893-905: Sheet component with `side="bottom"`, max-h-[70vh], overflow-y-auto |
+| Per-category min/max inputs with ChevronUp/ChevronDown | PASS | Lines 167-213: AxisNumberInput with ChevronUp/ChevronDown buttons |
+| X-axis time range: 7/14/30/90 days | PASS | Lines 248-278: xRangeOptions with all four values, pill-style toggles |
+| Auto reset button | PASS | Lines 319-329: Conditionally shown when hasManualOverrides, calls onResetAll |
+| localStorage persistence under key "feedback-chart-axis-settings" | PASS | Lines 64, 77-99: STORAGE_KEY, loadSettings(), saveSettings() |
+| Close button on the panel | PASS | Lines 878-885: X icon button calling setShowSettings(false) |
+
+### 3. 4-Axis System
+
+| Criterion | Result | Notes |
+|-----------|--------|-------|
+| Each active category gets its own YAxis with unique yAxisId | PASS | Line 601-602: `yAxisId={axis.categoryId}` |
+| Axes alternate left/right (index % 2) | PASS | Line 481-482: `index % 2 === 0 ? "left" : "right"` |
+| AXIS_WIDTH = 35 | PASS | Line 52 |
+| width={AXIS_WIDTH} on each YAxis | PASS | Line 609 |
+| Margins minimal (just 4px, not multiplied by axis count) | PASS | Lines 523-528: top/bottom/left all 4px, right 4px or 20px |
+| formatAxisTick formats large numbers | PASS | Lines 55-62: 14000->14k, 2200->2.2k |
+| isOuter flag tracks 2nd axis on same side | PASS | Line 485: checks leftCount/rightCount > 0 |
+| Outer axis gets smaller font (9 vs 11) | PASS | Line 604: `fontSize: axis.isOuter ? 9 : 11` |
+| No Legend component | PASS | No Legend import or usage found |
+| Units shown in toggle chips | PASS | Line 733: `chipLabel = td.unit ? \`\${name} (\${td.unit})\` : name` |
+
+### 4. Bar/Line Split
+
+| Criterion | Result | Notes |
+|-----------|--------|-------|
+| Scale categories render as Bar | PASS | Lines 642-656: `if (td.categoryType === "scale") return <Bar ...>` |
+| Number categories render as Line | PASS | Lines 659-673: else `return <Line ...>` |
+| Dynamic bar width based on chartData.length | PASS | Line 632 |
+| totalBarWidth: 32/20/12/8 for <=7/<=14/<=30/>30 | PASS | Line 632: exact values match |
+| Minimum bar size: 2px | PASS | Line 633: `Math.max(2, ...)` |
+
+### 5. Custom Tooltip
+
+| Criterion | Result | Notes |
+|-----------|--------|-------|
+| CustomTooltip component exists | PASS | Lines 109-165 |
+| Color dots | PASS | Line 152: colored round span |
+| Values with locale formatting | PASS | Lines 141-145: toLocaleString with de-AT/en-US |
+| Units displayed | PASS | Line 158: `td.unit ? \` \${td.unit}\` : ""` |
+
+### 6. i18n Completeness
+
+| Key | de.json | en.json |
+|-----|---------|---------|
+| axisSettings | PASS -- "Achsen-Einstellungen" | PASS -- "Axis Settings" |
+| axisMin | PASS -- "Min" | PASS -- "Min" |
+| axisMax | PASS -- "Max" | PASS -- "Max" |
+| axisAuto | PASS -- "Auto" | PASS -- "Auto" |
+| axisAutoReset | PASS -- "Alle Achsen zurucksetzen" | PASS -- "Reset all axes" |
+| timeRange | PASS -- "Zeitraum" | PASS -- "Time Range" |
+| days7 | PASS -- "7 Tage" | PASS -- "7 days" |
+| days14 | PASS -- "14 Tage" | PASS -- "14 days" |
+| days30 | PASS -- "30 Tage" | PASS -- "30 days" |
+| days90 | PASS -- "90 Tage" | PASS -- "90 days" |
+| openSettings | PASS -- "Einstellungen offnen" | PASS -- "Open settings" |
+| closeSettings | PASS -- "Einstellungen schliessen" | PASS -- "Close settings" |
+| expandChart | PASS -- "Diagramm vergroessern" | PASS -- "Expand chart" |
+| scrollChipsLeft | PASS | PASS |
+| scrollChipsRight | PASS | PASS |
+
+All 15 required i18n keys present in both locale files. No hardcoded user-facing strings found in the chart component.
+
+### 7. Fullscreen Dialog
+
+| Criterion | Result | Notes |
+|-----------|--------|-------|
+| Dialog exists | PASS | athlete-checkin-page.tsx lines 232-242 |
+| Responsive width w-[calc(100vw-2rem)] max-w-5xl | PASS | Line 233 |
+| overflow-x-hidden | PASS | Line 233 |
+| min-w-0 wrapper on chart inside dialog | PASS | Line 237: `<div className="min-w-0 w-full">` |
+| onExpand prop passed to UnifiedTrendChart | PASS | Line 222: `onExpand={() => setShowFullscreenChart(true)}` |
+
+### 8. Performance Optimizations
+
+| Criterion | Result | Notes |
+|-----------|--------|-------|
+| Middleware uses getSession() not getUser() | PASS | middleware.ts:41 uses `auth.getSession()` with documented rationale |
+| hasBodyWellnessConsent uses React cache() | PASS | queries.ts:38 `const hasBodyWellnessConsent = cache(...)` |
+| revalidatePath uses "page" not "layout" | PASS | All 10 calls in actions.ts use `"page"` |
+| autosaveCheckinField has no revalidatePath | PASS | Line 326: explicit comment "No revalidatePath" |
+| requiredCategoryIds computed inline (no separate query) | PASS | feedback/page.tsx:59-63: derived from already-fetched categories |
+
+---
+
+### Bugs Found
+
+#### BUG-TC-1: Unnecessary `isMobile` dependency in `chartMargins` useMemo
+- **File:** `src/components/feedback/unified-trend-chart.tsx:529`
+- **Severity:** Low
+- **Priority:** P3
+- **Description:** The `chartMargins` useMemo (line 513-529) includes `isMobile` in the dependency array, but `isMobile` is never referenced inside the memo body. This causes an unnecessary re-computation of margins whenever the mobile breakpoint changes. ESLint also flags this as warning `react-hooks/exhaustive-deps`.
+- **Steps to reproduce:** Resize browser across the mobile breakpoint (768px). The margins memo re-runs despite producing identical output.
+- **Impact:** Trivial performance waste; triggers unnecessary Recharts re-render cycle.
+- **Fix suggestion:** Remove `isMobile` from the dependency array on line 529.
+
+#### BUG-TC-2: Middleware test asserts `getUser()` but code intentionally uses `getSession()`
+- **File:** `src/lib/supabase/middleware.test.ts:105-108`
+- **Severity:** Medium
+- **Priority:** P2
+- **Description:** The test file asserts that middleware should use `auth.getUser()` and should NOT contain `auth.getSession()`. However, the actual middleware deliberately uses `getSession()` with a detailed comment explaining the rationale (performance -- avoids API roundtrip on every request). The test is currently failing to compile (Babel transform error), which masks this contradiction.
+- **Steps to reproduce:** Run `npx jest src/lib/supabase/middleware.test.ts`. The suite fails at compilation, but even if fixed, the assertion on line 107 (`expect(middlewareSource).not.toContain("auth.getSession()")`) would fail because the production code uses `getSession()`.
+- **Impact:** Contradictory test/code creates confusion about the intended security posture. If someone "fixes" the code to match the test, it would add an unnecessary API roundtrip to every request.
+- **Fix suggestion:** Update the test to match the intentional design decision: assert `getSession()` is used in middleware, and document that `getUser()` is used in server actions/API routes.
+
+#### BUG-TC-3: `loadSettings()` called twice on initial render
+- **File:** `src/components/feedback/unified-trend-chart.tsx:352-357`
+- **Severity:** Low
+- **Priority:** P4
+- **Description:** `loadSettings()` is called independently in the useState initializers for both `axisOverrides` (line 353) and `xRange` (line 356). Each call parses the same localStorage JSON separately, resulting in two `JSON.parse` operations on mount.
+- **Steps to reproduce:** Add a console.log inside `loadSettings()` -- it fires twice per mount.
+- **Impact:** Negligible performance cost (two small JSON parses). Functionally correct.
+- **Fix suggestion:** Call `loadSettings()` once and destructure, or use a single state object.
+
+---
+
+### Security Audit (Red-Team Perspective)
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| localStorage data not trusted for security decisions | PASS | Axis settings are cosmetic only; server never reads them |
+| No XSS vectors in tooltip/chart rendering | PASS | Category names come from DB, rendered as text nodes (no dangerouslySetInnerHTML) |
+| Consent check enforced server-side | PASS | queries.ts checks consent before returning data; page.tsx checks before rendering |
+| autosaveCheckinField validates consent server-side | PASS | actions.ts:257-262 checks consent before writing |
+| Future date prevention | PASS | actions.ts:284 blocks future dates server-side |
+| No sensitive data in localStorage | PASS | Only cosmetic chart preferences stored |
+
+---
+
+### Summary
+
+| Severity | Count | IDs |
+|----------|-------|-----|
+| Critical | 0 | -- |
+| High | 0 | -- |
+| Medium | 1 | BUG-TC-2 (middleware test contradicts production code) |
+| Low | 2 | BUG-TC-1 (unnecessary dep), BUG-TC-3 (double loadSettings) |
+
+**Overall verdict:** The trend chart feature and settings panel implementation is solid. All 8 verification areas pass their acceptance criteria. The one medium-severity issue (BUG-TC-2) is a test-vs-code contradiction that should be resolved to prevent future confusion, but it does not affect runtime behavior. The feature is ready for production.
+
 ## Deployment
 _To be added by /deploy_

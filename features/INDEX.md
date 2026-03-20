@@ -30,7 +30,7 @@
 | PROJ-16 | Test-Strategie & Qualitätssicherung | Deployed | [PROJ-16-test-strategie.md](PROJ-16-test-strategie.md) | 2026-03-12 |
 | PROJ-17 | Landing Page | Planned | [PROJ-17-landing-page.md](PROJ-17-landing-page.md) | 2026-03-19 |
 
-| PROJ-18 | Trainer Default-Kategorien & Pflichtfelder | In Review | [PROJ-18-trainer-defaults-pflichtfelder.md](PROJ-18-trainer-defaults-pflichtfelder.md) | 2026-03-19 |
+| PROJ-18 | Trainer Default-Kategorien & Pflichtfelder | Deployed | [PROJ-18-trainer-defaults-pflichtfelder.md](PROJ-18-trainer-defaults-pflichtfelder.md) | 2026-03-19 |
 
 <!-- Add features above this line -->
 
