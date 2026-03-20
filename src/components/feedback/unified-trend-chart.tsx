@@ -537,6 +537,7 @@ export function UnifiedTrendChart({
 
   // Pin Y-axes to the container edges after each render
   // Recharts auto-shifts stacked axes inward — we override the transform
+  // When 2 axes share a side, the outer one is at the edge and the inner one offset by AXIS_SPACING
   React.useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
@@ -549,25 +550,43 @@ export function UnifiedTrendChart({
       "g.recharts-yAxis.yAxis"
     );
 
+    // Sort axes into left/right groups by their current X position
+    const leftAxes: SVGGElement[] = [];
+    const rightAxes: SVGGElement[] = [];
+
     yAxes.forEach((g) => {
-      // Read current transform to get the Y value (vertical position)
       const currentTransform = g.getAttribute("transform") || "";
       const match = currentTransform.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
       if (!match) return;
-
       const currentX = parseFloat(match[1]);
-      const y = match[2];
-
-      // Determine if this is a left or right axis by its current X position
-      const isRightSide = currentX > svgWidth / 2;
-
-      if (isRightSide) {
-        // Pin to right edge: X = svgWidth - small offset
-        g.setAttribute("transform", `translate(${svgWidth - 2}, ${y})`);
+      if (currentX > svgWidth / 2) {
+        rightAxes.push(g);
       } else {
-        // Pin to left edge: X = small offset
-        g.setAttribute("transform", `translate(2, ${y})`);
+        leftAxes.push(g);
       }
+    });
+
+    const EDGE_OFFSET = 30; // enough space for tick labels to be visible
+    const AXIS_SPACING = 28; // gap between 2 axes on same side
+
+    // Left axes: outermost at EDGE_OFFSET, 2nd one at EDGE_OFFSET + AXIS_SPACING
+    leftAxes.forEach((g, i) => {
+      const transform = g.getAttribute("transform") || "";
+      const match = transform.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
+      if (!match) return;
+      const y = match[2];
+      const x = EDGE_OFFSET + i * AXIS_SPACING;
+      g.setAttribute("transform", `translate(${x}, ${y})`);
+    });
+
+    // Right axes: outermost at svgWidth - EDGE_OFFSET, 2nd one at svgWidth - EDGE_OFFSET - AXIS_SPACING
+    rightAxes.forEach((g, i) => {
+      const transform = g.getAttribute("transform") || "";
+      const match = transform.match(/translate\(\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/);
+      if (!match) return;
+      const y = match[2];
+      const x = svgWidth - EDGE_OFFSET - i * AXIS_SPACING;
+      g.setAttribute("transform", `translate(${x}, ${y})`);
     });
   }, [activeTrends, chartData, axisLayout]);
 
