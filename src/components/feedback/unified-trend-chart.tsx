@@ -469,14 +469,22 @@ export function UnifiedTrendChart({
     saveSettings({ axes: {}, xRange });
   }
 
-  // Compute axis layout: alternating left/right
+  // Compute axis layout: alternating left/right, track if outer (2nd on same side)
   const axisLayout = React.useMemo(() => {
+    let leftCount = 0;
+    let rightCount = 0;
+
     return activeTrends.map((td, index) => {
       const color = colorMap.get(td.categoryId)!;
       const isScale = td.categoryType === "scale";
       // 0 -> left, 1 -> right, 2 -> left (outer), 3 -> right (outer)
       const orientation: "left" | "right" =
         index % 2 === 0 ? "left" : "right";
+
+      // Track if this is the 2nd axis on its side (outer axis)
+      const isOuter = orientation === "left" ? leftCount > 0 : rightCount > 0;
+      if (orientation === "left") leftCount++;
+      else rightCount++;
 
       // Determine domain: manual override > scale default > auto
       const override = axisOverrides[td.categoryId];
@@ -496,6 +504,7 @@ export function UnifiedTrendChart({
         color,
         orientation,
         isScale,
+        isOuter,
         domain,
       };
     });
@@ -510,15 +519,11 @@ export function UnifiedTrendChart({
       (a) => a.orientation === "right"
     ).length;
 
-    // Extra gap when 2 axes stack on the same side
-    const leftGap = leftAxesCount > 1 ? 10 : 0;
-    const rightGap = rightAxesCount > 1 ? 10 : 0;
-
     return {
       top: 4,
-      right: rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH + rightGap : 24,
+      right: rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH : 24,
       bottom: 4,
-      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH + leftGap : 2,
+      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH : 2,
     };
   }, [axisLayout, isMobile]);
 
@@ -592,7 +597,7 @@ export function UnifiedTrendChart({
             key={axis.categoryId}
             yAxisId={axis.categoryId}
             orientation={axis.orientation}
-            tick={{ fill: axis.color, fontSize: 11, dx: axis.orientation === "left" ? -2 : 2 }}
+            tick={{ fill: axis.color, fontSize: axis.isOuter ? 9 : 11, dx: axis.orientation === "left" ? -2 : 2 }}
             tickFormatter={formatAxisTick}
             axisLine={{ stroke: axis.color, strokeWidth: 1.5 }}
             tickLine={{ stroke: axis.color, strokeWidth: 0.5 }}
