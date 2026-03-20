@@ -48,8 +48,8 @@ const CHART_COLORS = [
 
 const MAX_ACTIVE = 4;
 
-/** Axis width for each Y-axis — tight fit, compact number formatter handles overflow */
-const AXIS_WIDTH = 24;
+/** Axis width — minimal, tick labels may overflow slightly (SVG clips are disabled) */
+const AXIS_WIDTH = 18;
 
 /** Format numbers compactly for narrow axes: 14000→14k, 2200→2.2k, 150→150 */
 function formatAxisTick(value: number): string {
@@ -588,7 +588,7 @@ export function UnifiedTrendChart({
             key={axis.categoryId}
             yAxisId={axis.categoryId}
             orientation={axis.orientation}
-            tick={{ fill: axis.color, fontSize: 10 }}
+            tick={{ fill: axis.color, fontSize: 11 }}
             tickFormatter={formatAxisTick}
             axisLine={{ stroke: axis.color, strokeWidth: 1.5 }}
             tickLine={{ stroke: axis.color, strokeWidth: 0.5 }}
