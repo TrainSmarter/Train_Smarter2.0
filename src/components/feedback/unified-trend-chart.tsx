@@ -627,8 +627,10 @@ export function UnifiedTrendChart({
         {/* Series — lines for number types, bars for scale types */}
         {(() => {
           const scaleCount = activeTrends.filter((td) => td.categoryType === "scale").length;
-          const totalBarWidth = 20; // constant total width for all bars combined
-          const barSize = scaleCount > 0 ? Math.floor(totalBarWidth / scaleCount) : totalBarWidth;
+          // Dynamic total bar width based on number of data points (days shown)
+          const days = chartData.length;
+          const totalBarWidth = days <= 7 ? 32 : days <= 14 ? 20 : days <= 30 ? 12 : 8;
+          const barSize = scaleCount > 0 ? Math.max(2, Math.floor(totalBarWidth / scaleCount)) : totalBarWidth;
 
           return activeTrends.map((td) => {
             const color = colorMap.get(td.categoryId)!;
