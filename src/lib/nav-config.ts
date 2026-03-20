@@ -61,6 +61,7 @@ export const navConfig: NavEntry[] = [
       labelKey: "training",
       icon: Dumbbell,
       path: "/training",
+      allowedRoles: ["TRAINER"],
     },
   },
   {

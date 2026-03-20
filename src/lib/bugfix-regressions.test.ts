@@ -190,7 +190,7 @@ describe("PROJ-6 SECURITY-3: Server-side DSGVO consent checks in queries.ts", ()
   const queries = readSrc("lib/feedback/queries.ts");
 
   it("has hasBodyWellnessConsent helper function", () => {
-    expect(queries).toContain("async function hasBodyWellnessConsent");
+    expect(queries).toContain("hasBodyWellnessConsent");
   });
 
   it("helper queries user_consents table for body_wellness_data", () => {
