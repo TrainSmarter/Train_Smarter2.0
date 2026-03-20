@@ -510,11 +510,15 @@ export function UnifiedTrendChart({
       (a) => a.orientation === "right"
     ).length;
 
+    // Extra gap when 2 axes stack on the same side
+    const leftGap = leftAxesCount > 1 ? 10 : 0;
+    const rightGap = rightAxesCount > 1 ? 10 : 0;
+
     return {
       top: 4,
-      right: rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH : 12,
+      right: rightAxesCount > 0 ? rightAxesCount * AXIS_WIDTH + rightGap : 24,
       bottom: 4,
-      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH : 2,
+      left: leftAxesCount > 0 ? leftAxesCount * AXIS_WIDTH + leftGap : 2,
     };
   }, [axisLayout, isMobile]);
 
