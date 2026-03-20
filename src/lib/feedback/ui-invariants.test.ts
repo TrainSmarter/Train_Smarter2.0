@@ -1085,8 +1085,33 @@ describe("unified-trend-chart.tsx — 4-axis system (PROJ-6 redesign)", () => {
   });
 
   it("shows units in toggle chips", () => {
-    // Chips show "name (unit)" format
     expect(chart).toContain("td.unit");
+  });
+
+  it("renders scale categories as Bar (not Line)", () => {
+    expect(chart).toContain("<Bar");
+    expect(chart).toContain('td.categoryType === "scale"');
+  });
+
+  it("renders number categories as Line", () => {
+    expect(chart).toContain("<Line");
+    expect(chart).toContain('type="monotone"');
+  });
+
+  it("bar width is dynamic based on days shown", () => {
+    expect(chart).toContain("chartData.length");
+    expect(chart).toContain("totalBarWidth");
+    expect(chart).toContain("barSize");
+  });
+
+  it("bar total width scales: 32px (≤7d), 20px (≤14d), 12px (≤30d), 8px (>30d)", () => {
+    expect(chart).toContain("days <= 7 ? 32");
+    expect(chart).toContain("days <= 14 ? 20");
+    expect(chart).toContain("days <= 30 ? 12");
+  });
+
+  it("bar size per category has minimum of 2px", () => {
+    expect(chart).toContain("Math.max(2,");
   });
 
   it("has Settings2 button for axis settings panel", () => {
@@ -1224,4 +1249,45 @@ describe("i18n: all new keys from PROJ-6 chart + settings + sort", () => {
       expect(en).toContain(`"${key}"`);
     });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 27. Performance: middleware, consent caching, revalidation
+// ═══════════════════════════════════════════════════════════════
+
+describe("middleware.ts — getSession optimization", () => {
+  const middleware = readSrc("lib/supabase/middleware.ts");
+
+  it("uses getSession() instead of getUser() for routing", () => {
+    expect(middleware).toContain("getSession()");
+  });
+
+  it("does NOT call auth.getUser() (expensive API call)", () => {
+    expect(middleware).not.toContain(".auth.getUser()");
+  });
+});
+
+describe("queries.ts — consent caching with React cache()", () => {
+  const queries = readSrc("lib/feedback/queries.ts");
+
+  it("imports cache from react", () => {
+    expect(queries).toMatch(/import.*cache.*from\s*"react"/);
+  });
+
+  it("hasBodyWellnessConsent is wrapped with cache()", () => {
+    expect(queries).toContain("const hasBodyWellnessConsent = cache(");
+  });
+});
+
+describe("feedback page — query deduplication", () => {
+  const page = readRoot("src/app/[locale]/(protected)/feedback/page.tsx");
+
+  it("does NOT call getRequiredCategoryIds separately", () => {
+    expect(page).not.toContain("getRequiredCategoryIds(");
+  });
+
+  it("computes requiredCategoryIds inline from categories", () => {
+    expect(page).toContain("isEffectivelyRequired");
+    expect(page).toContain("requiredCategoryIds");
+  });
 });
