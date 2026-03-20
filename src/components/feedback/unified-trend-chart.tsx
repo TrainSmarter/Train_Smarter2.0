@@ -503,7 +503,6 @@ export function UnifiedTrendChart({
         unit: td.unit,
         color,
         orientation,
-        isScale,
         isOuter,
         domain,
       };

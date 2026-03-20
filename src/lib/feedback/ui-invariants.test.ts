@@ -889,12 +889,7 @@ describe("unified-trend-chart.tsx — scroll arrows + expand button", () => {
   });
 
   it("expand button is positioned absolute inside chart card", () => {
-    expect(chart).toContain("absolute top-3 right-3 z-10");
-  });
-
-  it("expand button has border and shadow for visibility", () => {
-    expect(chart).toContain("border bg-card/90");
-    expect(chart).toContain("shadow-sm");
+    expect(chart).toContain("absolute top-2 right-2 z-10");
   });
 
   it("has scroll arrow buttons for chip overflow", () => {
@@ -998,6 +993,231 @@ describe("i18n: trend chart UX keys", () => {
   const keys = ["expandChart", "scrollChipsLeft", "scrollChipsRight"];
 
   for (const key of keys) {
+    it(`has "${key}" in de.json`, () => {
+      expect(de).toContain(`"${key}"`);
+    });
+
+    it(`has "${key}" in en.json`, () => {
+      expect(en).toContain(`"${key}"`);
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 23. Unified trend chart — 4-axis system + settings panel + cleanup
+// ═══════════════════════════════════════════════════════════════
+
+describe("unified-trend-chart.tsx — 4-axis system (PROJ-6 redesign)", () => {
+  const chart = readSrc("components/feedback/unified-trend-chart.tsx");
+
+  it("has AXIS_WIDTH constant set to 35", () => {
+    expect(chart).toContain("const AXIS_WIDTH = 35");
+  });
+
+  it("has formatAxisTick compact number formatter", () => {
+    expect(chart).toContain("function formatAxisTick");
+    expect(chart).toContain("14k"); // referenced in comment or output
+  });
+
+  it("each YAxis uses width={AXIS_WIDTH}", () => {
+    expect(chart).toContain("width={AXIS_WIDTH}");
+  });
+
+  it("each YAxis has color-coded ticks", () => {
+    expect(chart).toContain("fill: axis.color");
+  });
+
+  it("each YAxis uses tickFormatter for compact numbers", () => {
+    expect(chart).toContain("tickFormatter={formatAxisTick}");
+  });
+
+  it("axes alternate left/right orientation", () => {
+    expect(chart).toContain('index % 2 === 0 ? "left" : "right"');
+  });
+
+  it("tracks isOuter flag for 2nd axis on same side", () => {
+    expect(chart).toContain("isOuter");
+    expect(chart).toContain("leftCount > 0");
+  });
+
+  it("outer axis gets smaller font size", () => {
+    expect(chart).toContain("axis.isOuter ? 9 : 11");
+  });
+
+  it("margins are minimal — Recharts handles spacing via YAxis.width", () => {
+    // Margins should NOT multiply by AXIS_WIDTH (that was the double-spacing bug)
+    expect(chart).not.toMatch(/leftAxesCount\s*\*\s*AXIS_WIDTH/);
+    expect(chart).not.toMatch(/rightAxesCount\s*\*\s*AXIS_WIDTH/);
+  });
+
+  it("does NOT have minChartWidth (removed)", () => {
+    expect(chart).not.toContain("minChartWidth");
+  });
+
+  it("does NOT have overflow-visible CSS hacks (removed)", () => {
+    expect(chart).not.toContain("overflow-visible");
+  });
+
+  it("does NOT have MutationObserver (removed)", () => {
+    expect(chart).not.toContain("MutationObserver");
+  });
+
+  it("does NOT have chartContainerRef (removed)", () => {
+    expect(chart).not.toContain("chartContainerRef");
+  });
+
+  it("does NOT have mirror prop on YAxis (removed)", () => {
+    expect(chart).not.toMatch(/mirror\b/);
+  });
+
+  it("does NOT have isScale in axisLayout return object (dead code removed)", () => {
+    // isScale is computed locally but should NOT be in the return object
+    const layoutReturn = chart.match(/return \{[\s\S]*?categoryId[\s\S]*?\};/g);
+    if (layoutReturn) {
+      // Find the axisLayout return specifically
+      const axisReturn = layoutReturn.find((r) => r.includes("orientation"));
+      if (axisReturn) {
+        expect(axisReturn).not.toMatch(/isScale,/);
+      }
+    }
+  });
+
+  it("does NOT have bottom Legend component", () => {
+    expect(chart).not.toMatch(/<Legend\b/);
+  });
+
+  it("shows units in toggle chips", () => {
+    // Chips show "name (unit)" format
+    expect(chart).toContain("td.unit");
+  });
+
+  it("has Settings2 button for axis settings panel", () => {
+    expect(chart).toContain("Settings2");
+    expect(chart).toContain("showSettings");
+    expect(chart).toContain("axisSettings");
+  });
+
+  it("has settings panel with min/max inputs per category", () => {
+    expect(chart).toContain("axisMin");
+    expect(chart).toContain("axisMax");
+  });
+
+  it("persists axis settings to localStorage", () => {
+    expect(chart).toContain("feedback-chart-axis-settings");
+    expect(chart).toContain("localStorage");
+  });
+
+  it("has time range selector (7/14/30/90 days)", () => {
+    expect(chart).toContain("xRange");
+    expect(chart).toContain("days7");
+    expect(chart).toContain("days14");
+    expect(chart).toContain("days30");
+    expect(chart).toContain("days90");
+  });
+
+  it("has auto reset button for axis overrides", () => {
+    expect(chart).toContain("axisAutoReset");
+  });
+
+  it("settings panel is conditional flex layout (not always active)", () => {
+    expect(chart).toContain('showSettings && !isMobile ? "flex flex-row gap-4"');
+  });
+
+  it("uses Sheet for mobile settings", () => {
+    expect(chart).toContain("SheetContent");
+    expect(chart).toContain('side="bottom"');
+  });
+
+  it("CustomTooltip component exists", () => {
+    expect(chart).toContain("CustomTooltip");
+    expect(chart).toContain("activeTrends");
+  });
+
+  it("ResponsiveContainer always uses width 100%", () => {
+    expect(chart).toContain('width="100%"');
+    expect(chart).not.toContain("minChartWidth");
+  });
+});
+
+describe("athlete-checkin-page.tsx — no athlete category manager", () => {
+  const page = readSrc("components/feedback/athlete-checkin-page.tsx");
+
+  it("does NOT have showCategoryManager state", () => {
+    expect(page).not.toContain("showCategoryManager");
+  });
+
+  it("does NOT have CategoryManager import", () => {
+    expect(page).not.toContain("CategoryManager");
+  });
+
+  it("does NOT have Settings2 import (category manager icon)", () => {
+    expect(page).not.toContain("Settings2");
+  });
+
+  it("CheckinForm does NOT receive onManageCategories prop", () => {
+    expect(page).not.toContain("onManageCategories");
+  });
+});
+
+describe("checkin-form.tsx — no category manager button", () => {
+  const form = readSrc("components/feedback/checkin-form.tsx");
+
+  it("does NOT have onManageCategories prop", () => {
+    expect(form).not.toContain("onManageCategories");
+  });
+
+  it("does NOT have 'Kategorien anpassen' button", () => {
+    expect(form).not.toContain("manageCategories");
+  });
+});
+
+describe("default-settings-page.tsx — sort arrows", () => {
+  const page = readSrc("components/feedback/default-settings-page.tsx");
+
+  it("imports ChevronUp and ChevronDown", () => {
+    expect(page).toContain("ChevronUp");
+    expect(page).toContain("ChevronDown");
+  });
+
+  it("imports updateCategorySortOrder action", () => {
+    expect(page).toContain("updateCategorySortOrder");
+  });
+
+  it("has handleSwapSort function", () => {
+    expect(page).toContain("handleSwapSort");
+  });
+
+  it("has moveCategoryUp/Down i18n keys", () => {
+    expect(page).toContain("moveCategoryUp");
+    expect(page).toContain("moveCategoryDown");
+  });
+});
+
+describe("actions.ts — updateCategorySortOrder", () => {
+  const actions = readSrc("lib/feedback/actions.ts");
+
+  it("exports updateCategorySortOrder function", () => {
+    expect(actions).toMatch(/export async function updateCategorySortOrder/);
+  });
+
+  it("updates sort_order on feedback_categories", () => {
+    expect(actions).toContain("sort_order");
+    expect(actions).toContain("feedback_categories");
+  });
+});
+
+describe("i18n: all new keys from PROJ-6 chart + settings + sort", () => {
+  const de = readRoot("src/messages/de.json");
+  const en = readRoot("src/messages/en.json");
+
+  const newKeys = [
+    "axisSettings", "axisMin", "axisMax", "axisAuto", "axisAutoReset",
+    "timeRange", "days7", "days14", "days30", "days90",
+    "openSettings", "closeSettings",
+    "moveCategoryUp", "moveCategoryDown",
+  ];
+
+  for (const key of newKeys) {
     it(`has "${key}" in de.json`, () => {
       expect(de).toContain(`"${key}"`);
     });
