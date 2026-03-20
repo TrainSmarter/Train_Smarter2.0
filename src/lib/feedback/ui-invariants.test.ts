@@ -942,11 +942,21 @@ describe("athlete-checkin-page.tsx — layout, sticky, fullscreen dialog", () =>
     expect(page).not.toMatch(/lg:self-start/);
   });
 
-  it("has fullscreen chart dialog", () => {
+  it("has fullscreen chart dialog with responsive width", () => {
     expect(page).toContain("showFullscreenChart");
     expect(page).toContain("setShowFullscreenChart");
     expect(page).toContain("DialogContent");
-    expect(page).toContain("max-w-[95vw]");
+    // Responsive: calc-based width for mobile/tablet, capped on desktop
+    expect(page).toContain("w-[calc(100vw-2rem)]");
+    expect(page).toContain("max-w-5xl");
+  });
+
+  it("fullscreen dialog prevents horizontal overflow", () => {
+    expect(page).toContain("overflow-x-hidden");
+  });
+
+  it("fullscreen dialog chart has min-w-0 wrapper (prevents flexbox overflow)", () => {
+    expect(page).toContain("min-w-0 w-full");
   });
 
   it("passes onExpand to UnifiedTrendChart", () => {
