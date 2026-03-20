@@ -3,14 +3,14 @@
 import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
-import { Globe, User, GraduationCap, Plus } from "lucide-react";
+import { Globe, User, GraduationCap, Plus, ChevronUp, ChevronDown } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { toggleCategoryOverride, updateAthleteRequired } from "@/lib/feedback/actions";
+import { toggleCategoryOverride, updateAthleteRequired, updateCategorySortOrder } from "@/lib/feedback/actions";
 import { CategoryFormModal } from "./category-form-modal";
 import type { ActiveCategory, CategoryScope, TrainerCategoryDefault } from "@/lib/feedback/types";
 
@@ -61,6 +61,8 @@ export function CategoryManager({
     return states;
   });
   const [togglingId, setTogglingId] = React.useState<string | null>(null);
+  const [sortingId, setSortingId] = React.useState<string | null>(null);
+  const [localCategories, setLocalCategories] = React.useState<ActiveCategory[]>(categories);
 
   // Track a serialized version of categories to detect real prop changes from server
   const categoriesKey = React.useMemo(
@@ -79,6 +81,7 @@ export function CategoryManager({
     }
     setLocalStates(activeStates);
     setLocalRequiredStates(requiredStates);
+    setLocalCategories(categories);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoriesKey]);
 
@@ -93,18 +96,79 @@ export function CategoryManager({
     return map;
   }, [trainerDefaults]);
 
-  // Group by scope
+  // Group by scope — use localCategories for optimistic sort order
   const grouped = React.useMemo(() => {
     const groups: Record<CategoryScope, ActiveCategory[]> = {
       global: [],
       trainer: [],
       athlete: [],
     };
-    for (const cat of categories) {
+    for (const cat of localCategories) {
       groups[cat.scope].push(cat);
     }
+    // Sort each group by sortOrder
+    groups.global.sort((a, b) => a.sortOrder - b.sortOrder);
+    groups.trainer.sort((a, b) => a.sortOrder - b.sortOrder);
+    groups.athlete.sort((a, b) => a.sortOrder - b.sortOrder);
     return groups;
-  }, [categories]);
+  }, [localCategories]);
+
+  async function handleSwapSort(
+    items: ActiveCategory[],
+    index: number,
+    direction: "up" | "down"
+  ) {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+
+    const current = items[index];
+    const target = items[targetIndex];
+    const currentSort = current.sortOrder;
+    const targetSort = target.sortOrder;
+
+    setSortingId(current.id);
+
+    // Optimistic update
+    setLocalCategories((prev) =>
+      prev.map((c) => {
+        if (c.id === current.id) return { ...c, sortOrder: targetSort };
+        if (c.id === target.id) return { ...c, sortOrder: currentSort };
+        return c;
+      })
+    );
+
+    try {
+      const [r1, r2] = await Promise.all([
+        updateCategorySortOrder(current.id, targetSort),
+        updateCategorySortOrder(target.id, currentSort),
+      ]);
+      if (!r1.success || !r2.success) {
+        // Revert
+        setLocalCategories((prev) =>
+          prev.map((c) => {
+            if (c.id === current.id) return { ...c, sortOrder: currentSort };
+            if (c.id === target.id) return { ...c, sortOrder: targetSort };
+            return c;
+          })
+        );
+        toast.error(t("sortOrderError"));
+      } else {
+        toast.success(t("sortOrderSaved"));
+      }
+    } catch {
+      // Revert
+      setLocalCategories((prev) =>
+        prev.map((c) => {
+          if (c.id === current.id) return { ...c, sortOrder: currentSort };
+          if (c.id === target.id) return { ...c, sortOrder: targetSort };
+          return c;
+        })
+      );
+      toast.error(t("sortOrderError"));
+    } finally {
+      setSortingId(null);
+    }
+  }
 
   async function handleToggle(categoryId: string, active: boolean) {
     setTogglingId(categoryId);
@@ -176,7 +240,7 @@ export function CategoryManager({
               {t(config.labelKey)} ({items.length})
             </h3>
             <div className="space-y-2">
-              {items.map((cat) => {
+              {items.map((cat, index) => {
                 const name = locale === "en" ? cat.name.en : cat.name.de;
                 const isActive = localStates[cat.id] ?? cat.isActive;
                 const isToggling = togglingId === cat.id;
@@ -184,6 +248,9 @@ export function CategoryManager({
                 const isRequired = localRequiredStates[cat.id] ?? cat.isEffectivelyRequired;
                 const isTextType = cat.type === "text";
                 const showIndividual = isTrainerView && trainerDefaults && isIndividual(cat);
+                const isFirst = index === 0;
+                const isLast = index === items.length - 1;
+                const isSorting = sortingId === cat.id;
 
                 return (
                   <div
@@ -194,6 +261,31 @@ export function CategoryManager({
                     )}
                   >
                     <div className="flex items-center gap-3 min-w-0">
+                      {/* Sort arrows */}
+                      {isTrainerView && items.length > 1 && (
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            disabled={isFirst || isSorting}
+                            onClick={() => handleSwapSort(items, index, "up")}
+                            aria-label={t("moveCategoryUp")}
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            disabled={isLast || isSorting}
+                            onClick={() => handleSwapSort(items, index, "down")}
+                            aria-label={t("moveCategoryDown")}
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                       <div className="space-y-0.5 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Label className="text-sm font-medium">{name}</Label>

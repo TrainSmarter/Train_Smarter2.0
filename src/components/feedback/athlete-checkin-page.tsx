@@ -2,9 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Settings2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +14,6 @@ import { CheckinForm } from "./checkin-form";
 import { WeekStrip } from "./week-strip";
 import { UnifiedTrendChart } from "./unified-trend-chart";
 import { StreakBadge } from "./streak-badge";
-import { CategoryManager } from "./category-manager";
 import { loadWeekCheckins } from "@/lib/feedback/actions";
 import { computeStreak } from "@/lib/feedback/dot-color";
 import type {
@@ -59,7 +56,6 @@ export function AthleteCheckinPage({
   requiredCategoryIds,
 }: AthleteCheckinPageProps) {
   const t = useTranslations("feedback");
-  const [showCategoryManager, setShowCategoryManager] = React.useState(false);
   const [showFullscreenChart, setShowFullscreenChart] = React.useState(false);
 
   // Today's date
@@ -211,7 +207,6 @@ export function AthleteCheckinPage({
                 date={selectedDate}
                 existingValues={currentCheckin?.values}
                 onFieldSaved={handleFieldSaved}
-                onManageCategories={() => setShowCategoryManager(true)}
                 backfillMode={backfillMode}
               />
             </div>
@@ -246,18 +241,6 @@ export function AthleteCheckinPage({
         </Dialog>
       )}
 
-      {/* Category Manager Dialog */}
-      <Dialog open={showCategoryManager} onOpenChange={setShowCategoryManager}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5" />
-              {t("manageCategories")}
-            </DialogTitle>
-          </DialogHeader>
-          <CategoryManager categories={categories} />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

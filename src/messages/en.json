@@ -1079,7 +1079,11 @@
     "requiredFieldsMissing": "Required fields missing",
     "expandChart": "Expand chart",
     "scrollChipsLeft": "Scroll categories left",
-    "scrollChipsRight": "Scroll categories right"
+    "scrollChipsRight": "Scroll categories right",
+    "moveCategoryUp": "Move category up",
+    "moveCategoryDown": "Move category down",
+    "sortOrderSaved": "Order saved",
+    "sortOrderError": "Error saving order"
   },
   "errors": {
     "authPageError": "An error occurred while loading the page.",

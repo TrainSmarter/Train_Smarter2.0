@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { Check, Loader2, Settings2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -48,8 +47,6 @@ interface CheckinFormProps {
   existingValues?: Record<string, { numericValue: number | null; textValue: string | null }>;
   /** Callback after a field is successfully saved */
   onFieldSaved?: (categoryId: string, numericValue: number | null, textValue: string | null) => void;
-  /** Link/callback to open category manager */
-  onManageCategories?: () => void;
   /** Backfill mode controlling how far back entries can be made */
   backfillMode?: BackfillMode;
 }
@@ -61,7 +58,6 @@ export function CheckinForm({
   date,
   existingValues,
   onFieldSaved,
-  onManageCategories,
   backfillMode,
 }: CheckinFormProps) {
   const t = useTranslations("feedback");
@@ -295,17 +291,6 @@ export function CheckinForm({
     return (
       <div className="rounded-lg border border-dashed p-8 text-center">
         <p className="text-muted-foreground">{t("noCategoriesActive")}</p>
-        {onManageCategories && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4"
-            onClick={onManageCategories}
-            iconLeft={<Settings2 className="h-4 w-4" />}
-          >
-            {t("manageCategories")}
-          </Button>
-        )}
       </div>
     );
   }
@@ -572,20 +557,6 @@ export function CheckinForm({
           );
       })}
 
-      {/* Manage categories button */}
-      {onManageCategories && (
-        <div className="pt-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onManageCategories}
-            iconLeft={<Settings2 className="h-4 w-4" />}
-          >
-            {t("manageCategories")}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

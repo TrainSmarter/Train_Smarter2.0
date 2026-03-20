@@ -33,11 +33,73 @@ const CHART_COLORS = [
 
 const MAX_ACTIVE = 4;
 
+/** Axis width for each Y-axis */
+const AXIS_WIDTH = 42;
+
 interface UnifiedTrendChartProps {
   trendData: AthleteTrendData[];
   className?: string;
   /** Callback to open fullscreen view — renders expand button inside chart area */
   onExpand?: () => void;
+}
+
+/** Custom tooltip that shows colored dots + category name + value + unit */
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  activeTrends,
+  colorMap,
+  locale,
+  getName,
+}: {
+  active?: boolean;
+  payload?: Array<{ dataKey: string; value: number | null }>;
+  label?: string;
+  activeTrends: AthleteTrendData[];
+  colorMap: Map<string, string>;
+  locale: string;
+  getName: (td: AthleteTrendData) => string;
+}) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div
+      className="rounded-lg border bg-card px-3 py-2 shadow-md"
+      style={{ fontSize: "12px" }}
+    >
+      <p className="font-semibold mb-1">{label}</p>
+      {payload.map((entry) => {
+        const td = activeTrends.find((t) => t.categoryId === entry.dataKey);
+        if (!td || entry.value === null || entry.value === undefined)
+          return null;
+        const color = colorMap.get(td.categoryId)!;
+        const name = getName(td);
+        const formatted =
+          typeof entry.value === "number"
+            ? entry.value.toLocaleString(
+                locale === "en" ? "en-US" : "de-AT"
+              )
+            : entry.value;
+        return (
+          <div
+            key={entry.dataKey}
+            className="flex items-center gap-2 py-0.5"
+          >
+            <span
+              className="h-2.5 w-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: color }}
+            />
+            <span className="text-muted-foreground">{name}</span>
+            <span className="ml-auto font-medium tabular-nums pl-3">
+              {formatted}
+              {td.unit ? ` ${td.unit}` : ""}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function UnifiedTrendChart({
@@ -78,8 +140,11 @@ export function UnifiedTrendChart({
     return map;
   }, [trendData]);
 
-  const getName = (td: AthleteTrendData) =>
-    locale === "en" ? td.categoryName.en : td.categoryName.de;
+  const getName = React.useCallback(
+    (td: AthleteTrendData) =>
+      locale === "en" ? td.categoryName.en : td.categoryName.de,
+    [locale]
+  );
 
   const activeTrends = React.useMemo(() => {
     const ordered: AthleteTrendData[] = [];
@@ -113,12 +178,57 @@ export function UnifiedTrendChart({
       }));
   }, [activeTrends, locale]);
 
-  // Two shared axes: "number" (left) and "scale" (right)
-  const hasNumberAxis = activeTrends.some((td) => td.categoryType === "number");
-  const hasScaleAxis = activeTrends.some((td) => td.categoryType === "scale");
+  // Compute axis layout: alternating left/right, with offsets for 3rd/4th
+  const axisLayout = React.useMemo(() => {
+    return activeTrends.map((td, index) => {
+      const color = colorMap.get(td.categoryId)!;
+      const isScale = td.categoryType === "scale";
+      // 0 → left, 1 → right, 2 → left (outer), 3 → right (outer)
+      const orientation: "left" | "right" =
+        index % 2 === 0 ? "left" : "right";
+      const isOuter = index >= 2;
+
+      return {
+        categoryId: td.categoryId,
+        categoryType: td.categoryType,
+        unit: td.unit,
+        color,
+        orientation,
+        isOuter,
+        isScale,
+        domain: isScale
+          ? ([0, "dataMax + 1"] as [number, string])
+          : (["auto", "auto"] as [string, string]),
+      };
+    });
+  }, [activeTrends, colorMap]);
+
+  // Dynamic margins based on number of axes
+  const chartMargins = React.useMemo(() => {
+    const leftAxes = axisLayout.filter((a) => a.orientation === "left").length;
+    const rightAxes = axisLayout.filter(
+      (a) => a.orientation === "right"
+    ).length;
+
+    return {
+      top: 8,
+      right: rightAxes > 0 ? rightAxes * AXIS_WIDTH : 12,
+      bottom: isMobile ? 4 : 8,
+      left: leftAxes > 0 ? leftAxes * AXIS_WIDTH : 12,
+    };
+  }, [axisLayout, isMobile]);
 
   const chartHeight = isMobile ? 240 : 360;
   const isSparse = chartData.length < 3;
+
+  // Minimum chart width for mobile scrolling: ensure all axes fit
+  const minChartWidth = React.useMemo(() => {
+    if (!isMobile) return undefined;
+    const axisCount = activeTrends.length;
+    if (axisCount <= 2) return undefined; // fits fine
+    // For 3-4 axes on mobile, ensure minimum width
+    return Math.max(480, 280 + axisCount * AXIS_WIDTH * 2);
+  }, [isMobile, activeTrends.length]);
 
   // Chip scroll state — must be declared before any early returns (React hooks rules)
   const chipsRef = React.useRef<HTMLDivElement>(null);
@@ -143,7 +253,12 @@ export function UnifiedTrendChart({
 
   if (trendData.length === 0) {
     return (
-      <div className={cn("flex items-center justify-center rounded-lg border border-dashed p-8", className)}>
+      <div
+        className={cn(
+          "flex items-center justify-center rounded-lg border border-dashed p-8",
+          className
+        )}
+      >
         <p className="text-sm text-muted-foreground">{t("noTrendData")}</p>
       </div>
     );
@@ -152,6 +267,123 @@ export function UnifiedTrendChart({
   function scrollChips(direction: -1 | 1) {
     chipsRef.current?.scrollBy({ left: direction * 200, behavior: "smooth" });
   }
+
+  const chartContent = (
+    <ResponsiveContainer
+      width={minChartWidth ?? "100%"}
+      height={chartHeight}
+    >
+      <ComposedChart data={chartData} margin={chartMargins}>
+        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+
+        <XAxis
+          dataKey="label"
+          tick={{ fontSize: 11 }}
+          axisLine={false}
+          tickLine={false}
+          interval={isMobile ? "preserveStartEnd" : "preserveEnd"}
+          angle={chartData.length > 14 && isMobile ? -30 : 0}
+          textAnchor={
+            chartData.length > 14 && isMobile ? "end" : "middle"
+          }
+          height={chartData.length > 14 && isMobile ? 40 : 30}
+        />
+
+        {/* Independent Y-axis per active category */}
+        {axisLayout.map((axis) => (
+          <YAxis
+            key={axis.categoryId}
+            yAxisId={axis.categoryId}
+            orientation={axis.orientation}
+            tick={{ fill: axis.color, fontSize: 10 }}
+            axisLine={{ stroke: axis.color, strokeWidth: 1.5 }}
+            tickLine={{ stroke: axis.color }}
+            width={AXIS_WIDTH}
+            domain={axis.domain}
+            allowDecimals={!axis.isScale}
+            label={
+              axis.unit
+                ? {
+                    value: axis.unit,
+                    angle: axis.orientation === "left" ? -90 : 90,
+                    position:
+                      axis.orientation === "left"
+                        ? "insideLeft"
+                        : "insideRight",
+                    fill: axis.color,
+                    fontSize: 10,
+                    dy: -10,
+                  }
+                : undefined
+            }
+          />
+        ))}
+
+        <Tooltip
+          content={
+            <CustomTooltip
+              activeTrends={activeTrends}
+              colorMap={colorMap}
+              locale={locale}
+              getName={getName}
+            />
+          }
+        />
+
+        {/* Series */}
+        {activeTrends.map((td) => {
+          const color = colorMap.get(td.categoryId)!;
+          const name = getName(td);
+          const label = td.unit ? `${name} (${td.unit})` : name;
+          const dotSize =
+            chartData.length < 7 ? 4 : isMobile ? 2 : 3;
+
+          if (td.categoryType === "scale") {
+            return (
+              <Bar
+                key={td.categoryId}
+                dataKey={td.categoryId}
+                yAxisId={td.categoryId}
+                name={label}
+                fill={color}
+                fillOpacity={0.25}
+                stroke={color}
+                strokeWidth={1}
+                radius={[3, 3, 0, 0]}
+                maxBarSize={20}
+              />
+            );
+          }
+
+          return (
+            <Line
+              key={td.categoryId}
+              type="monotone"
+              dataKey={td.categoryId}
+              yAxisId={td.categoryId}
+              name={label}
+              stroke={color}
+              strokeWidth={2}
+              dot={{ r: dotSize, fill: color }}
+              activeDot={{ r: 6 }}
+              connectNulls
+            />
+          );
+        })}
+
+        {/* Brush zoom (desktop, >14 points) */}
+        {!isMobile && chartData.length > 14 && (
+          <Brush
+            dataKey="label"
+            height={24}
+            stroke="hsl(var(--primary))"
+            fill="hsl(var(--muted))"
+            travellerWidth={8}
+          />
+        )}
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -203,7 +435,11 @@ export function UnifiedTrendChart({
                 <span
                   className="h-2 w-2 rounded-full shrink-0"
                   style={{
-                    backgroundColor: isActive ? "rgba(255,255,255,0.6)" : isFull ? "transparent" : color,
+                    backgroundColor: isActive
+                      ? "rgba(255,255,255,0.6)"
+                      : isFull
+                        ? "transparent"
+                        : color,
                     opacity: isFull ? 0.3 : 1,
                   }}
                 />
@@ -230,25 +466,38 @@ export function UnifiedTrendChart({
       {/* No categories selected */}
       {activeTrends.length === 0 ? (
         <div className="flex items-center justify-center rounded-lg border border-dashed p-12">
-          <p className="text-sm text-muted-foreground">{t("selectCategories")}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("selectCategories")}
+          </p>
         </div>
       ) : isSparse ? (
         /* Too few data points — show values as summary instead of empty chart */
         <div className="rounded-lg border bg-card p-4">
-          <p className="text-xs text-muted-foreground mb-3">{t("tooFewDataPoints")}</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            {t("tooFewDataPoints")}
+          </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {activeTrends.map((td) => {
               const color = colorMap.get(td.categoryId)!;
               const name = getName(td);
-              const lastPoint = td.data.filter((d) => d.value !== null).at(-1);
+              const lastPoint = td.data
+                .filter((d) => d.value !== null)
+                .at(-1);
               return (
                 <div key={td.categoryId} className="text-center">
-                  <span className="text-[11px] text-muted-foreground block">{name}</span>
-                  <span className="text-xl font-semibold tabular-nums" style={{ color }}>
-                    {lastPoint?.value ?? "–"}
+                  <span className="text-[11px] text-muted-foreground block">
+                    {name}
+                  </span>
+                  <span
+                    className="text-xl font-semibold tabular-nums"
+                    style={{ color }}
+                  >
+                    {lastPoint?.value ?? "\u2013"}
                   </span>
                   {td.unit && (
-                    <span className="text-xs text-muted-foreground ml-1">{td.unit}</span>
+                    <span className="text-xs text-muted-foreground ml-1">
+                      {td.unit}
+                    </span>
                   )}
                 </div>
               );
@@ -269,119 +518,18 @@ export function UnifiedTrendChart({
               <Maximize2 className="h-4 w-4 text-foreground" />
             </button>
           )}
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <ComposedChart
-              data={chartData}
-              margin={{
-                top: 8,
-                right: hasScaleAxis ? 4 : 12,
-                bottom: isMobile ? 4 : 8,
-                left: 0,
-              }}
+
+          {/* Horizontally scrollable wrapper for mobile when 3-4 axes active */}
+          {minChartWidth ? (
+            <div
+              className="overflow-x-auto -mx-3 px-3 sm:-mx-4 sm:px-4"
+              style={{ scrollbarWidth: "thin" }}
             >
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                interval={isMobile ? "preserveStartEnd" : "preserveEnd"}
-                angle={chartData.length > 14 && isMobile ? -30 : 0}
-                textAnchor={chartData.length > 14 && isMobile ? "end" : "middle"}
-                height={chartData.length > 14 && isMobile ? 40 : 30}
-              />
-
-              {/* Left Y-axis: numeric values (shared for all number types) */}
-              {hasNumberAxis && (
-                <YAxis
-                  yAxisId="number"
-                  tick={{ fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={38}
-                  domain={["auto", "auto"]}
-                />
-              )}
-
-              {/* Right Y-axis: scale values (shared, 0-based) */}
-              {hasScaleAxis && (
-                <YAxis
-                  yAxisId="scale"
-                  orientation="right"
-                  tick={{ fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={28}
-                  domain={[0, "dataMax + 1"]}
-                  allowDecimals={false}
-                />
-              )}
-
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "8px",
-                  border: "1px solid hsl(var(--border))",
-                  background: "hsl(var(--card))",
-                  fontSize: "12px",
-                  padding: "8px 12px",
-                }}
-                labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-              />
-
-              {/* Series */}
-              {activeTrends.map((td) => {
-                const color = colorMap.get(td.categoryId)!;
-                const yAxisId = td.categoryType === "scale" ? "scale" : "number";
-                const name = getName(td);
-                const label = td.unit ? `${name} (${td.unit})` : name;
-                const dotSize = chartData.length < 7 ? 4 : isMobile ? 2 : 3;
-
-                if (td.categoryType === "scale") {
-                  return (
-                    <Bar
-                      key={td.categoryId}
-                      dataKey={td.categoryId}
-                      yAxisId={yAxisId}
-                      name={label}
-                      fill={color}
-                      fillOpacity={0.25}
-                      stroke={color}
-                      strokeWidth={1}
-                      radius={[3, 3, 0, 0]}
-                      maxBarSize={20}
-                    />
-                  );
-                }
-
-                return (
-                  <Line
-                    key={td.categoryId}
-                    type="monotone"
-                    dataKey={td.categoryId}
-                    yAxisId={yAxisId}
-                    name={label}
-                    stroke={color}
-                    strokeWidth={2}
-                    dot={{ r: dotSize, fill: color }}
-                    activeDot={{ r: 6 }}
-                    connectNulls
-                  />
-                );
-              })}
-
-              {/* Brush zoom (desktop, >14 points) */}
-              {!isMobile && chartData.length > 14 && (
-                <Brush
-                  dataKey="label"
-                  height={24}
-                  stroke="hsl(var(--primary))"
-                  fill="hsl(var(--muted))"
-                  travellerWidth={8}
-                />
-              )}
-            </ComposedChart>
-          </ResponsiveContainer>
+              {chartContent}
+            </div>
+          ) : (
+            chartContent
+          )}
 
           {/* Color legend below chart */}
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 px-1">
@@ -389,10 +537,17 @@ export function UnifiedTrendChart({
               const color = colorMap.get(td.categoryId)!;
               const name = getName(td);
               return (
-                <div key={td.categoryId} className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: color }} />
+                <div
+                  key={td.categoryId}
+                  className="flex items-center gap-1.5"
+                >
+                  <span
+                    className="h-2.5 w-2.5 rounded-sm shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
                   <span className="text-[11px] text-muted-foreground">
-                    {name}{td.unit ? ` (${td.unit})` : ""}
+                    {name}
+                    {td.unit ? ` (${td.unit})` : ""}
                   </span>
                 </div>
               );

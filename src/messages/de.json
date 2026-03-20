@@ -1079,7 +1079,11 @@
     "requiredFieldsMissing": "Pflichtfelder fehlen",
     "expandChart": "Diagramm vergrößern",
     "scrollChipsLeft": "Kategorien nach links scrollen",
-    "scrollChipsRight": "Kategorien nach rechts scrollen"
+    "scrollChipsRight": "Kategorien nach rechts scrollen",
+    "moveCategoryUp": "Kategorie nach oben verschieben",
+    "moveCategoryDown": "Kategorie nach unten verschieben",
+    "sortOrderSaved": "Reihenfolge gespeichert",
+    "sortOrderError": "Fehler beim Speichern der Reihenfolge"
   },
   "errors": {
     "authPageError": "Beim Laden der Seite ist ein Fehler aufgetreten.",

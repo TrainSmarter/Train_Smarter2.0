@@ -82,6 +82,11 @@ const updateTrainerDefaultSchema = z.object({
   value: z.boolean(),
 });
 
+const updateCategorySortOrderSchema = z.object({
+  categoryId: z.string().uuid(),
+  newSortOrder: z.number().int().min(0),
+});
+
 const updateAthleteRequiredSchema = z.object({
   athleteId: z.string().uuid(),
   categoryId: z.string().uuid(),
@@ -782,6 +787,43 @@ export async function updateAthleteRequired(
   if (rpcError) {
     console.error("Failed to update athlete required:", rpcError);
     return { success: false, error: "RPC_FAILED" };
+  }
+
+  revalidatePath("/feedback", "layout");
+  return { success: true };
+}
+
+// ── Update Category Sort Order ───────────────────────────────
+
+export async function updateCategorySortOrder(
+  categoryId: string,
+  newSortOrder: number
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  // Validate input
+  const parsed = updateCategorySortOrderSchema.safeParse({ categoryId, newSortOrder });
+  if (!parsed.success) {
+    return { success: false, error: "INVALID_INPUT" };
+  }
+
+  // Update the sort_order for this category
+  const { error: updateError } = await supabase
+    .from("feedback_categories")
+    .update({ sort_order: newSortOrder })
+    .eq("id", categoryId);
+
+  if (updateError) {
+    console.error("Failed to update category sort order:", updateError);
+    return { success: false, error: "UPDATE_FAILED" };
   }
 
   revalidatePath("/feedback", "layout");
