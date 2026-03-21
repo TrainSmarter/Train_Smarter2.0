@@ -68,14 +68,34 @@ KI-gestützte Vorausfüllung von Übungsfeldern: Trainer oder Admin gibt den Üb
 - [ ] Funktioniert beim Erstellen (Create) UND beim Bearbeiten (Edit) von Übungen
 
 ### Einzelfeld-Optimierung
-- [ ] Neben jedem Textfeld (Beschreibung DE, Beschreibung EN) erscheint ein kleines Sparkles-Icon
-- [ ] Klick auf das Icon optimiert NUR dieses eine Feld per KI (z.B. bessere Formulierung, mehr Detail)
-- [ ] Der vorherige Feldinhalt wird gespeichert (im State, nicht in DB)
+- [ ] Neben jedem Textfeld (Name DE, Name EN, Beschreibung DE, Beschreibung EN) erscheint ein kleines Sparkles-Icon
+- [ ] Klick auf das Icon optimiert NUR dieses eine Feld per KI (eigener leichtgewichtiger Call)
+- [ ] Eigene Server Action `optimizeExerciseField(fieldName, currentValue, exerciseName, locale)`
+- [ ] Der Prompt für die Einzelfeld-Optimierung ist **vom Admin anpassbar** (siehe Admin-Prompt-Editor)
+- [ ] Der vorherige Feldinhalt wird im React State gespeichert (nicht in DB)
 - [ ] Nach der Optimierung erscheint ein "Rückgängig"-Button (Undo-Icon) neben dem Feld
 - [ ] Klick auf Undo stellt den vorherigen Inhalt wieder her
-- [ ] Undo ist nur bis zum Speichern der Übung verfügbar (danach wird der neue Wert übernommen)
+- [ ] Undo bleibt verfügbar bis zum Speichern — auch wenn der User das Feld manuell weiter bearbeitet
 - [ ] Einzelfeld-Optimierung zählt als 1 KI-Aufruf (Rate Limit)
-- [ ] Optimierung funktioniert auch wenn das Feld bereits befüllt ist (bewusstes Überschreiben durch explizite Aktion)
+- [ ] Optimierung funktioniert auch wenn das Feld bereits befüllt ist (bewusstes Überschreiben durch explizite Einzelfeld-Aktion — im Gegensatz zur Komplett-Vorausfüllung die leere Felder nicht überschreibt)
+
+### Admin: Prompt-Editor
+- [ ] Route: `/admin/settings` (erweiterte Sektion unter dem Modell-Dropdown)
+- [ ] Admin kann zwei Prompt-Templates anpassen:
+  1. **System-Prompt "Alle Felder vorausfüllen"** — der Haupt-Prompt der bei "KI vorausfüllen" verwendet wird
+  2. **System-Prompt "Einzelfeld optimieren"** — der Prompt der bei Einzelfeld-Klick verwendet wird
+- [ ] Beide Prompts werden in `admin_settings` gespeichert (Keys: `ai_prompt_suggest_all`, `ai_prompt_optimize_field`)
+- [ ] Default-Prompts sind hardcoded und werden als Fallback verwendet wenn kein Custom-Prompt gespeichert ist
+- [ ] Prompt-Editor: Textarea mit Syntax-Hinweisen (welche Variablen verfügbar sind)
+- [ ] Verfügbare Variablen im Prompt:
+  - `{{exercise_name}}` — Name der Übung
+  - `{{field_name}}` — Name des zu optimierenden Felds (nur bei Einzelfeld)
+  - `{{current_value}}` — Aktueller Feldinhalt (nur bei Einzelfeld)
+  - `{{language}}` — Zielsprache (DE/EN)
+  - `{{taxonomy_muscles}}` — Automatisch eingefügte Muskelgruppen-Liste mit UUIDs
+  - `{{taxonomy_equipment}}` — Automatisch eingefügte Equipment-Liste mit UUIDs
+- [ ] "Auf Default zurücksetzen" Button pro Prompt
+- [ ] Prompts werden NICHT an den Trainer gezeigt (Admin-only)
 
 ### Benutzer-Freigabe durch Admin
 - [ ] Admin kann in `/admin/users` (Slide-Over) pro Benutzer die KI-Funktion aktivieren/deaktivieren
@@ -105,6 +125,7 @@ KI-gestützte Vorausfüllung von Übungsfeldern: Trainer oder Admin gibt den Üb
   - Zeitraum-Select: Tag / Woche / Monat
   - Limit-Eingabe: Zahl
   - "Speichern" Button
+- [ ] **NEU:** Prompt-Editor (siehe "Admin: Prompt-Editor" Sektion oben)
 - [ ] **NEU:** Übersicht aktive Trainer + deren aktueller Verbrauch (optional, spätere Iteration)
 
 ### Transparenz
@@ -137,14 +158,19 @@ KI-gestützte Vorausfüllung von Übungsfeldern: Trainer oder Admin gibt den Üb
 
 ## Technical Requirements
 
-- Security: `suggestExerciseDetails` Action prüft Authentication (nicht nur Admin, sondern alle eingeloggten Trainer)
-- Security: Rate Limiting wird server-seitig geprüft (nicht client-seitig umgehbar)
+- Security: `suggestExerciseDetails` Action prüft `is_platform_admin || app_metadata.ai_enabled === true`
+- Security: Rate Limiting wird server-seitig geprüft VOR dem KI-Call (nicht client-seitig umgehbar)
 - Security: API Keys werden NIE an den Client gesendet (nur Server Actions)
+- Security: Trainer kann sich nicht selbst `ai_enabled` setzen (benötigt Admin API + Service Role Key)
 - Performance: KI-Call dauert 1-3 Sekunden (Haiku), bis zu 5 Sekunden (Sonnet/GPT-4o)
 - Performance: Rate-Limit-Check ist ein einfacher COUNT-Query auf `ai_usage_log` (< 10ms)
-- Datenmodell: `ai_usage_log` Tabelle mit `user_id`, `model_id`, `created_at` — für Zählung und Audit
+- Performance: Zähler-Reset ist query-basiert (kein Cron): `COUNT(*) WHERE created_at > period_start`
+- Datenmodell: `ai_usage_log` Tabelle mit `user_id`, `model_id`, `exercise_name`, `created_at`
+- Datenmodell: Custom Prompts in `admin_settings` (Keys: `ai_prompt_suggest_all`, `ai_prompt_optimize_field`)
+- Prop-Durchreichung: `page.tsx` → `ExerciseDetailPage` → `ExerciseForm` für `showAiSuggest` + `usageData`
 - Zukunftssicherheit: Prompt lädt Taxonomy dynamisch → neue Kategorien sofort verfügbar
 - Zukunftssicherheit: Provider-Abstraktion → neue Modelle durch Array-Erweiterung hinzufügbar
+- Zukunftssicherheit: Prompt-Templates sind Admin-anpassbar → Verhalten ohne Code-Änderung steuerbar
 
 ## Datenbankschema (Konzept)
 
@@ -168,6 +194,15 @@ admin_settings Keys:
 - 'ai_model': "claude-haiku-4-5-20251001" (bereits vorhanden)
 - 'ai_rate_limit_period': "month" | "week" | "day" (NEU)
 - 'ai_rate_limit_count': 50 (NEU)
+- 'ai_prompt_suggest_all': "You are an exercise..." (NEU, Custom System-Prompt)
+- 'ai_prompt_optimize_field': "Optimize the following..." (NEU, Custom Field-Prompt)
+```
+
+User-Metadaten Erweiterung:
+```
+app_metadata.ai_enabled: boolean (default: false)
+— Gesetzt via Admin API (auth.admin.updateUserById)
+— Admin hat immer Zugang (ai_enabled wird nicht geprüft wenn is_platform_admin)
 ```
 
 ## Abgrenzung
