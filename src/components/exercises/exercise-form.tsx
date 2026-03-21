@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TaxonomyMultiSelect } from "./taxonomy-multi-select";
-import { createExercise, updateExercise } from "@/lib/exercises/actions";
+import { createExercise, updateExercise, suggestExerciseDetails } from "@/lib/exercises/actions";
 import type {
   ExerciseWithTaxonomy,
   TaxonomyEntry,
@@ -57,6 +57,8 @@ interface ExerciseFormProps {
   onCancel: () => void;
   /** Callback when a taxonomy entry is created */
   onTaxonomyCreated: (entry: { name: { de: string; en: string }; type: TaxonomyType }) => void;
+  /** If true, show the "AI autofill" button (only for platform admins) */
+  showAiSuggest?: boolean;
 }
 
 export function ExerciseForm({
@@ -67,10 +69,14 @@ export function ExerciseForm({
   onSuccess,
   onCancel,
   onTaxonomyCreated,
+  showAiSuggest = false,
 }: ExerciseFormProps) {
   const t = useTranslations("exercises");
   const tCommon = useTranslations("common");
+  const locale = useLocale() as "de" | "en";
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isAiLoading, setIsAiLoading] = React.useState(false);
+  const [highlightedFields, setHighlightedFields] = React.useState<Set<string>>(new Set());
 
   const isEditMode = !!exercise;
 
@@ -103,6 +109,74 @@ export function ExerciseForm({
       );
     });
   }, [watchNameDe, watchNameEn, allExercises, exercise]);
+
+  // AI autofill handler
+  async function handleAiSuggest() {
+    const currentNameDe = form.getValues("nameDe");
+    const currentNameEn = form.getValues("nameEn");
+    const nameForAi = locale === "de" ? currentNameDe : currentNameEn;
+
+    if (!nameForAi?.trim()) {
+      toast.error(t("aiSuggestNoName"));
+      return;
+    }
+
+    setIsAiLoading(true);
+    try {
+      const result = await suggestExerciseDetails(nameForAi.trim(), locale);
+      if (!result.success || !result.data) {
+        toast.error(t("aiSuggestError"));
+        return;
+      }
+
+      const suggestion = result.data;
+      const filled = new Set<string>();
+
+      // Only fill empty fields — never overwrite user input
+      if (locale === "de" && !form.getValues("nameEn") && suggestion.nameTranslation) {
+        form.setValue("nameEn", suggestion.nameTranslation);
+        filled.add("nameEn");
+      }
+      if (locale === "en" && !form.getValues("nameDe") && suggestion.nameTranslation) {
+        form.setValue("nameDe", suggestion.nameTranslation);
+        filled.add("nameDe");
+      }
+      if (!form.getValues("descriptionDe") && suggestion.descriptionDe) {
+        form.setValue("descriptionDe", suggestion.descriptionDe);
+        filled.add("descriptionDe");
+      }
+      if (!form.getValues("descriptionEn") && suggestion.descriptionEn) {
+        form.setValue("descriptionEn", suggestion.descriptionEn);
+        filled.add("descriptionEn");
+      }
+      if (suggestion.exerciseType) {
+        form.setValue("exerciseType", suggestion.exerciseType as ExerciseType);
+        filled.add("exerciseType");
+      }
+      if (form.getValues("primaryMuscleGroupIds").length === 0 && suggestion.primaryMuscleGroupIds.length > 0) {
+        form.setValue("primaryMuscleGroupIds", suggestion.primaryMuscleGroupIds);
+        filled.add("primaryMuscleGroupIds");
+      }
+      if (form.getValues("secondaryMuscleGroupIds").length === 0 && suggestion.secondaryMuscleGroupIds.length > 0) {
+        form.setValue("secondaryMuscleGroupIds", suggestion.secondaryMuscleGroupIds);
+        filled.add("secondaryMuscleGroupIds");
+      }
+      if (form.getValues("equipmentIds").length === 0 && suggestion.equipmentIds.length > 0) {
+        form.setValue("equipmentIds", suggestion.equipmentIds);
+        filled.add("equipmentIds");
+      }
+
+      // Show highlight animation for 1 second
+      setHighlightedFields(filled);
+      setTimeout(() => setHighlightedFields(new Set()), 1000);
+
+      toast.success(t("aiSuggestSuccess"));
+    } catch {
+      toast.error(t("aiSuggestError"));
+    } finally {
+      setIsAiLoading(false);
+    }
+  }
 
   async function onSubmit(values: ExerciseFormValues) {
     setIsSaving(true);
@@ -138,8 +212,42 @@ export function ExerciseForm({
     }
   }
 
+  /** Returns a ring class if the field was just AI-filled */
+  function aiHighlight(field: string) {
+    return highlightedFields.has(field)
+      ? "ring-2 ring-secondary/60 transition-all duration-500"
+      : "";
+  }
+
+  // Show AI button when showAiSuggest is true and at least one name field is filled
+  const canShowAiButton = showAiSuggest && (!!watchNameDe || !!watchNameEn);
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+      {/* AI Suggest Toolbar */}
+      {showAiSuggest && (
+        <div className="flex items-center gap-3 rounded-md border border-secondary/30 bg-secondary/5 p-3">
+          <Sparkles className="h-5 w-5 shrink-0 text-secondary" />
+          <p className="flex-1 text-sm text-muted-foreground">
+            {isAiLoading ? t("aiSuggestLoading") : t("aiSuggest")}
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!canShowAiButton || isAiLoading || isSaving}
+            onClick={handleAiSuggest}
+          >
+            {isAiLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
+            {t("aiSuggest")}
+          </Button>
+        </div>
+      )}
+
       {/* Name DE */}
       <div className="space-y-1.5">
         <Label htmlFor="nameDe">{t("nameDe")} *</Label>
@@ -148,6 +256,7 @@ export function ExerciseForm({
           {...form.register("nameDe")}
           maxLength={100}
           aria-invalid={!!form.formState.errors.nameDe}
+          className={aiHighlight("nameDe")}
         />
         {form.formState.errors.nameDe && (
           <p className="text-caption text-error">{form.formState.errors.nameDe.message}</p>
@@ -162,6 +271,7 @@ export function ExerciseForm({
           {...form.register("nameEn")}
           maxLength={100}
           aria-invalid={!!form.formState.errors.nameEn}
+          className={aiHighlight("nameEn")}
         />
         {form.formState.errors.nameEn && (
           <p className="text-caption text-error">{form.formState.errors.nameEn.message}</p>
@@ -184,6 +294,7 @@ export function ExerciseForm({
           {...form.register("descriptionDe")}
           maxLength={2000}
           rows={3}
+          className={aiHighlight("descriptionDe")}
         />
       </div>
 

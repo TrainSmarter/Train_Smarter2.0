@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { suggestExercise } from "@/lib/ai/suggest-exercise";
+import { getAiModelSetting } from "@/lib/admin/settings-actions";
+import type { AiExerciseSuggestion } from "@/lib/ai/providers";
 import {
   createExerciseSchema,
   updateExerciseSchema,
@@ -479,4 +482,49 @@ export async function deleteTaxonomyEntry(id: string): Promise<ActionResult> {
 
   revalidatePath("/training/exercises", "page");
   return { success: true };
+}
+
+// ── Suggest Exercise Details (AI) ────────────────────────────────
+
+/**
+ * Use AI to suggest exercise details based on a name.
+ * Currently restricted to platform admins only.
+ *
+ * Reads the configured AI model from admin_settings, then calls
+ * the AI provider to generate a suggestion with validated taxonomy UUIDs.
+ */
+export async function suggestExerciseDetails(
+  name: string,
+  locale: "de" | "en"
+): Promise<ActionResult<AiExerciseSuggestion>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  // Currently restricted to platform admins
+  if (user.app_metadata?.is_platform_admin !== true) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  if (!name || name.trim().length === 0) {
+    return { success: false, error: "EMPTY_EXERCISE_NAME" };
+  }
+
+  // Read configured model from admin_settings
+  const modelId = await getAiModelSetting();
+
+  try {
+    const suggestion = await suggestExercise(name.trim(), locale, modelId);
+    return { success: true, data: suggestion };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "UNKNOWN_ERROR";
+    console.error("AI exercise suggestion failed:", message);
+    return { success: false, error: message };
+  }
 }
