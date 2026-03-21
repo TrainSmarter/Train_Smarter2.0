@@ -146,11 +146,9 @@ export function ExerciseLibraryPage({
             {t("subtitle", { count: exercises.length })}
           </p>
         </div>
-        <Button
-          asChild
-          iconLeft={<Plus className="h-4 w-4" />}
-        >
+        <Button asChild>
           <Link href="/training/exercises/new">
+            <Plus className="h-4 w-4" />
             {t("newExercise")}
           </Link>
         </Button>
@@ -184,11 +182,9 @@ export function ExerciseLibraryPage({
           title={t("emptyTitle")}
           description={t("emptyDescription")}
           action={
-            <Button
-              asChild
-              iconLeft={<Plus className="h-4 w-4" />}
-            >
+            <Button asChild>
               <Link href="/training/exercises/new">
+                <Plus className="h-4 w-4" />
                 {t("newExercise")}
               </Link>
             </Button>
