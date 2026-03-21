@@ -8,7 +8,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { env } from "@/lib/env";
-import { getModelById, isProviderAvailable, type AiModel } from "./providers";
+import { getModelById, isProviderAvailable } from "./providers";
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -31,7 +31,8 @@ function sanitizeForPrompt(input: string): string {
 async function callAnthropic(
   systemPrompt: string,
   userPrompt: string,
-  model: AiModel
+  modelId: string,
+  useThinking: boolean
 ): Promise<string> {
   if (!env.ANTHROPIC_API_KEY) {
     throw new Error("API_KEY_NOT_CONFIGURED");
@@ -39,13 +40,12 @@ async function callAnthropic(
 
   const client = new Anthropic({
     apiKey: env.ANTHROPIC_API_KEY,
-    timeout: model.extendedThinking ? EXTENDED_THINKING_TIMEOUT_MS : API_TIMEOUT_MS,
+    timeout: useThinking ? EXTENDED_THINKING_TIMEOUT_MS : API_TIMEOUT_MS,
   });
 
-  // Extended thinking: combine system + user in messages, enable thinking
-  if (model.extendedThinking) {
+  if (useThinking) {
     const response = await client.messages.create({
-      model: model.id,
+      model: modelId,
       max_tokens: 8_000,
       thinking: {
         type: "enabled",
@@ -64,9 +64,8 @@ async function callAnthropic(
     return textBlock.text.trim();
   }
 
-  // Standard call
   const response = await client.messages.create({
-    model: model.id,
+    model: modelId,
     max_tokens: 512,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -126,7 +125,8 @@ async function callOpenAI(
 export async function optimizeField(
   systemPrompt: string,
   exerciseName: string,
-  modelId: string
+  modelId: string,
+  useThinking = false
 ): Promise<string> {
   const model = getModelById(modelId);
   if (!model) {
@@ -142,8 +142,10 @@ export async function optimizeField(
   const userPrompt = `Exercise: "${sanitizedName}"\n\nPlease provide the optimized text.`;
 
   switch (model.provider) {
-    case "anthropic":
-      return callAnthropic(systemPrompt, userPrompt, model);
+    case "anthropic": {
+      const thinking = useThinking && model.supportsThinking === true;
+      return callAnthropic(systemPrompt, userPrompt, model.id, thinking);
+    }
     case "openai":
       return callOpenAI(systemPrompt, userPrompt, model.id);
     default:

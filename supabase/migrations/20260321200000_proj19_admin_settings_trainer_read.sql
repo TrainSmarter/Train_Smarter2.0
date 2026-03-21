@@ -9,6 +9,7 @@ CREATE POLICY "Authenticated users can read AI settings"
   USING (
     key IN (
       'ai_model',
+      'ai_extended_thinking',
       'ai_rate_limit_period',
       'ai_rate_limit_count',
       'ai_prompt_suggest_all',

@@ -17,8 +17,8 @@ export interface AiModel {
   provider: AiProvider;
   displayName: string;
   cost: "€" | "€€" | "€€€" | "€€€€";
-  /** If true, this model uses extended thinking (Anthropic only) */
-  extendedThinking?: boolean;
+  /** If true, this model supports extended thinking (Anthropic only) */
+  supportsThinking?: boolean;
 }
 
 export interface AiExerciseSuggestion {
@@ -55,6 +55,7 @@ export const AI_MODELS: AiModel[] = [
     provider: "anthropic",
     displayName: "Claude Sonnet 4.6",
     cost: "€€",
+    supportsThinking: true,
   },
   {
     id: "gpt-4o-mini",
@@ -71,9 +72,9 @@ export const AI_MODELS: AiModel[] = [
   {
     id: "claude-opus-4-6-20250620",
     provider: "anthropic",
-    displayName: "Claude Opus 4.6 (Extended Thinking)",
+    displayName: "Claude Opus 4.6",
     cost: "€€€€",
-    extendedThinking: true,
+    supportsThinking: true,
   },
 ];
 

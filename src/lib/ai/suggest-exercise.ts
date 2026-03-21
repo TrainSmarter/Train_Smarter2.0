@@ -15,7 +15,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { env } from "@/lib/env";
 import { getTaxonomy } from "@/lib/exercises/queries";
-import { getModelById, isProviderAvailable, type AiModel } from "./providers";
+import { getModelById, isProviderAvailable } from "./providers";
 import { getSuggestAllPrompt } from "./prompts";
 import type { AiExerciseSuggestion } from "./providers";
 import type { TaxonomyEntry, ExerciseType } from "@/lib/exercises/types";
@@ -157,7 +157,8 @@ Please suggest the complete details for this exercise. The name_translation shou
 async function callAnthropic(
   systemPrompt: string,
   userPrompt: string,
-  model: AiModel
+  modelId: string,
+  useThinking: boolean
 ): Promise<AiExerciseSuggestion> {
   if (!env.ANTHROPIC_API_KEY) {
     throw new Error("API_KEY_NOT_CONFIGURED");
@@ -165,7 +166,7 @@ async function callAnthropic(
 
   const client = new Anthropic({
     apiKey: env.ANTHROPIC_API_KEY,
-    timeout: model.extendedThinking ? EXTENDED_THINKING_TIMEOUT_MS : API_TIMEOUT_MS,
+    timeout: useThinking ? EXTENDED_THINKING_TIMEOUT_MS : API_TIMEOUT_MS,
   });
 
   // Extended thinking requires different parameters:
@@ -173,9 +174,9 @@ async function callAnthropic(
   // - Higher max_tokens (thinking + output combined)
   // - No system parameter — use system turn in messages instead
   // - tool_choice must be "auto" (forced tool use not supported with thinking)
-  if (model.extendedThinking) {
+  if (useThinking) {
     const response = await client.messages.create({
-      model: model.id,
+      model: modelId,
       max_tokens: 16_000,
       thinking: {
         type: "enabled",
@@ -204,7 +205,7 @@ async function callAnthropic(
 
   // Standard call (no extended thinking)
   const response = await client.messages.create({
-    model: model.id,
+    model: modelId,
     max_tokens: 1024,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -306,6 +307,7 @@ function filterValidUuids(ids: string[], validIds: Set<string>): string[] {
  * @param exerciseName - The name of the exercise (in the given locale)
  * @param locale - "de" or "en" — determines which language the name is in
  * @param modelId - The AI model ID to use (from AI_MODELS registry)
+ * @param useThinking - If true, enable extended thinking (Anthropic models only)
  * @returns Suggested exercise details with validated taxonomy UUIDs
  * @throws Error with code "API_KEY_NOT_CONFIGURED" if the provider's key is missing
  * @throws Error with code "MODEL_NOT_FOUND" if modelId is not in the registry
@@ -314,7 +316,8 @@ function filterValidUuids(ids: string[], validIds: Set<string>): string[] {
 export async function suggestExercise(
   exerciseName: string,
   locale: "de" | "en",
-  modelId: string
+  modelId: string,
+  useThinking = false
 ): Promise<AiExerciseSuggestion> {
   // Validate model exists
   const model = getModelById(modelId);
@@ -341,9 +344,12 @@ export async function suggestExercise(
   let suggestion: AiExerciseSuggestion;
 
   switch (model.provider) {
-    case "anthropic":
-      suggestion = await callAnthropic(systemPrompt, userPrompt, model);
+    case "anthropic": {
+      // Only use thinking if model supports it AND admin has enabled it
+      const thinking = useThinking && model.supportsThinking === true;
+      suggestion = await callAnthropic(systemPrompt, userPrompt, model.id, thinking);
       break;
+    }
     case "openai":
       suggestion = await callOpenAI(systemPrompt, userPrompt, model.id);
       break;

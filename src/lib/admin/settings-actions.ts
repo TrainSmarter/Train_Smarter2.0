@@ -137,6 +137,53 @@ export async function testAiModel(
   }
 }
 
+// ── Get Extended Thinking Setting ─────────────────────────────────
+
+/** Read whether extended thinking is enabled. */
+export async function getExtendedThinkingSetting(): Promise<boolean> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("admin_settings")
+    .select("value")
+    .eq("key", "ai_extended_thinking")
+    .maybeSingle();
+
+  if (error || !data) return false;
+
+  return data.value === true || data.value === "true";
+}
+
+/** Update the extended thinking setting. Requires platform admin. */
+export async function setExtendedThinkingSetting(
+  enabled: boolean
+): Promise<ActionResult> {
+  const adminId = await verifyPlatformAdmin();
+  if (!adminId) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("admin_settings")
+    .upsert(
+      {
+        key: "ai_extended_thinking",
+        value: enabled,
+        updated_by: adminId,
+      },
+      { onConflict: "key" }
+    );
+
+  if (error) {
+    console.error("Failed to update extended thinking setting:", error);
+    return { success: false, error: "UPDATE_FAILED" };
+  }
+
+  return { success: true };
+}
+
 // ── Get Rate Limit Config ────────────────────────────────────────
 
 /** Read the current rate limit configuration from admin_settings. Admin-only. */

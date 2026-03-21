@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import {
   Accordion,
@@ -34,7 +35,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
-import { setAiModelSetting, testAiModel, setRateLimitConfig } from "@/lib/admin/settings-actions";
+import { setAiModelSetting, testAiModel, setRateLimitConfig, setExtendedThinkingSetting } from "@/lib/admin/settings-actions";
 import { saveCustomPrompt } from "@/lib/ai/prompts";
 import {
   DEFAULT_PROMPT_SUGGEST_ALL,
@@ -57,6 +58,7 @@ interface AdminSettingsPageProps {
   apiKeyStatus: ApiKeyStatus;
   rateLimitConfig: RateLimitConfig;
   customPrompts: CustomPrompts;
+  extendedThinking: boolean;
 }
 
 // ── Cost Badge Helper ──────────────────────────────────────────────
@@ -98,6 +100,7 @@ export function AdminSettingsPage({
   apiKeyStatus,
   rateLimitConfig: initialRateLimitConfig,
   customPrompts: initialCustomPrompts,
+  extendedThinking: initialExtendedThinking,
 }: AdminSettingsPageProps) {
   const t = useTranslations("admin");
   const tCommon = useTranslations("common");
@@ -106,7 +109,9 @@ export function AdminSettingsPage({
 
   // Model selection state
   const [selectedModelId, setSelectedModelId] = React.useState(currentModelId);
+  const [thinkingEnabled, setThinkingEnabled] = React.useState(initialExtendedThinking);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isSavingThinking, setIsSavingThinking] = React.useState(false);
 
   // Test state
   const [testName, setTestName] = React.useState("Bankdrücken");
@@ -137,6 +142,9 @@ export function AdminSettingsPage({
   // Derived: does the selected model have a missing key?
   const selectedProviderKeyMissing =
     selectedProvider != null && !apiKeyStatus[selectedProvider];
+
+  // Derived: does the selected model support extended thinking?
+  const selectedModelSupportsThinking = selectedModel?.supportsThinking === true;
 
   // Derived: has rate limit changed from initial?
   const hasRateChanged =
@@ -181,6 +189,25 @@ export function AdminSettingsPage({
       setTestError("UNKNOWN_ERROR");
     } finally {
       setIsTesting(false);
+    }
+  }
+
+  async function handleToggleThinking(enabled: boolean) {
+    setIsSavingThinking(true);
+    setThinkingEnabled(enabled);
+    try {
+      const result = await setExtendedThinkingSetting(enabled);
+      if (result.success) {
+        toast.success(t("extendedThinkingSaved"));
+      } else {
+        setThinkingEnabled(!enabled); // revert
+        toast.error(t("errorGeneric"));
+      }
+    } catch {
+      setThinkingEnabled(!enabled); // revert
+      toast.error(t("errorGeneric"));
+    } finally {
+      setIsSavingThinking(false);
     }
   }
 
@@ -314,6 +341,31 @@ export function AdminSettingsPage({
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {tCommon("save")}
               </Button>
+
+              {/* Extended Thinking Toggle */}
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="extended-thinking" className="text-sm font-medium">
+                    {t("extendedThinkingLabel")}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t("extendedThinkingDescription")}
+                  </p>
+                </div>
+                <Switch
+                  id="extended-thinking"
+                  checked={thinkingEnabled}
+                  onCheckedChange={handleToggleThinking}
+                  disabled={isSavingThinking || !selectedModelSupportsThinking}
+                  aria-label={t("extendedThinkingLabel")}
+                />
+              </div>
+              {thinkingEnabled && !selectedModelSupportsThinking && (
+                <p className="text-xs text-warning">
+                  {t("extendedThinkingNotSupported")}
+                </p>
+              )}
             </CardContent>
           </Card>
 

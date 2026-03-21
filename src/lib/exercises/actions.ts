@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { suggestExercise } from "@/lib/ai/suggest-exercise";
 import { optimizeField } from "@/lib/ai/optimize-field";
-import { getAiModelSetting } from "@/lib/admin/settings-actions";
+import { getAiModelSetting, getExtendedThinkingSetting } from "@/lib/admin/settings-actions";
 import { checkRateLimit, logAiUsage } from "@/lib/ai/usage";
 import { getOptimizeFieldPrompt } from "@/lib/ai/prompts";
 import type { AiExerciseSuggestion } from "@/lib/ai/providers";
@@ -541,11 +541,14 @@ export async function suggestExerciseDetails(
     return { success: false, error: "RATE_LIMIT_EXCEEDED" };
   }
 
-  // Read configured model from admin_settings
-  const modelId = await getAiModelSetting();
+  // Read configured model + thinking setting from admin_settings
+  const [modelId, useThinking] = await Promise.all([
+    getAiModelSetting(),
+    getExtendedThinkingSetting(),
+  ]);
 
   try {
-    const suggestion = await suggestExercise(name.trim(), locale, modelId);
+    const suggestion = await suggestExercise(name.trim(), locale, modelId, useThinking);
 
     // Log usage AFTER successful call
     await logAiUsage({
@@ -636,13 +639,17 @@ export async function optimizeExerciseField(
     language: languageMap[fieldName] ?? (locale === "de" ? "German" : "English"),
   });
 
-  const modelId = await getAiModelSetting();
+  const [modelId, useThinking] = await Promise.all([
+    getAiModelSetting(),
+    getExtendedThinkingSetting(),
+  ]);
 
   try {
     const result = await optimizeField(
       systemPrompt,
       exerciseName.trim(),
-      modelId
+      modelId,
+      useThinking
     );
 
     // Log usage AFTER successful call

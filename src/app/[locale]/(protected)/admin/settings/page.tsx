@@ -4,6 +4,7 @@ import {
   getAiModelSetting,
   getApiKeyStatus,
   getRateLimitConfigAdmin,
+  getExtendedThinkingSetting,
 } from "@/lib/admin/settings-actions";
 import { getCustomPrompts } from "@/lib/ai/prompts";
 
@@ -24,17 +25,20 @@ export default async function AdminSettingsRoute() {
   let keyStatus: { anthropic: boolean; openai: boolean };
   let rateLimitConfig: { period: "day" | "week" | "month"; maxCount: number } = { period: "month", maxCount: 50 };
   let customPrompts = { suggestAll: null as string | null, optimizeField: null as string | null };
+  let extendedThinking = false;
 
   try {
-    const [modelId, keys, rateLimitResult, prompts] = await Promise.all([
+    const [modelId, keys, rateLimitResult, prompts, thinking] = await Promise.all([
       getAiModelSetting(),
       getApiKeyStatus(),
       getRateLimitConfigAdmin(),
       getCustomPrompts(),
+      getExtendedThinkingSetting(),
     ]);
 
     currentModelId = modelId;
     keyStatus = keys;
+    extendedThinking = thinking;
 
     if (rateLimitResult.success && rateLimitResult.data) {
       rateLimitConfig = rateLimitResult.data;
@@ -53,6 +57,7 @@ export default async function AdminSettingsRoute() {
       apiKeyStatus={keyStatus}
       rateLimitConfig={rateLimitConfig}
       customPrompts={customPrompts}
+      extendedThinking={extendedThinking}
     />
   );
 }
