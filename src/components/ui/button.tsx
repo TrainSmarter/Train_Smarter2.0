@@ -97,13 +97,20 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...dataAttrs}
         {...props}
       >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        {/* When asChild, Slot needs exactly ONE child — skip icon wrappers */}
+        {asChild ? (
+          children
         ) : (
-          iconLeft
+          <>
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              iconLeft
+            )}
+            {children}
+            {!loading && iconRight}
+          </>
         )}
-        {children}
-        {!loading && iconRight}
       </Comp>
     )
   }

@@ -101,7 +101,7 @@ function NavSectionGroup({
     <Collapsible defaultOpen={isExpanded} className="group/collapsible">
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip={label}>
+          <SidebarMenuButton>
             <Icon className="size-4 shrink-0" />
             <span>{label}</span>
             <ChevronRight className="ml-auto size-4 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
