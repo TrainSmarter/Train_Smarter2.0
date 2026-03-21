@@ -13,6 +13,8 @@ export const routing = defineRouting({
     "/verify-email": "/verify-email",
     "/dashboard": "/dashboard",
     "/training/exercises": "/training/exercises",
+    "/training/exercises/new": "/training/exercises/new",
+    "/training/exercises/[id]": "/training/exercises/[id]",
     "/feedback": "/feedback",
     "/feedback/[athleteId]": "/feedback/[athleteId]",
     "/account": { de: "/konto", en: "/account" },

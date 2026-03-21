@@ -1165,7 +1165,14 @@
     "viewList": "Listenansicht",
     "noDescription": "Keine Beschreibung vorhanden",
     "taxonomyUpdated": "Erfolgreich aktualisiert",
-    "taxonomyDeleted": "Erfolgreich gelöscht"
+    "taxonomyDeleted": "Erfolgreich gelöscht",
+    "backToLibrary": "Zurück zur Bibliothek",
+    "openDetail": "Details öffnen",
+    "exerciseCreated": "Übung wurde erstellt",
+    "exerciseUpdated": "Übung wurde aktualisiert",
+    "source": "Quelle",
+    "exerciseNotFound": "Übung nicht gefunden",
+    "exerciseNotFoundDescription": "Die angeforderte Übung existiert nicht oder wurde gelöscht."
   },
   "admin": {
     "pageTitle": "Benutzerverwaltung",

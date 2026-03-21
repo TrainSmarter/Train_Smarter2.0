@@ -1165,7 +1165,14 @@
     "viewList": "List View",
     "noDescription": "No description available",
     "taxonomyUpdated": "Successfully updated",
-    "taxonomyDeleted": "Successfully deleted"
+    "taxonomyDeleted": "Successfully deleted",
+    "backToLibrary": "Back to library",
+    "openDetail": "Open details",
+    "exerciseCreated": "Exercise created",
+    "exerciseUpdated": "Exercise updated",
+    "source": "Source",
+    "exerciseNotFound": "Exercise not found",
+    "exerciseNotFoundDescription": "The requested exercise does not exist or has been deleted."
   },
   "admin": {
     "pageTitle": "User Management",

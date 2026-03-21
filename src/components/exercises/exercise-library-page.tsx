@@ -9,11 +9,11 @@ import { EmptyState } from "@/components/empty-state";
 import { ExerciseCard } from "./exercise-card";
 import { ExerciseFilters } from "./exercise-filters";
 import { ExerciseSlideOver } from "./exercise-slide-over";
+import { Link } from "@/i18n/navigation";
 import type {
   ExerciseWithTaxonomy,
   TaxonomyEntry,
   ExerciseType,
-  TaxonomyType,
 } from "@/lib/exercises/types";
 import type {
   ExerciseViewMode,
@@ -46,9 +46,8 @@ export function ExerciseLibraryPage({
   const [sort, setSort] = React.useState<ExerciseSortOption>("az");
   const [viewMode, setViewMode] = React.useState<ExerciseViewMode>("grid");
 
-  // Slide-over state
+  // Slide-over state (detail-only quick preview)
   const [slideOverOpen, setSlideOverOpen] = React.useState(false);
-  const [slideOverMode, setSlideOverMode] = React.useState<"detail" | "edit" | "create">("detail");
   const [selectedExercise, setSelectedExercise] = React.useState<ExerciseWithTaxonomy | null>(null);
 
   // Use initial data (server actions revalidate the page on mutations)
@@ -128,13 +127,6 @@ export function ExerciseLibraryPage({
 
   function handleExerciseClick(exercise: ExerciseWithTaxonomy) {
     setSelectedExercise(exercise);
-    setSlideOverMode("detail");
-    setSlideOverOpen(true);
-  }
-
-  function handleCreateClick() {
-    setSelectedExercise(null);
-    setSlideOverMode("create");
     setSlideOverOpen(true);
   }
 
@@ -142,10 +134,6 @@ export function ExerciseLibraryPage({
     // Page will be revalidated by server actions
     setSlideOverOpen(false);
     setSelectedExercise(null);
-  }
-
-  function handleTaxonomyCreated(_entry: { name: { de: string; en: string }; type: TaxonomyType }) {
-    // Page will be revalidated by server action
   }
 
   return (
@@ -159,10 +147,12 @@ export function ExerciseLibraryPage({
           </p>
         </div>
         <Button
-          onClick={handleCreateClick}
+          asChild
           iconLeft={<Plus className="h-4 w-4" />}
         >
-          {t("newExercise")}
+          <Link href="/training/exercises/new">
+            {t("newExercise")}
+          </Link>
         </Button>
       </div>
 
@@ -195,10 +185,12 @@ export function ExerciseLibraryPage({
           description={t("emptyDescription")}
           action={
             <Button
-              onClick={handleCreateClick}
+              asChild
               iconLeft={<Plus className="h-4 w-4" />}
             >
-              {t("newExercise")}
+              <Link href="/training/exercises/new">
+                {t("newExercise")}
+              </Link>
             </Button>
           }
         />
@@ -234,18 +226,13 @@ export function ExerciseLibraryPage({
         </div>
       )}
 
-      {/* Slide-Over */}
+      {/* Quick-Preview Slide-Over (detail only) */}
       <ExerciseSlideOver
         open={slideOverOpen}
         onOpenChange={setSlideOverOpen}
         exercise={selectedExercise}
-        mode={slideOverMode}
-        onModeChange={setSlideOverMode}
-        muscleGroups={muscleGroups}
-        equipment={equipment}
         allExercises={exercises}
         onActionComplete={handleActionComplete}
-        onTaxonomyCreated={handleTaxonomyCreated}
       />
     </div>
   );
