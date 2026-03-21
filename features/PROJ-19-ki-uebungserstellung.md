@@ -517,4 +517,10 @@ All 4 bugs from the initial test have been fixed and verified in the re-test bel
 - **Recommendation:** Feature is ready for deployment.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://www.train-smarter.at
+- **Deployed:** 2026-03-21
+- **Commit:** 6d39d93
+- **Tag:** v1.8.0-PROJ-19
+- **Migrations Applied:** `20260321100000_proj19_ai_usage_log.sql`, `20260321200000_proj19_admin_settings_trainer_read.sql`
+- **Env Vars Required:** `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY` (at least one, in Vercel Dashboard)
+- **Vercel:** Auto-deploy via push to main
