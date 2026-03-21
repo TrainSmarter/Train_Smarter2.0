@@ -367,36 +367,46 @@ export function ExerciseForm({
             <p className="flex-1 text-sm text-muted-foreground">
               {isAiLoading ? t("aiSuggestLoading") : t("aiSuggest")}
             </p>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={isAiButtonDisabled}
-                      onClick={handleAiSuggest}
-                    >
-                      {isAiLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
+            {isRateLimited ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled
+                      >
                         <Sparkles className="mr-2 h-4 w-4" />
-                      )}
-                      {t("aiSuggest")}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {isRateLimited && (
+                        {t("aiSuggest")}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
                     {t("aiLimitReached", {
                       limit: usageData?.limit ?? 0,
                       resetDate: resetDateFormatted,
                     })}
                   </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={isAiButtonDisabled}
+                onClick={handleAiSuggest}
+              >
+                {isAiLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4" />
                 )}
-              </Tooltip>
-            </TooltipProvider>
+                {t("aiSuggest")}
+              </Button>
+            )}
           </div>
 
           {/* Usage counter */}
