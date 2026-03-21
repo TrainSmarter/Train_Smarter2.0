@@ -78,6 +78,11 @@ export async function getSuggestAllPrompt(
   return injectTaxonomy(template, muscleGroups, equipment);
 }
 
+/** Sanitize a parameter before injecting into a prompt template. */
+function sanitizePromptParam(input: string, maxLength = 500): string {
+  return input.replace(/[\x00-\x1F\x7F]/g, " ").slice(0, maxLength).trim();
+}
+
 /**
  * Returns the system prompt for "optimize single field".
  * Uses custom prompt if set by admin, otherwise the hardcoded default.
@@ -91,11 +96,17 @@ export async function getOptimizeFieldPrompt(params: {
   const custom = await getCustomPrompt(KEY_PROMPT_OPTIMIZE_FIELD);
   const template = custom ?? DEFAULT_PROMPT_OPTIMIZE_FIELD;
 
+  // Sanitize all params before injection to prevent prompt injection
+  const safeName = sanitizePromptParam(params.exerciseName, 200);
+  const safeFieldName = sanitizePromptParam(params.fieldName, 100);
+  const safeCurrentValue = sanitizePromptParam(params.currentValue, 2000);
+  const safeLanguage = sanitizePromptParam(params.language, 20);
+
   return template
-    .replace(/\{\{exercise_name\}\}/g, params.exerciseName)
-    .replace(/\{\{field_name\}\}/g, params.fieldName)
-    .replace(/\{\{current_value\}\}/g, params.currentValue)
-    .replace(/\{\{language\}\}/g, params.language);
+    .replace(/\{\{exercise_name\}\}/g, safeName)
+    .replace(/\{\{field_name\}\}/g, safeFieldName)
+    .replace(/\{\{current_value\}\}/g, safeCurrentValue)
+    .replace(/\{\{language\}\}/g, safeLanguage);
 }
 
 // ── Admin: Get Custom Prompts (for editor UI) ────────────────────
@@ -145,6 +156,11 @@ export async function saveCustomPrompt(
     promptKey === "suggest_all"
       ? KEY_PROMPT_SUGGEST_ALL
       : KEY_PROMPT_OPTIMIZE_FIELD;
+
+  const MAX_PROMPT_LENGTH = 5000;
+  if (content && content.trim().length > MAX_PROMPT_LENGTH) {
+    return { success: false, error: "PROMPT_TOO_LONG" };
+  }
 
   const supabase = await createClient();
 

@@ -28,32 +28,28 @@ function getPeriodBounds(period: RateLimitPeriod): {
 
   switch (period) {
     case "day": {
-      const start = new Date(now);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
-      end.setDate(end.getDate() + 1);
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
       return { start, end };
     }
     case "week": {
-      // Week starts on Monday
-      const start = new Date(now);
-      const dayOfWeek = start.getDay(); // 0=Sun, 1=Mon, ...
+      // Week starts on Monday (UTC)
+      const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon, ...
       const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      start.setDate(start.getDate() - daysFromMonday);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
-      end.setDate(end.getDate() + 7);
+      const startMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysFromMonday);
+      const start = new Date(startMs);
+      const end = new Date(startMs + 7 * 24 * 60 * 60 * 1000);
       return { start, end };
     }
     case "month": {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
       return { start, end };
     }
     default: {
       // Fallback to month
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
       return { start, end };
     }
   }
@@ -116,7 +112,8 @@ export async function getAiUsageData(): Promise<AiUsageData | null> {
     .from("ai_usage_log")
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .gte("created_at", start.toISOString());
+    .gte("created_at", start.toISOString())
+    .lt("created_at", end.toISOString());
 
   if (countError) {
     console.error("Failed to count AI usage:", countError);
@@ -149,14 +146,15 @@ export async function checkRateLimit(userId: string, isAdmin: boolean): Promise<
   }
 
   const config = await getRateLimitConfig();
-  const { start } = getPeriodBounds(config.period);
+  const { start, end } = getPeriodBounds(config.period);
 
   const supabase = await createClient();
   const { count, error } = await supabase
     .from("ai_usage_log")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
-    .gte("created_at", start.toISOString());
+    .gte("created_at", start.toISOString())
+    .lt("created_at", end.toISOString());
 
   if (error) {
     console.error("Failed to check rate limit:", error);
@@ -176,7 +174,8 @@ export async function checkRateLimit(userId: string, isAdmin: boolean): Promise<
 
 /**
  * Records an AI usage entry in the audit log.
- * Should be called AFTER a successful AI call.
+ * Should be called BEFORE the AI call (optimistic logging).
+ * Returns the inserted row ID so it can be rolled back on failure.
  */
 export async function logAiUsage(params: {
   userId: string;
@@ -184,19 +183,42 @@ export async function logAiUsage(params: {
   actionType: "suggest_all" | "optimize_field";
   exerciseName: string;
   fieldName?: string;
-}): Promise<void> {
+}): Promise<string | null> {
   const supabase = await createClient();
 
-  const { error } = await supabase.from("ai_usage_log").insert({
-    user_id: params.userId,
-    model_id: params.modelId,
-    action_type: params.actionType,
-    exercise_name: params.exerciseName,
-    field_name: params.fieldName ?? null,
-  });
+  const { data, error } = await supabase
+    .from("ai_usage_log")
+    .insert({
+      user_id: params.userId,
+      model_id: params.modelId,
+      action_type: params.actionType,
+      exercise_name: params.exerciseName,
+      field_name: params.fieldName ?? null,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     console.error("Failed to log AI usage:", error);
-    // Non-critical: don't throw — the AI call was already successful
+    return null;
+  }
+
+  return data?.id ?? null;
+}
+
+/**
+ * Deletes an AI usage log entry by ID.
+ * Used to rollback optimistic usage logging when the AI call fails.
+ */
+export async function deleteAiUsageEntry(entryId: string): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("ai_usage_log")
+    .delete()
+    .eq("id", entryId);
+
+  if (error) {
+    console.error("Failed to rollback AI usage entry:", error);
   }
 }

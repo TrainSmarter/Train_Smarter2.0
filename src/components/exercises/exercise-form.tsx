@@ -107,6 +107,15 @@ export function ExerciseForm({
   // Track AI usage client-side (updated after each call)
   const [usageData, setUsageData] = React.useState<AiUsageData | null>(initialUsageData);
 
+  // Timer ref for highlight cleanup (prevents memory leak)
+  const highlightTimerRef = React.useRef<ReturnType<typeof setTimeout>>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
+  }, []);
+
   // Single-field optimization state
   const [optimizingField, setOptimizingField] = React.useState<string | null>(null);
   // Undo state: stores previous values before AI optimization
@@ -233,7 +242,8 @@ export function ExerciseForm({
 
       // Show highlight animation for 1 second
       setHighlightedFields(filled);
-      setTimeout(() => setHighlightedFields(new Set()), 1000);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = setTimeout(() => setHighlightedFields(new Set()), 1000);
 
       incrementUsage();
       toast.success(t("aiSuggestSuccess"));
@@ -285,7 +295,8 @@ export function ExerciseForm({
 
       // Highlight the field
       setHighlightedFields(new Set([formFieldName]));
-      setTimeout(() => setHighlightedFields(new Set()), 1000);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = setTimeout(() => setHighlightedFields(new Set()), 1000);
 
       incrementUsage();
       toast.success(t("aiOptimizeSuccess"));

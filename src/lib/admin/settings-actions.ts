@@ -251,36 +251,19 @@ export async function setRateLimitConfig(
 
   const supabase = await createClient();
 
-  // Upsert both settings
-  const { error: periodError } = await supabase
+  // Batch upsert both settings atomically
+  const { error } = await supabase
     .from("admin_settings")
     .upsert(
-      {
-        key: "ai_rate_limit_period",
-        value: period,
-        updated_by: adminId,
-      },
+      [
+        { key: "ai_rate_limit_period", value: period, updated_by: adminId },
+        { key: "ai_rate_limit_count", value: maxCount, updated_by: adminId },
+      ],
       { onConflict: "key" }
     );
 
-  if (periodError) {
-    console.error("Failed to update rate limit period:", periodError);
-    return { success: false, error: "UPDATE_FAILED" };
-  }
-
-  const { error: countError } = await supabase
-    .from("admin_settings")
-    .upsert(
-      {
-        key: "ai_rate_limit_count",
-        value: maxCount,
-        updated_by: adminId,
-      },
-      { onConflict: "key" }
-    );
-
-  if (countError) {
-    console.error("Failed to update rate limit count:", countError);
+  if (error) {
+    console.error("Failed to update rate limit config:", error);
     return { success: false, error: "UPDATE_FAILED" };
   }
 

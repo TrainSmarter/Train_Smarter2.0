@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { suggestExercise } from "@/lib/ai/suggest-exercise";
 import { optimizeField } from "@/lib/ai/optimize-field";
 import { getAiModelSetting, getExtendedThinkingSetting } from "@/lib/admin/settings-actions";
-import { checkRateLimit, logAiUsage } from "@/lib/ai/usage";
+import { checkRateLimit, logAiUsage, deleteAiUsageEntry } from "@/lib/ai/usage";
 import { getOptimizeFieldPrompt } from "@/lib/ai/prompts";
 import type { AiExerciseSuggestion } from "@/lib/ai/providers";
 import {
@@ -547,19 +547,23 @@ export async function suggestExerciseDetails(
     getExtendedThinkingSetting(),
   ]);
 
+  // Log usage BEFORE AI call (optimistic), rollback on failure
+  const usageEntryId = await logAiUsage({
+    userId: user.id,
+    modelId,
+    actionType: "suggest_all",
+    exerciseName: name.trim(),
+  });
+
   try {
     const suggestion = await suggestExercise(name.trim(), locale, modelId, useThinking);
 
-    // Log usage AFTER successful call
-    await logAiUsage({
-      userId: user.id,
-      modelId,
-      actionType: "suggest_all",
-      exerciseName: name.trim(),
-    });
-
     return { success: true, data: suggestion };
   } catch (err) {
+    // Rollback usage log on AI failure
+    if (usageEntryId) {
+      await deleteAiUsageEntry(usageEntryId);
+    }
     const message = err instanceof Error ? err.message : "UNKNOWN_ERROR";
     console.error("AI exercise suggestion failed:", message);
     return { success: false, error: message };
@@ -644,6 +648,15 @@ export async function optimizeExerciseField(
     getExtendedThinkingSetting(),
   ]);
 
+  // Log usage BEFORE AI call (optimistic), rollback on failure
+  const usageEntryId = await logAiUsage({
+    userId: user.id,
+    modelId,
+    actionType: "optimize_field",
+    exerciseName: exerciseName.trim(),
+    fieldName,
+  });
+
   try {
     const result = await optimizeField(
       systemPrompt,
@@ -652,17 +665,12 @@ export async function optimizeExerciseField(
       useThinking
     );
 
-    // Log usage AFTER successful call
-    await logAiUsage({
-      userId: user.id,
-      modelId,
-      actionType: "optimize_field",
-      exerciseName: exerciseName.trim(),
-      fieldName,
-    });
-
     return { success: true, data: result };
   } catch (err) {
+    // Rollback usage log on AI failure
+    if (usageEntryId) {
+      await deleteAiUsageEntry(usageEntryId);
+    }
     const message = err instanceof Error ? err.message : "UNKNOWN_ERROR";
     console.error("AI field optimization failed:", message);
     return { success: false, error: message };

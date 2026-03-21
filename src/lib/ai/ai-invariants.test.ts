@@ -145,6 +145,34 @@ describe("AI Usage & Rate Limiting", () => {
     expect(usage).toContain("action_type");
     expect(usage).toContain("field_name");
   });
+
+  it("should use UTC for period bounds calculation", () => {
+    expect(usage).toContain("Date.UTC");
+    expect(usage).toContain("getUTCFullYear");
+    expect(usage).toContain("getUTCMonth");
+    expect(usage).toContain("getUTCDate");
+    // Must NOT use local time setHours
+    expect(usage).not.toContain("setHours(0");
+  });
+
+  it("should have upper bound on rate limit queries (.lt end date)", () => {
+    // Both getAiUsageData and checkRateLimit must bound the query
+    const ltMatches = usage.match(/\.lt\("created_at"/g);
+    expect(ltMatches).toBeTruthy();
+    expect(ltMatches!.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("should return inserted row ID from logAiUsage for rollback", () => {
+    expect(usage).toContain("Promise<string | null>");
+    expect(usage).toContain('.select("id")');
+    expect(usage).toContain("data?.id");
+  });
+
+  it("should export deleteAiUsageEntry for rollback", () => {
+    expect(usage).toContain("export async function deleteAiUsageEntry");
+    expect(usage).toContain('.delete()');
+    expect(usage).toContain('.eq("id", entryId)');
+  });
 });
 
 // ══════════════════════════════════════════════════════════════════
@@ -334,10 +362,14 @@ describe("Exercise Actions — AI features", () => {
     expect(actions).toContain("RATE_LIMIT_EXCEEDED");
   });
 
-  it("should log usage after successful AI call", () => {
+  it("should log usage BEFORE AI call (optimistic) with rollback on failure", () => {
     expect(actions).toContain("logAiUsage");
-    expect(actions).toContain("suggest_all");
-    expect(actions).toContain("optimize_field");
+    expect(actions).toContain("deleteAiUsageEntry");
+    expect(actions).toContain("usageEntryId");
+    // logAiUsage must come before suggestExercise call
+    const logPos = actions.indexOf("logAiUsage");
+    const suggestPos = actions.indexOf("suggestExercise(name");
+    expect(logPos).toBeLessThan(suggestPos);
   });
 
   it("should read extended thinking setting", () => {
@@ -409,6 +441,19 @@ describe("Admin Settings Actions", () => {
     expect(settings).toContain("maxCount > 10000");
   });
 
+  it("should use batch upsert for rate limit config (atomic)", () => {
+    // Must be a single upsert with array, not two separate calls
+    const setRateFn = settings.slice(
+      settings.indexOf("async function setRateLimitConfig")
+    );
+    // Should have array upsert pattern
+    expect(setRateFn).toContain("ai_rate_limit_period");
+    expect(setRateFn).toContain("ai_rate_limit_count");
+    // Only ONE .upsert call (batch), not two
+    const upsertCount = (setRateFn.match(/\.upsert\(/g) || []).length;
+    expect(upsertCount).toBe(1);
+  });
+
   it("should export toggleUserAiAccess in admin actions", () => {
     const adminActions = readSrc("lib/admin/actions.ts");
     expect(adminActions).toContain("export async function toggleUserAiAccess");
@@ -422,23 +467,37 @@ describe("Admin Settings Actions", () => {
 // ══════════════════════════════════════════════════════════════════
 
 describe("Security — Input Sanitization", () => {
-  it("should sanitize in suggest-exercise.ts", () => {
+  it("should sanitize ALL control chars including newlines in suggest-exercise.ts", () => {
     const suggest = readSrc("lib/ai/suggest-exercise.ts");
     expect(suggest).toContain("function sanitizeForPrompt");
     expect(suggest).toContain("MAX_INPUT_LENGTH");
-    // Must strip control characters
-    expect(suggest).toMatch(/\\x00.*\\x1F/);
+    // Must strip ALL control characters (\\x00-\\x1F includes \\n, \\r, \\t)
+    expect(suggest).toContain("[\\x00-\\x1F\\x7F]");
+    // Must NOT have the old partial regex that skipped newlines
+    expect(suggest).not.toContain("\\x0B\\x0C\\x0E");
   });
 
-  it("should sanitize in optimize-field.ts", () => {
+  it("should sanitize ALL control chars including newlines in optimize-field.ts", () => {
     const optimize = readSrc("lib/ai/optimize-field.ts");
     expect(optimize).toContain("function sanitizeForPrompt");
-    expect(optimize).toContain("MAX_INPUT_LENGTH");
+    expect(optimize).toContain("[\\x00-\\x1F\\x7F]");
+    expect(optimize).not.toContain("\\x0B\\x0C\\x0E");
   });
 
   it("should limit input to 200 characters", () => {
     const suggest = readSrc("lib/ai/suggest-exercise.ts");
     expect(suggest).toContain("MAX_INPUT_LENGTH = 200");
+  });
+
+  it("should sanitize prompt template parameters in prompts.ts", () => {
+    const prompts = readSrc("lib/ai/prompts.ts");
+    expect(prompts).toContain("sanitizePromptParam");
+  });
+
+  it("should have max length limit for custom prompt saves", () => {
+    const prompts = readSrc("lib/ai/prompts.ts");
+    expect(prompts).toContain("MAX_PROMPT_LENGTH");
+    expect(prompts).toContain("PROMPT_TOO_LONG");
   });
 });
 
@@ -476,17 +535,30 @@ describe("PROJ-19 Migrations", () => {
     expect(migration).toContain("user_id, created_at");
   });
 
-  it("should allow authenticated users to read AI-related admin_settings", () => {
+  it("should allow authenticated users to read AI config (but NOT custom prompts)", () => {
     const migration = readRoot(
       "supabase/migrations/20260321200000_proj19_admin_settings_trainer_read.sql"
     );
     expect(migration).toContain("authenticated");
-    expect(migration).toContain("ai_model");
-    expect(migration).toContain("ai_extended_thinking");
-    expect(migration).toContain("ai_rate_limit_period");
-    expect(migration).toContain("ai_rate_limit_count");
-    expect(migration).toContain("ai_prompt_suggest_all");
-    expect(migration).toContain("ai_prompt_optimize_field");
+    // Extract only the SQL key IN clause (not comments)
+    const keyInClause = migration.slice(migration.indexOf("key IN"));
+    expect(keyInClause).toContain("ai_model");
+    expect(keyInClause).toContain("ai_extended_thinking");
+    expect(keyInClause).toContain("ai_rate_limit_period");
+    expect(keyInClause).toContain("ai_rate_limit_count");
+    // Custom prompts must NOT be in the key IN clause
+    expect(keyInClause).not.toContain("ai_prompt_suggest_all");
+    expect(keyInClause).not.toContain("ai_prompt_optimize_field");
+  });
+
+  it("should have tightened RLS migration removing prompt keys", () => {
+    const migration = readRoot(
+      "supabase/migrations/20260321300000_fix_admin_settings_trainer_rls.sql"
+    );
+    expect(migration).toContain("DROP POLICY");
+    expect(migration).toContain("CREATE POLICY");
+    expect(migration).not.toContain("ai_prompt_suggest_all");
+    expect(migration).not.toContain("ai_prompt_optimize_field");
   });
 });
 
@@ -522,6 +594,14 @@ describe("UI Regression Fixes", () => {
     );
     // Should not have iconLeft combined with asChild
     expect(libraryPage).not.toMatch(/asChild[\s\S]{0,50}iconLeft/);
+  });
+
+  it("exercise-form should cleanup highlight timers on unmount", () => {
+    const form = readSrc("components/exercises/exercise-form.tsx");
+    expect(form).toContain("highlightTimerRef");
+    expect(form).toContain("clearTimeout");
+    // Must have useEffect for cleanup
+    expect(form).toContain("useEffect");
   });
 
   it("exercise-form should not have conditional TooltipContent without Tooltip wrapper", () => {

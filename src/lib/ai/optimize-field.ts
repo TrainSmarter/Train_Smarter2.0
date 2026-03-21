@@ -13,7 +13,7 @@ import { getModelById, isProviderAvailable } from "./providers";
 // ── Constants ────────────────────────────────────────────────────
 
 const API_TIMEOUT_MS = 10_000; // Single field = faster
-const EXTENDED_THINKING_TIMEOUT_MS = 45_000; // Opus + thinking
+const EXTENDED_THINKING_TIMEOUT_MS = 90_000; // Opus + thinking
 const MAX_INPUT_LENGTH = 200;
 
 // ── Input Sanitization ──────────────────────────────────────────
@@ -21,7 +21,7 @@ const MAX_INPUT_LENGTH = 200;
 /** Strip control characters and limit length to prevent prompt injection. */
 function sanitizeForPrompt(input: string): string {
   return input
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // strip control chars
+    .replace(/[\x00-\x1F\x7F]/g, "") // strip ALL control chars incl. \n, \r, \t
     .slice(0, MAX_INPUT_LENGTH)
     .trim();
 }
