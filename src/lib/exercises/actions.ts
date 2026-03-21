@@ -63,14 +63,15 @@ export async function createExercise(data: {
     equipmentIds,
   } = parsed.data;
 
-  // Insert exercise (scope='trainer', created_by=user.id)
+  // Admin exercises are global (visible to all), trainer exercises are personal
+  const isAdmin = user.app_metadata?.is_platform_admin === true;
   const { data: exercise, error: insertError } = await supabase
     .from("exercises")
     .insert({
       name,
       description: description ?? null,
       exercise_type: exerciseType,
-      scope: "trainer",
+      scope: isAdmin ? "global" : "trainer",
       created_by: user.id,
     })
     .select("id")
