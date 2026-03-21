@@ -67,7 +67,7 @@ function CostBadge({ cost }: { cost: string }) {
       ? "success"
       : cost === "\u20ac\u20ac"
         ? "warning"
-        : "error";
+        : "error"; // €€€ and €€€€ both use error (red)
   return (
     <Badge variant={variant} className="ml-2 text-xs">
       {cost}

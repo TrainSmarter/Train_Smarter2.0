@@ -8,11 +8,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { env } from "@/lib/env";
-import { getModelById, isProviderAvailable } from "./providers";
+import { getModelById, isProviderAvailable, type AiModel } from "./providers";
 
 // ── Constants ────────────────────────────────────────────────────
 
 const API_TIMEOUT_MS = 10_000; // Single field = faster
+const EXTENDED_THINKING_TIMEOUT_MS = 45_000; // Opus + thinking
 const MAX_INPUT_LENGTH = 200;
 
 // ── Input Sanitization ──────────────────────────────────────────
@@ -30,7 +31,7 @@ function sanitizeForPrompt(input: string): string {
 async function callAnthropic(
   systemPrompt: string,
   userPrompt: string,
-  modelId: string
+  model: AiModel
 ): Promise<string> {
   if (!env.ANTHROPIC_API_KEY) {
     throw new Error("API_KEY_NOT_CONFIGURED");
@@ -38,11 +39,34 @@ async function callAnthropic(
 
   const client = new Anthropic({
     apiKey: env.ANTHROPIC_API_KEY,
-    timeout: API_TIMEOUT_MS,
+    timeout: model.extendedThinking ? EXTENDED_THINKING_TIMEOUT_MS : API_TIMEOUT_MS,
   });
 
+  // Extended thinking: combine system + user in messages, enable thinking
+  if (model.extendedThinking) {
+    const response = await client.messages.create({
+      model: model.id,
+      max_tokens: 8_000,
+      thinking: {
+        type: "enabled",
+        budget_tokens: 5_000,
+      },
+      messages: [
+        { role: "user", content: `${systemPrompt}\n\n${userPrompt}` },
+      ],
+    });
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      throw new Error("AI_NO_TEXT_RESPONSE");
+    }
+
+    return textBlock.text.trim();
+  }
+
+  // Standard call
   const response = await client.messages.create({
-    model: modelId,
+    model: model.id,
     max_tokens: 512,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -119,7 +143,7 @@ export async function optimizeField(
 
   switch (model.provider) {
     case "anthropic":
-      return callAnthropic(systemPrompt, userPrompt, model.id);
+      return callAnthropic(systemPrompt, userPrompt, model);
     case "openai":
       return callOpenAI(systemPrompt, userPrompt, model.id);
     default:

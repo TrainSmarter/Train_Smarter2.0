@@ -15,7 +15,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { env } from "@/lib/env";
 import { getTaxonomy } from "@/lib/exercises/queries";
-import { getModelById, isProviderAvailable } from "./providers";
+import { getModelById, isProviderAvailable, type AiModel } from "./providers";
 import { getSuggestAllPrompt } from "./prompts";
 import type { AiExerciseSuggestion } from "./providers";
 import type { TaxonomyEntry, ExerciseType } from "@/lib/exercises/types";
@@ -26,6 +26,7 @@ export type { AiExerciseSuggestion };
 // ── Constants ────────────────────────────────────────────────────
 
 const API_TIMEOUT_MS = 15_000;
+const EXTENDED_THINKING_TIMEOUT_MS = 60_000; // Opus + thinking needs more time
 const MAX_INPUT_LENGTH = 200;
 
 const EXERCISE_TYPES_LIST = ["strength", "endurance", "speed", "flexibility"];
@@ -156,7 +157,7 @@ Please suggest the complete details for this exercise. The name_translation shou
 async function callAnthropic(
   systemPrompt: string,
   userPrompt: string,
-  modelId: string
+  model: AiModel
 ): Promise<AiExerciseSuggestion> {
   if (!env.ANTHROPIC_API_KEY) {
     throw new Error("API_KEY_NOT_CONFIGURED");
@@ -164,11 +165,46 @@ async function callAnthropic(
 
   const client = new Anthropic({
     apiKey: env.ANTHROPIC_API_KEY,
-    timeout: API_TIMEOUT_MS,
+    timeout: model.extendedThinking ? EXTENDED_THINKING_TIMEOUT_MS : API_TIMEOUT_MS,
   });
 
+  // Extended thinking requires different parameters:
+  // - thinking.budget_tokens for the thinking budget
+  // - Higher max_tokens (thinking + output combined)
+  // - No system parameter — use system turn in messages instead
+  // - tool_choice must be "auto" (forced tool use not supported with thinking)
+  if (model.extendedThinking) {
+    const response = await client.messages.create({
+      model: model.id,
+      max_tokens: 16_000,
+      thinking: {
+        type: "enabled",
+        budget_tokens: 10_000,
+      },
+      messages: [
+        { role: "user", content: `${systemPrompt}\n\n${userPrompt}` },
+      ],
+      tools: [
+        {
+          name: TOOL_SCHEMA.name,
+          description: TOOL_SCHEMA.description,
+          input_schema: TOOL_SCHEMA.input_schema,
+        },
+      ],
+      tool_choice: { type: "auto" },
+    });
+
+    const toolBlock = response.content.find((b) => b.type === "tool_use");
+    if (!toolBlock || toolBlock.type !== "tool_use") {
+      throw new Error("AI_NO_TOOL_RESPONSE");
+    }
+
+    return parseToolInput(toolBlock.input as Record<string, unknown>);
+  }
+
+  // Standard call (no extended thinking)
   const response = await client.messages.create({
-    model: modelId,
+    model: model.id,
     max_tokens: 1024,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -306,7 +342,7 @@ export async function suggestExercise(
 
   switch (model.provider) {
     case "anthropic":
-      suggestion = await callAnthropic(systemPrompt, userPrompt, model.id);
+      suggestion = await callAnthropic(systemPrompt, userPrompt, model);
       break;
     case "openai":
       suggestion = await callOpenAI(systemPrompt, userPrompt, model.id);
