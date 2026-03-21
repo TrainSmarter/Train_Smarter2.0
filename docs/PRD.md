@@ -44,6 +44,7 @@ Train Smarter ist eine professionelle Trainingsmanagement-Plattform für Athleti
 | P0 (MVP) | PROJ-16: Test-Strategie & Qualitätssicherung | Deployed |
 | P0 (MVP) | PROJ-17: Landing Page | Planned |
 | P1 | PROJ-18: Trainer Default-Kategorien & Pflichtfelder | Deployed |
+| P1 | PROJ-19: KI-gestützte Übungserstellung | Planned |
 
 ## Success Metrics
 - Trainer kann innerhalb von 5 Minuten nach Registrierung seinen ersten Athleten einladen

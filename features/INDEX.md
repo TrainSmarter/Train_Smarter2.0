@@ -32,6 +32,8 @@
 
 | PROJ-18 | Trainer Default-Kategorien & Pflichtfelder | Deployed | [PROJ-18-trainer-defaults-pflichtfelder.md](PROJ-18-trainer-defaults-pflichtfelder.md) | 2026-03-19 |
 
+| PROJ-19 | KI-gestützte Übungserstellung | Planned | [PROJ-19-ki-uebungserstellung.md](PROJ-19-ki-uebungserstellung.md) | 2026-03-21 |
+
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-19
+## Next Available ID: PROJ-20

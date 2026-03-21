@@ -149,7 +149,8 @@ export function ExerciseForm({
         form.setValue("descriptionEn", suggestion.descriptionEn);
         filled.add("descriptionEn");
       }
-      if (suggestion.exerciseType) {
+      const currentType = form.getValues("exerciseType");
+      if ((!currentType || currentType === "strength") && suggestion.exerciseType && suggestion.exerciseType !== currentType) {
         form.setValue("exerciseType", suggestion.exerciseType as ExerciseType);
         filled.add("exerciseType");
       }
