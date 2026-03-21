@@ -63,7 +63,8 @@ export async function createExercise(data: {
     equipmentIds,
   } = parsed.data;
 
-  // Admin exercises are global (visible to all), trainer exercises are personal
+  // Admin exercises are global (visible to all, created_by=NULL per CHECK constraint)
+  // Trainer exercises are personal (scope=trainer, created_by=user.id)
   const isAdmin = user.app_metadata?.is_platform_admin === true;
   const { data: exercise, error: insertError } = await supabase
     .from("exercises")
@@ -72,7 +73,7 @@ export async function createExercise(data: {
       description: description ?? null,
       exercise_type: exerciseType,
       scope: isAdmin ? "global" : "trainer",
-      created_by: user.id,
+      created_by: isAdmin ? null : user.id,
     })
     .select("id")
     .single();
@@ -161,12 +162,15 @@ export async function updateExercise(data: {
   if (exerciseType !== undefined) dbUpdates.exercise_type = exerciseType;
 
   if (Object.keys(dbUpdates).length > 0) {
-    // RLS ensures only own exercises can be updated
-    const { error: updateError } = await supabase
-      .from("exercises")
-      .update(dbUpdates)
-      .eq("id", id)
-      .eq("created_by", user.id);
+    // Admin can update any exercise (RLS checks is_platform_admin for global scope)
+    // Trainer can only update own exercises (RLS checks created_by = auth.uid())
+    const isAdmin = user.app_metadata?.is_platform_admin === true;
+    const query = supabase.from("exercises").update(dbUpdates).eq("id", id);
+    if (!isAdmin) {
+      query.eq("created_by", user.id);
+    }
+
+    const { error: updateError } = await query;
 
     if (updateError) {
       console.error("Failed to update exercise:", updateError);
@@ -245,15 +249,22 @@ export async function deleteExercise(id: string): Promise<ActionResult> {
   }
 
   // Soft-delete: set is_deleted=true, deleted_at=now()
-  // RLS ensures only own exercises can be updated
-  const { error: updateError } = await supabase
+  // Admin can delete any exercise (global or own), trainer only own
+  const isAdmin = user.app_metadata?.is_platform_admin === true;
+  const query = supabase
     .from("exercises")
     .update({
       is_deleted: true,
       deleted_at: new Date().toISOString(),
     })
-    .eq("id", id)
-    .eq("created_by", user.id);
+    .eq("id", id);
+
+  // Non-admin: restrict to own exercises
+  if (!isAdmin) {
+    query.eq("created_by", user.id);
+  }
+
+  const { error: updateError } = await query;
 
   if (updateError) {
     console.error("Failed to soft-delete exercise:", updateError);
