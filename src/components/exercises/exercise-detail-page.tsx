@@ -28,6 +28,7 @@ import type {
   ExerciseType,
   TaxonomyType,
 } from "@/lib/exercises/types";
+import type { AiUsageData } from "@/lib/ai/usage-types";
 
 const CATEGORY_LABELS: Record<ExerciseType, string> = {
   strength: "strength",
@@ -45,6 +46,10 @@ interface ExerciseDetailPageProps {
   equipment: TaxonomyEntry[];
   /** All exercises (for duplicate checking in form) */
   allExercises: ExerciseWithTaxonomy[];
+  /** Whether to show AI suggestion features */
+  showAiSuggest?: boolean;
+  /** AI usage data for displaying quota */
+  usageData?: AiUsageData | null;
 }
 
 export function ExerciseDetailPage({
@@ -52,6 +57,8 @@ export function ExerciseDetailPage({
   muscleGroups,
   equipment,
   allExercises,
+  showAiSuggest = false,
+  usageData = null,
 }: ExerciseDetailPageProps) {
   const t = useTranslations("exercises");
   const tCommon = useTranslations("common");
@@ -216,6 +223,8 @@ export function ExerciseDetailPage({
                 onSuccess={handleFormSuccess}
                 onCancel={handleFormCancel}
                 onTaxonomyCreated={handleTaxonomyCreated}
+                showAiSuggest={showAiSuggest}
+                usageData={usageData}
               />
             </div>
           </CardContent>

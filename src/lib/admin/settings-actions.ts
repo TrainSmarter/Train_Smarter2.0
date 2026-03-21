@@ -1,9 +1,9 @@
 "use server";
 
 /**
- * Admin Settings Server Actions — PROJ-12
+ * Admin Settings Server Actions — PROJ-12, PROJ-19
  *
- * Manages admin_settings table for AI model configuration.
+ * Manages admin_settings table for AI model configuration and rate limiting.
  * All actions require is_platform_admin.
  */
 
@@ -16,6 +16,7 @@ import {
 } from "@/lib/ai/providers";
 import { suggestExercise } from "@/lib/ai/suggest-exercise";
 import type { AiExerciseSuggestion, ApiKeyStatus } from "@/lib/ai/providers";
+import type { RateLimitPeriod, RateLimitConfig } from "@/lib/ai/usage-types";
 
 type ActionResult<T = undefined> = T extends undefined
   ? { success: boolean; error?: string }
@@ -134,4 +135,107 @@ export async function testAiModel(
     console.error("AI model test failed:", message);
     return { success: false, error: message };
   }
+}
+
+// ── Get Rate Limit Config ────────────────────────────────────────
+
+/** Read the current rate limit configuration from admin_settings. Admin-only. */
+export async function getRateLimitConfigAdmin(): Promise<
+  ActionResult<RateLimitConfig>
+> {
+  const adminId = await verifyPlatformAdmin();
+  if (!adminId) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  const supabase = await createClient();
+
+  const { data: rows } = await supabase
+    .from("admin_settings")
+    .select("key, value")
+    .in("key", ["ai_rate_limit_period", "ai_rate_limit_count"]);
+
+  let period: RateLimitPeriod = "month";
+  let maxCount = 50;
+
+  if (rows) {
+    for (const row of rows) {
+      if (row.key === "ai_rate_limit_period") {
+        const val =
+          typeof row.value === "string" ? row.value : String(row.value);
+        if (val === "day" || val === "week" || val === "month") {
+          period = val;
+        }
+      }
+      if (row.key === "ai_rate_limit_count") {
+        const val =
+          typeof row.value === "number" ? row.value : Number(row.value);
+        if (!isNaN(val) && val >= 0) {
+          maxCount = val;
+        }
+      }
+    }
+  }
+
+  return { success: true, data: { period, maxCount } };
+}
+
+// ── Set Rate Limit Config ────────────────────────────────────────
+
+/** Update rate limit configuration. Requires platform admin. */
+export async function setRateLimitConfig(
+  period: RateLimitPeriod,
+  maxCount: number
+): Promise<ActionResult> {
+  const adminId = await verifyPlatformAdmin();
+  if (!adminId) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  // Validate inputs
+  const validPeriods: RateLimitPeriod[] = ["day", "week", "month"];
+  if (!validPeriods.includes(period)) {
+    return { success: false, error: "INVALID_PERIOD" };
+  }
+
+  if (!Number.isInteger(maxCount) || maxCount < 0 || maxCount > 10000) {
+    return { success: false, error: "INVALID_COUNT" };
+  }
+
+  const supabase = await createClient();
+
+  // Upsert both settings
+  const { error: periodError } = await supabase
+    .from("admin_settings")
+    .upsert(
+      {
+        key: "ai_rate_limit_period",
+        value: period,
+        updated_by: adminId,
+      },
+      { onConflict: "key" }
+    );
+
+  if (periodError) {
+    console.error("Failed to update rate limit period:", periodError);
+    return { success: false, error: "UPDATE_FAILED" };
+  }
+
+  const { error: countError } = await supabase
+    .from("admin_settings")
+    .upsert(
+      {
+        key: "ai_rate_limit_count",
+        value: maxCount,
+        updated_by: adminId,
+      },
+      { onConflict: "key" }
+    );
+
+  if (countError) {
+    console.error("Failed to update rate limit count:", countError);
+    return { success: false, error: "UPDATE_FAILED" };
+  }
+
+  return { success: true };
 }

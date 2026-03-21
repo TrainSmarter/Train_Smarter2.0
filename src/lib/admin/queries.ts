@@ -70,6 +70,9 @@ function mapToAdminUser(user: {
     isBanned,
     onboardingCompleted:
       user.app_metadata?.onboarding_completed === true,
+    aiEnabled:
+      user.app_metadata?.is_platform_admin === true ||
+      user.app_metadata?.ai_enabled === true,
   };
 }
 

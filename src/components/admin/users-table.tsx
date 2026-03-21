@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Sparkles } from "lucide-react";
 
 import {
   Table,
@@ -229,20 +229,28 @@ export function UsersTable({
 
               {/* Role Badge */}
               <TableCell>
-                {user.role ? (
-                  <Badge
-                    variant={user.role === "TRAINER" ? "primary" : "secondary"}
-                    size="sm"
-                  >
-                    {user.role === "TRAINER"
-                      ? t("roleTrainer")
-                      : t("roleAthlete")}
-                  </Badge>
-                ) : (
-                  <span className="text-xs text-muted-foreground">
-                    {t("noRole")}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {user.role ? (
+                    <Badge
+                      variant={user.role === "TRAINER" ? "primary" : "secondary"}
+                      size="sm"
+                    >
+                      {user.role === "TRAINER"
+                        ? t("roleTrainer")
+                        : t("roleAthlete")}
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      {t("noRole")}
+                    </span>
+                  )}
+                  {(user.aiEnabled || user.isPlatformAdmin) && (
+                    <Badge variant="info" size="sm" className="gap-0.5">
+                      <Sparkles className="h-3 w-3" />
+                      {t("aiBadge")}
+                    </Badge>
+                  )}
+                </div>
               </TableCell>
 
               {/* Registered (hidden on small) */}

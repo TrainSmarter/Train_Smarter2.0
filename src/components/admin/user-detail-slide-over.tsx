@@ -8,6 +8,7 @@ import {
   KeyRound,
   Users,
   UsersRound,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -126,6 +127,9 @@ export function UserDetailSlideOver({
   const [resetConfirmOpen, setResetConfirmOpen] = React.useState(false);
   const [resetSending, setResetSending] = React.useState(false);
 
+  // AI toggle state
+  const [aiToggling, setAiToggling] = React.useState(false);
+
   // Determine if this is the current admin (self-protection)
   const [isSelf, setIsSelf] = React.useState(false);
 
@@ -240,6 +244,26 @@ export function UserDetailSlideOver({
       toast.error(t("errorGeneric"));
     } finally {
       setResetSending(false);
+    }
+  }
+
+  async function handleAiToggle() {
+    if (!user) return;
+    setAiToggling(true);
+    try {
+      const { toggleUserAiAccess } = await import("@/lib/admin/actions");
+      const result = await toggleUserAiAccess(user.id, !user.aiEnabled);
+      if (result.success) {
+        toast.success(t("aiToggleSuccess"));
+        onUserUpdated();
+        onOpenChange(false);
+      } else {
+        toast.error(result.error ?? t("aiToggleError"));
+      }
+    } catch {
+      toast.error(t("aiToggleError"));
+    } finally {
+      setAiToggling(false);
     }
   }
 
@@ -493,6 +517,34 @@ export function UserDetailSlideOver({
                 >
                   {t("sendPasswordReset")}
                 </Button>
+              </div>
+
+              {/* AI Toggle */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {t("aiToggleLabel")}
+                </p>
+                {user.isPlatformAdmin ? (
+                  <p className="text-sm text-muted-foreground italic">
+                    {t("aiToggleAdminNote")}
+                  </p>
+                ) : (
+                  <Button
+                    variant={user.aiEnabled ? "outline" : "secondary"}
+                    size="sm"
+                    disabled={aiToggling}
+                    onClick={handleAiToggle}
+                    iconLeft={<Sparkles className="h-4 w-4" />}
+                  >
+                    {aiToggling ? (
+                      t("aiToggleLabel")
+                    ) : user.aiEnabled ? (
+                      t("aiToggleDisable")
+                    ) : (
+                      t("aiToggleEnable")
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </div>

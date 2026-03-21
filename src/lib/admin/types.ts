@@ -25,6 +25,7 @@ export interface AdminUser {
   lastSignInAt: string | null;
   isBanned: boolean;
   onboardingCompleted: boolean;
+  aiEnabled: boolean;
 }
 
 /** Parameters for listing users with pagination, search, and filters */

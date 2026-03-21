@@ -16,6 +16,7 @@ import OpenAI from "openai";
 import { env } from "@/lib/env";
 import { getTaxonomy } from "@/lib/exercises/queries";
 import { getModelById, isProviderAvailable } from "./providers";
+import { getSuggestAllPrompt } from "./prompts";
 import type { AiExerciseSuggestion } from "./providers";
 import type { TaxonomyEntry, ExerciseType } from "@/lib/exercises/types";
 
@@ -25,8 +26,19 @@ export type { AiExerciseSuggestion };
 // ── Constants ────────────────────────────────────────────────────
 
 const API_TIMEOUT_MS = 15_000;
+const MAX_INPUT_LENGTH = 200;
 
 const EXERCISE_TYPES_LIST = ["strength", "endurance", "speed", "flexibility"];
+
+// ── Input Sanitization ──────────────────────────────────────────
+
+/** Strip control characters and limit length to prevent prompt injection. */
+function sanitizeForPrompt(input: string): string {
+  return input
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "") // strip control chars
+    .slice(0, MAX_INPUT_LENGTH)
+    .trim();
+}
 
 // ── Tool / Function Schema ───────────────────────────────────────
 
@@ -132,8 +144,9 @@ You MUST call the suggest_exercise_details tool with your answer.`;
 function buildUserPrompt(exerciseName: string, locale: "de" | "en"): string {
   const inputLang = locale === "de" ? "German" : "English";
   const outputLang = locale === "de" ? "English" : "German";
+  const sanitizedName = sanitizeForPrompt(exerciseName);
 
-  return `Exercise name (${inputLang}): "${exerciseName}"
+  return `Exercise name (${inputLang}): "${sanitizedName}"
 
 Please suggest the complete details for this exercise. The name_translation should be the ${outputLang} translation of this exercise name.`;
 }
@@ -284,8 +297,8 @@ export async function suggestExercise(
     getTaxonomy("equipment"),
   ]);
 
-  // Build prompts
-  const systemPrompt = buildSystemPrompt(muscleGroups, equipment);
+  // Build prompts — uses admin custom prompt if set, otherwise default
+  const systemPrompt = await getSuggestAllPrompt(muscleGroups, equipment);
   const userPrompt = buildUserPrompt(exerciseName, locale);
 
   // Dispatch to provider

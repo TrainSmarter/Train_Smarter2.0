@@ -212,6 +212,57 @@ export async function getUserStatsAction(
   };
 }
 
+// ── Toggle AI Access for a User ──────────────────────────────
+
+/**
+ * Enable or disable AI access for a user.
+ * Sets app_metadata.ai_enabled via Admin API.
+ * Platform admins always have AI access (cannot be disabled).
+ */
+export async function toggleUserAiAccess(
+  userId: string,
+  enabled: boolean
+): Promise<ActionResult> {
+  const adminId = await verifyPlatformAdmin();
+  if (!adminId) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  const adminClient = createAdminClient();
+
+  // Fetch existing user to preserve other app_metadata
+  const { data: existingUser, error: fetchError } =
+    await adminClient.auth.admin.getUserById(userId);
+
+  if (fetchError || !existingUser?.user) {
+    console.error("Failed to fetch user for AI toggle:", fetchError);
+    return { success: false, error: "USER_NOT_FOUND" };
+  }
+
+  // Do not allow disabling AI for platform admins
+  if (
+    existingUser.user.app_metadata?.is_platform_admin === true &&
+    !enabled
+  ) {
+    return { success: false, error: "CANNOT_DISABLE_ADMIN_AI" };
+  }
+
+  const { error } = await adminClient.auth.admin.updateUserById(userId, {
+    app_metadata: {
+      ...existingUser.user.app_metadata,
+      ai_enabled: enabled,
+    },
+  });
+
+  if (error) {
+    console.error("Failed to toggle AI access:", error);
+    return { success: false, error: "TOGGLE_FAILED" };
+  }
+
+  revalidatePath("/admin/users", "page");
+  return { success: true };
+}
+
 // ── Check If User Is Self (Server Action) ─────────────────────
 
 export async function checkIsSelfUserAction(

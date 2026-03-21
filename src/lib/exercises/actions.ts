@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { suggestExercise } from "@/lib/ai/suggest-exercise";
+import { optimizeField } from "@/lib/ai/optimize-field";
 import { getAiModelSetting } from "@/lib/admin/settings-actions";
+import { checkRateLimit, logAiUsage } from "@/lib/ai/usage";
+import { getOptimizeFieldPrompt } from "@/lib/ai/prompts";
 import type { AiExerciseSuggestion } from "@/lib/ai/providers";
 import {
   createExerciseSchema,
@@ -484,11 +487,26 @@ export async function deleteTaxonomyEntry(id: string): Promise<ActionResult> {
   return { success: true };
 }
 
+// ── AI Authorization Helper ──────────────────────────────────────
+
+/**
+ * Check if a user is authorized to use AI features.
+ * Returns true for platform admins or trainers with ai_enabled=true.
+ */
+function isAiAuthorized(user: {
+  app_metadata?: Record<string, unknown>;
+}): boolean {
+  if (user.app_metadata?.is_platform_admin === true) return true;
+  if (user.app_metadata?.ai_enabled === true) return true;
+  return false;
+}
+
 // ── Suggest Exercise Details (AI) ────────────────────────────────
 
 /**
  * Use AI to suggest exercise details based on a name.
- * Currently restricted to platform admins only.
+ * Available to platform admins and trainers with ai_enabled=true.
+ * Enforces server-side rate limiting before making the AI call.
  *
  * Reads the configured AI model from admin_settings, then calls
  * the AI provider to generate a suggestion with validated taxonomy UUIDs.
@@ -507,8 +525,8 @@ export async function suggestExerciseDetails(
     return { success: false, error: "UNAUTHORIZED" };
   }
 
-  // Currently restricted to platform admins
-  if (user.app_metadata?.is_platform_admin !== true) {
+  // Check AI authorization: admin OR ai_enabled trainer
+  if (!isAiAuthorized(user)) {
     return { success: false, error: "UNAUTHORIZED" };
   }
 
@@ -516,15 +534,130 @@ export async function suggestExerciseDetails(
     return { success: false, error: "EMPTY_EXERCISE_NAME" };
   }
 
+  // Server-side rate limit check
+  const isAdmin = user.app_metadata?.is_platform_admin === true;
+  const rateLimitResult = await checkRateLimit(user.id, isAdmin);
+  if (!rateLimitResult.allowed) {
+    return { success: false, error: "RATE_LIMIT_EXCEEDED" };
+  }
+
   // Read configured model from admin_settings
   const modelId = await getAiModelSetting();
 
   try {
     const suggestion = await suggestExercise(name.trim(), locale, modelId);
+
+    // Log usage AFTER successful call
+    await logAiUsage({
+      userId: user.id,
+      modelId,
+      actionType: "suggest_all",
+      exerciseName: name.trim(),
+    });
+
     return { success: true, data: suggestion };
   } catch (err) {
     const message = err instanceof Error ? err.message : "UNKNOWN_ERROR";
     console.error("AI exercise suggestion failed:", message);
+    return { success: false, error: message };
+  }
+}
+
+// ── Optimize Exercise Field (AI — Single Field) ──────────────────
+
+/**
+ * Optimize a single exercise field using AI.
+ * Available to platform admins and trainers with ai_enabled=true.
+ * Enforces server-side rate limiting. Counts as 1 AI call.
+ *
+ * @param fieldName - The field to optimize (name_de, name_en, description_de, description_en)
+ * @param currentValue - The current field content
+ * @param exerciseName - The exercise name for context
+ * @param locale - The target language
+ */
+export async function optimizeExerciseField(
+  fieldName: "name_de" | "name_en" | "description_de" | "description_en",
+  currentValue: string,
+  exerciseName: string,
+  locale: "de" | "en"
+): Promise<ActionResult<string>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  // Check AI authorization
+  if (!isAiAuthorized(user)) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  if (!exerciseName || exerciseName.trim().length === 0) {
+    return { success: false, error: "EMPTY_EXERCISE_NAME" };
+  }
+
+  // Validate fieldName
+  const validFields = ["name_de", "name_en", "description_de", "description_en"];
+  if (!validFields.includes(fieldName)) {
+    return { success: false, error: "INVALID_FIELD" };
+  }
+
+  // Server-side rate limit check
+  const isAdmin = user.app_metadata?.is_platform_admin === true;
+  const rateLimitResult = await checkRateLimit(user.id, isAdmin);
+  if (!rateLimitResult.allowed) {
+    return { success: false, error: "RATE_LIMIT_EXCEEDED" };
+  }
+
+  // Map field names to human-readable labels for the prompt
+  const fieldLabels: Record<string, string> = {
+    name_de: "German exercise name",
+    name_en: "English exercise name",
+    description_de: "German exercise description",
+    description_en: "English exercise description",
+  };
+
+  const languageMap: Record<string, string> = {
+    name_de: "German",
+    name_en: "English",
+    description_de: "German",
+    description_en: "English",
+  };
+
+  // Build the prompt using admin-configurable template
+  const systemPrompt = await getOptimizeFieldPrompt({
+    exerciseName: exerciseName.trim(),
+    fieldName: fieldLabels[fieldName] ?? fieldName,
+    currentValue: currentValue || "(empty)",
+    language: languageMap[fieldName] ?? (locale === "de" ? "German" : "English"),
+  });
+
+  const modelId = await getAiModelSetting();
+
+  try {
+    const result = await optimizeField(
+      systemPrompt,
+      exerciseName.trim(),
+      modelId
+    );
+
+    // Log usage AFTER successful call
+    await logAiUsage({
+      userId: user.id,
+      modelId,
+      actionType: "optimize_field",
+      exerciseName: exerciseName.trim(),
+      fieldName,
+    });
+
+    return { success: true, data: result };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "UNKNOWN_ERROR";
+    console.error("AI field optimization failed:", message);
     return { success: false, error: message };
   }
 }

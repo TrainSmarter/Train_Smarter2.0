@@ -9,6 +9,7 @@ import {
   getTaxonomy,
 } from "@/lib/exercises/queries";
 import { ExerciseDetailPage } from "@/components/exercises/exercise-detail-page";
+import { getAiUsageData } from "@/lib/ai/usage";
 
 export async function generateMetadata({
   params,
@@ -52,11 +53,17 @@ export default async function ExerciseDetailRoute({
     redirect("/dashboard");
   }
 
-  const [exercise, allExercises, muscleGroups, equipment] = await Promise.all([
+  // Check AI authorization: admin OR ai_enabled trainer
+  const isAdmin = authUser.app_metadata.is_platform_admin;
+  const aiEnabled = user.app_metadata?.ai_enabled === true;
+  const showAiSuggest = isAdmin || aiEnabled;
+
+  const [exercise, allExercises, muscleGroups, equipment, usageData] = await Promise.all([
     getExerciseById(id),
     getExercises(),
     getTaxonomy("muscle_group"),
     getTaxonomy("equipment"),
+    showAiSuggest ? getAiUsageData() : Promise.resolve(null),
   ]);
 
   if (!exercise) {
@@ -69,6 +76,8 @@ export default async function ExerciseDetailRoute({
       muscleGroups={muscleGroups}
       equipment={equipment}
       allExercises={allExercises}
+      showAiSuggest={showAiSuggest}
+      usageData={usageData}
     />
   );
 }

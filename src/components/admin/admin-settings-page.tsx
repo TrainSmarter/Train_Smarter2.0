@@ -2,11 +2,12 @@
 
 import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { Loader2, CheckCircle2, XCircle, Sparkles, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Sparkles, AlertTriangle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -26,8 +27,19 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
-import { setAiModelSetting, testAiModel } from "@/lib/admin/settings-actions";
+import { setAiModelSetting, testAiModel, setRateLimitConfig } from "@/lib/admin/settings-actions";
+import { saveCustomPrompt } from "@/lib/ai/prompts";
+import {
+  DEFAULT_PROMPT_SUGGEST_ALL,
+  DEFAULT_PROMPT_OPTIMIZE_FIELD,
+} from "@/lib/ai/prompt-defaults";
 import {
   AI_MODELS,
   getModelById,
@@ -35,12 +47,16 @@ import {
   type ApiKeyStatus,
   type AiExerciseSuggestion,
 } from "@/lib/ai/providers";
+import type { RateLimitPeriod, RateLimitConfig } from "@/lib/ai/usage-types";
+import type { CustomPrompts } from "@/lib/ai/prompt-defaults";
 
 // ── Types ─────────────────────────────────────────────────────────
 
 interface AdminSettingsPageProps {
   currentModelId: string;
   apiKeyStatus: ApiKeyStatus;
+  rateLimitConfig: RateLimitConfig;
+  customPrompts: CustomPrompts;
 }
 
 // ── Cost Badge Helper ──────────────────────────────────────────────
@@ -80,6 +96,8 @@ function useProviderLabel() {
 export function AdminSettingsPage({
   currentModelId,
   apiKeyStatus,
+  rateLimitConfig: initialRateLimitConfig,
+  customPrompts: initialCustomPrompts,
 }: AdminSettingsPageProps) {
   const t = useTranslations("admin");
   const tCommon = useTranslations("common");
@@ -96,6 +114,21 @@ export function AdminSettingsPage({
   const [testResult, setTestResult] = React.useState<AiExerciseSuggestion | null>(null);
   const [testError, setTestError] = React.useState<string | null>(null);
 
+  // Rate limit state
+  const [ratePeriod, setRatePeriod] = React.useState<RateLimitPeriod>(initialRateLimitConfig.period);
+  const [rateCount, setRateCount] = React.useState(initialRateLimitConfig.maxCount);
+  const [isSavingRate, setIsSavingRate] = React.useState(false);
+
+  // Prompt editor state
+  const [promptSuggestAll, setPromptSuggestAll] = React.useState(
+    initialCustomPrompts.suggestAll ?? ""
+  );
+  const [promptOptimizeField, setPromptOptimizeField] = React.useState(
+    initialCustomPrompts.optimizeField ?? ""
+  );
+  const [isSavingPromptAll, setIsSavingPromptAll] = React.useState(false);
+  const [isSavingPromptField, setIsSavingPromptField] = React.useState(false);
+
   // Derived: selected model info
   const selectedModel = getModelById(selectedModelId);
   const selectedProvider = selectedModel?.provider;
@@ -104,6 +137,11 @@ export function AdminSettingsPage({
   // Derived: does the selected model have a missing key?
   const selectedProviderKeyMissing =
     selectedProvider != null && !apiKeyStatus[selectedProvider];
+
+  // Derived: has rate limit changed from initial?
+  const hasRateChanged =
+    ratePeriod !== initialRateLimitConfig.period ||
+    rateCount !== initialRateLimitConfig.maxCount;
 
   // Group models by provider
   const anthropicModels = AI_MODELS.filter((m) => m.provider === "anthropic");
@@ -146,6 +184,61 @@ export function AdminSettingsPage({
     }
   }
 
+  async function handleSaveRateLimit() {
+    setIsSavingRate(true);
+    try {
+      const result = await setRateLimitConfig(ratePeriod, rateCount);
+      if (result.success) {
+        toast.success(t("rateLimitSaved"));
+      } else {
+        toast.error(t("rateLimitSaveError"));
+      }
+    } catch {
+      toast.error(t("rateLimitSaveError"));
+    } finally {
+      setIsSavingRate(false);
+    }
+  }
+
+  async function handleSavePrompt(key: "suggest_all" | "optimize_field") {
+    const content = key === "suggest_all" ? promptSuggestAll : promptOptimizeField;
+    const setSaving = key === "suggest_all" ? setIsSavingPromptAll : setIsSavingPromptField;
+
+    setSaving(true);
+    try {
+      const result = await saveCustomPrompt(key, content || null);
+      if (result.success) {
+        toast.success(t("promptSaved"));
+      } else {
+        toast.error(t("promptSaveError"));
+      }
+    } catch {
+      toast.error(t("promptSaveError"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleResetPrompt(key: "suggest_all" | "optimize_field") {
+    const setSaving = key === "suggest_all" ? setIsSavingPromptAll : setIsSavingPromptField;
+    const setPrompt = key === "suggest_all" ? setPromptSuggestAll : setPromptOptimizeField;
+
+    setSaving(true);
+    try {
+      const result = await saveCustomPrompt(key, null);
+      if (result.success) {
+        setPrompt("");
+        toast.success(t("promptReset"));
+      } else {
+        toast.error(t("promptSaveError"));
+      }
+    } catch {
+      toast.error(t("promptSaveError"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   // ── Render ──────────────────────────────────────────────────────
 
   return (
@@ -156,7 +249,7 @@ export function AdminSettingsPage({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Left Column: Model + API Keys */}
+        {/* Left Column: Model + API Keys + Rate Limit */}
         <div className="space-y-6">
           {/* AI Model Card */}
           <Card>
@@ -265,99 +358,272 @@ export function AdminSettingsPage({
               </div>
             </CardContent>
           </Card>
-        </div>
 
-        {/* Right Column: Test */}
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-secondary" />
-              {t("testTitle")}
-            </CardTitle>
-            <CardDescription>{t("testDescription")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Test Input */}
-            <div className="space-y-1.5">
-              <Label htmlFor="test-exercise-name">{t("testExerciseName")}</Label>
-              <Input
-                id="test-exercise-name"
-                value={testName}
-                onChange={(e) => setTestName(e.target.value)}
-                placeholder="Bankdrücken"
-              />
-            </div>
-
-            <Button
-              onClick={handleTest}
-              disabled={isTesting || !testName.trim() || selectedProviderKeyMissing}
-              variant="secondary"
-            >
-              {isTesting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("testRunning")}
-                </>
-              ) : (
-                t("testButton")
-              )}
-            </Button>
-
-            {/* Test Error */}
-            {testError && (
-              <div className="flex items-start gap-2 rounded-md border border-error/50 bg-error/10 p-3">
-                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-error" />
-                <div>
-                  <p className="text-sm font-medium text-error">
-                    {t("testError")}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {testError}
-                  </p>
+          {/* Rate Limit Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("rateLimitTitle")}</CardTitle>
+              <CardDescription>{t("rateLimitDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="rate-period">{t("rateLimitPeriod")}</Label>
+                  <Select
+                    value={ratePeriod}
+                    onValueChange={(v) => setRatePeriod(v as RateLimitPeriod)}
+                  >
+                    <SelectTrigger id="rate-period" aria-label={t("rateLimitPeriod")}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="day">{t("rateLimitDay")}</SelectItem>
+                      <SelectItem value="week">{t("rateLimitWeek")}</SelectItem>
+                      <SelectItem value="month">{t("rateLimitMonth")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="rate-count">{t("rateLimitCount")}</Label>
+                  <Input
+                    id="rate-count"
+                    type="number"
+                    min={0}
+                    max={10000}
+                    value={rateCount}
+                    onChange={(e) => {
+                      const val = Math.max(0, Math.min(10000, Math.floor(Number(e.target.value) || 0)));
+                      setRateCount(val);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "-" || e.key === "e" || e.key === "E" || e.key === ".") {
+                        e.preventDefault();
+                      }
+                    }}
+                  />
                 </div>
               </div>
-            )}
 
-            {/* Test Result */}
-            {testResult && (
-              <div className="space-y-3">
-                <Separator />
-                <h3 className="text-sm font-semibold text-foreground">
-                  {t("testResult")}
-                </h3>
+              <Button
+                onClick={handleSaveRateLimit}
+                disabled={!hasRateChanged || isSavingRate}
+              >
+                {isSavingRate && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {tCommon("save")}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
 
-                <TestResultField label={t("testExerciseName")} value={testResult.nameTranslation} />
-                <TestResultField label={t("testExerciseType")} value={testResult.exerciseType} />
-                <TestResultField label={t("testDescription_de")} value={testResult.descriptionDe} />
-                <TestResultField label={t("testDescription_en")} value={testResult.descriptionEn} />
-                <TestResultField
-                  label={t("testPrimaryMuscles")}
-                  value={
-                    testResult.primaryMuscleGroupIds.length > 0
-                      ? testResult.primaryMuscleGroupIds.join(", ")
-                      : "—"
-                  }
-                />
-                <TestResultField
-                  label={t("testSecondaryMuscles")}
-                  value={
-                    testResult.secondaryMuscleGroupIds.length > 0
-                      ? testResult.secondaryMuscleGroupIds.join(", ")
-                      : "—"
-                  }
-                />
-                <TestResultField
-                  label={t("testEquipment")}
-                  value={
-                    testResult.equipmentIds.length > 0
-                      ? testResult.equipmentIds.join(", ")
-                      : "—"
-                  }
+        {/* Right Column: Test + Prompt Editor */}
+        <div className="space-y-6">
+          {/* Test Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-secondary" />
+                {t("testTitle")}
+              </CardTitle>
+              <CardDescription>{t("testDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Test Input */}
+              <div className="space-y-1.5">
+                <Label htmlFor="test-exercise-name">{t("testExerciseName")}</Label>
+                <Input
+                  id="test-exercise-name"
+                  value={testName}
+                  onChange={(e) => setTestName(e.target.value)}
+                  placeholder="Bankdrücken"
                 />
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              <Button
+                onClick={handleTest}
+                disabled={isTesting || !testName.trim() || selectedProviderKeyMissing}
+                variant="secondary"
+              >
+                {isTesting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("testRunning")}
+                  </>
+                ) : (
+                  t("testButton")
+                )}
+              </Button>
+
+              {/* Test Error */}
+              {testError && (
+                <div className="flex items-start gap-2 rounded-md border border-error/50 bg-error/10 p-3">
+                  <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-error" />
+                  <div>
+                    <p className="text-sm font-medium text-error">
+                      {t("testError")}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {testError}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Test Result */}
+              {testResult && (
+                <div className="space-y-3">
+                  <Separator />
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {t("testResult")}
+                  </h3>
+
+                  <TestResultField label={t("testExerciseName")} value={testResult.nameTranslation} />
+                  <TestResultField label={t("testExerciseType")} value={testResult.exerciseType} />
+                  <TestResultField label={t("testDescription_de")} value={testResult.descriptionDe} />
+                  <TestResultField label={t("testDescription_en")} value={testResult.descriptionEn} />
+                  <TestResultField
+                    label={t("testPrimaryMuscles")}
+                    value={
+                      testResult.primaryMuscleGroupIds.length > 0
+                        ? testResult.primaryMuscleGroupIds.join(", ")
+                        : "—"
+                    }
+                  />
+                  <TestResultField
+                    label={t("testSecondaryMuscles")}
+                    value={
+                      testResult.secondaryMuscleGroupIds.length > 0
+                        ? testResult.secondaryMuscleGroupIds.join(", ")
+                        : "—"
+                    }
+                  />
+                  <TestResultField
+                    label={t("testEquipment")}
+                    value={
+                      testResult.equipmentIds.length > 0
+                        ? testResult.equipmentIds.join(", ")
+                        : "—"
+                    }
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Prompt Editor Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("promptEditorTitle")}</CardTitle>
+              <CardDescription>{t("promptEditorDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Accordion type="multiple" className="w-full">
+                {/* Suggest All Prompt */}
+                <AccordionItem value="suggest-all">
+                  <AccordionTrigger className="text-sm">
+                    <div className="flex items-center gap-2">
+                      {t("promptSuggestAllLabel")}
+                      <Badge
+                        variant={initialCustomPrompts.suggestAll ? "secondary" : "gray"}
+                        size="sm"
+                      >
+                        {initialCustomPrompts.suggestAll
+                          ? t("promptUsingCustom")
+                          : t("promptUsingDefault")}
+                      </Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3">
+                    <Textarea
+                      value={promptSuggestAll}
+                      onChange={(e) => setPromptSuggestAll(e.target.value)}
+                      rows={8}
+                      placeholder={DEFAULT_PROMPT_SUGGEST_ALL}
+                      className="font-mono text-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("promptVariablesHint")}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleSavePrompt("suggest_all")}
+                        disabled={isSavingPromptAll}
+                      >
+                        {isSavingPromptAll && (
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        )}
+                        {tCommon("save")}
+                      </Button>
+                      {promptSuggestAll && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleResetPrompt("suggest_all")}
+                          disabled={isSavingPromptAll}
+                        >
+                          <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                          {t("promptResetToDefault")}
+                        </Button>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Optimize Field Prompt */}
+                <AccordionItem value="optimize-field">
+                  <AccordionTrigger className="text-sm">
+                    <div className="flex items-center gap-2">
+                      {t("promptOptimizeFieldLabel")}
+                      <Badge
+                        variant={initialCustomPrompts.optimizeField ? "secondary" : "gray"}
+                        size="sm"
+                      >
+                        {initialCustomPrompts.optimizeField
+                          ? t("promptUsingCustom")
+                          : t("promptUsingDefault")}
+                      </Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3">
+                    <Textarea
+                      value={promptOptimizeField}
+                      onChange={(e) => setPromptOptimizeField(e.target.value)}
+                      rows={8}
+                      placeholder={DEFAULT_PROMPT_OPTIMIZE_FIELD}
+                      className="font-mono text-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("promptVariablesHint")}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleSavePrompt("optimize_field")}
+                        disabled={isSavingPromptField}
+                      >
+                        {isSavingPromptField && (
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                        )}
+                        {tCommon("save")}
+                      </Button>
+                      {promptOptimizeField && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleResetPrompt("optimize_field")}
+                          disabled={isSavingPromptField}
+                        >
+                          <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                          {t("promptResetToDefault")}
+                        </Button>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { toAuthUser } from "@/lib/auth-user";
 import { getExercises, getTaxonomy } from "@/lib/exercises/queries";
 import { ExerciseDetailPage } from "@/components/exercises/exercise-detail-page";
+import { getAiUsageData } from "@/lib/ai/usage";
 
 export async function generateMetadata({
   params,
@@ -35,10 +36,16 @@ export default async function NewExercisePage() {
     redirect("/dashboard");
   }
 
-  const [allExercises, muscleGroups, equipment] = await Promise.all([
+  // Check AI authorization: admin OR ai_enabled trainer
+  const isAdmin = authUser.app_metadata.is_platform_admin;
+  const aiEnabled = user.app_metadata?.ai_enabled === true;
+  const showAiSuggest = isAdmin || aiEnabled;
+
+  const [allExercises, muscleGroups, equipment, usageData] = await Promise.all([
     getExercises(),
     getTaxonomy("muscle_group"),
     getTaxonomy("equipment"),
+    showAiSuggest ? getAiUsageData() : Promise.resolve(null),
   ]);
 
   return (
@@ -47,6 +54,8 @@ export default async function NewExercisePage() {
       muscleGroups={muscleGroups}
       equipment={equipment}
       allExercises={allExercises}
+      showAiSuggest={showAiSuggest}
+      usageData={usageData}
     />
   );
 }
