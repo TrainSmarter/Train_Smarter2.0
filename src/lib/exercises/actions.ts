@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { env } from "@/lib/env";
 import { suggestExercise } from "@/lib/ai/suggest-exercise";
 import { optimizeField } from "@/lib/ai/optimize-field";
 import { getAiModelSetting, getExtendedThinkingSetting } from "@/lib/admin/settings-actions";
@@ -64,9 +66,15 @@ export async function createExercise(data: {
   } = parsed.data;
 
   // Admin exercises are global (visible to all, created_by=NULL per CHECK constraint)
-  // Trainer exercises are personal (scope=trainer, created_by=user.id)
+  // Admin uses service-role client to bypass RLS for global INSERT
   const isAdmin = user.app_metadata?.is_platform_admin === true;
-  const { data: exercise, error: insertError } = await supabase
+  const dbClient = isAdmin
+    ? createSupabaseClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : supabase;
+
+  const { data: exercise, error: insertError } = await dbClient
     .from("exercises")
     .insert({
       name,
@@ -162,15 +170,18 @@ export async function updateExercise(data: {
   if (exerciseType !== undefined) dbUpdates.exercise_type = exerciseType;
 
   if (Object.keys(dbUpdates).length > 0) {
-    // Admin can update any exercise (RLS checks is_platform_admin for global scope)
-    // Trainer can only update own exercises (RLS checks created_by = auth.uid())
+    // Admin uses service-role client to bypass RLS (global exercises have created_by=NULL)
     const isAdmin = user.app_metadata?.is_platform_admin === true;
-    const query = supabase.from("exercises").update(dbUpdates).eq("id", id);
-    if (!isAdmin) {
-      query.eq("created_by", user.id);
-    }
+    const dbClient = isAdmin
+      ? createSupabaseClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        })
+      : supabase;
 
-    const { error: updateError } = await query;
+    const { error: updateError } = await dbClient
+      .from("exercises")
+      .update(dbUpdates)
+      .eq("id", id);
 
     if (updateError) {
       console.error("Failed to update exercise:", updateError);
@@ -249,26 +260,32 @@ export async function deleteExercise(id: string): Promise<ActionResult> {
   }
 
   // Soft-delete: set is_deleted=true, deleted_at=now()
-  // Admin can delete any exercise (global or own), trainer only own
+  // Admin uses service-role client to bypass RLS (global exercises have created_by=NULL)
+  // Trainer uses user client (RLS enforces created_by=auth.uid())
   const isAdmin = user.app_metadata?.is_platform_admin === true;
-  const query = supabase
+
+  const dbClient = isAdmin
+    ? createSupabaseClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : supabase;
+
+  const { data: updated, error: updateError } = await dbClient
     .from("exercises")
     .update({
       is_deleted: true,
       deleted_at: new Date().toISOString(),
     })
-    .eq("id", id);
-
-  // Non-admin: restrict to own exercises
-  if (!isAdmin) {
-    query.eq("created_by", user.id);
-  }
-
-  const { error: updateError } = await query;
+    .eq("id", id)
+    .select("id");
 
   if (updateError) {
     console.error("Failed to soft-delete exercise:", updateError);
     return { success: false, error: "DELETE_FAILED" };
+  }
+
+  if (!updated || updated.length === 0) {
+    return { success: false, error: "NOT_FOUND" };
   }
 
   revalidatePath("/training/exercises", "page");
