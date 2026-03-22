@@ -105,10 +105,11 @@ describe("PROJ-12 Server Actions invariants", () => {
       expect(actions).toContain("created_by: user.id");
     });
 
-    it("should check created_by = user.id on update/delete", () => {
+    it("should check created_by = user.id for trainer operations (taxonomy + clone)", () => {
       const ownershipChecks = actions.match(/\.eq\("created_by", user\.id\)/g) ?? [];
-      // update, delete, updateTaxonomy, deleteTaxonomy + createTaxonomy sort query
-      expect(ownershipChecks.length).toBeGreaterThanOrEqual(4);
+      // Trainer taxonomy CRUD + clone still uses created_by checks
+      // Admin exercise CRUD uses service-role client instead
+      expect(ownershipChecks.length).toBeGreaterThanOrEqual(3);
     });
   });
 
@@ -972,5 +973,237 @@ describe("PROJ-12 Component source invariants", () => {
         expect(source).not.toContain('from "next/link"');
       }
     }
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════
+// Admin Global Exercise CRUD (scope + service-role client)
+// ══════════════════════════════════════════════════════════════════
+
+describe("Admin global exercise CRUD", () => {
+  let actions: string;
+
+  beforeEach(() => {
+    actions = readSrc("lib/exercises/actions.ts");
+  });
+
+  describe("createExercise — admin scope handling", () => {
+    it("should set scope='global' for admin", () => {
+      expect(actions).toContain('scope: isAdmin ? "global" : "trainer"');
+    });
+
+    it("should set created_by=null for admin (CHECK constraint)", () => {
+      expect(actions).toContain("created_by: isAdmin ? null : user.id");
+    });
+
+    it("should use service-role client for admin inserts", () => {
+      // createExercise must create a service-role client for admin
+      const createFn = actions.slice(
+        actions.indexOf("export async function createExercise"),
+        actions.indexOf("export async function updateExercise")
+      );
+      expect(createFn).toContain("createSupabaseClient");
+      expect(createFn).toContain("SUPABASE_SERVICE_ROLE_KEY");
+      expect(createFn).toContain("is_platform_admin");
+    });
+  });
+
+  describe("updateExercise — admin service-role client", () => {
+    it("should use service-role client for admin updates", () => {
+      const updateFn = actions.slice(
+        actions.indexOf("export async function updateExercise"),
+        actions.indexOf("export async function deleteExercise")
+      );
+      expect(updateFn).toContain("createSupabaseClient");
+      expect(updateFn).toContain("SUPABASE_SERVICE_ROLE_KEY");
+      expect(updateFn).toContain("is_platform_admin");
+    });
+
+    it("should NOT filter by created_by for admin updates", () => {
+      const updateFn = actions.slice(
+        actions.indexOf("export async function updateExercise"),
+        actions.indexOf("export async function deleteExercise")
+      );
+      // Admin path should not have .eq("created_by", ...)
+      // The dbClient query just does .eq("id", id) without created_by filter
+      expect(updateFn).toContain('.eq("id", id)');
+    });
+  });
+
+  describe("deleteExercise — admin service-role client", () => {
+    it("should use service-role client for admin deletes", () => {
+      const deleteFn = actions.slice(
+        actions.indexOf("export async function deleteExercise"),
+        actions.indexOf("export async function cloneExercise")
+      );
+      expect(deleteFn).toContain("createSupabaseClient");
+      expect(deleteFn).toContain("SUPABASE_SERVICE_ROLE_KEY");
+      expect(deleteFn).toContain("is_platform_admin");
+    });
+
+    it("should verify rows were actually updated (not silent 0-row success)", () => {
+      const deleteFn = actions.slice(
+        actions.indexOf("export async function deleteExercise"),
+        actions.indexOf("export async function cloneExercise")
+      );
+      expect(deleteFn).toContain('.select("id")');
+      expect(deleteFn).toContain("updated.length === 0");
+      expect(deleteFn).toContain("NOT_FOUND");
+    });
+
+    it("should still do soft-delete (is_deleted + deleted_at), not hard delete", () => {
+      const deleteFn = actions.slice(
+        actions.indexOf("export async function deleteExercise"),
+        actions.indexOf("export async function cloneExercise")
+      );
+      expect(deleteFn).toContain("is_deleted: true");
+      expect(deleteFn).toContain("deleted_at:");
+      expect(deleteFn).not.toContain(".delete()");
+    });
+  });
+
+  describe("service-role client configuration", () => {
+    it("should import createClient from @supabase/supabase-js", () => {
+      expect(actions).toContain('import { createClient as createSupabaseClient } from "@supabase/supabase-js"');
+    });
+
+    it("should import env for service-role key", () => {
+      expect(actions).toContain('import { env } from "@/lib/env"');
+    });
+
+    it("should disable auto-refresh and session persistence for service-role client", () => {
+      expect(actions).toContain("autoRefreshToken: false");
+      expect(actions).toContain("persistSession: false");
+    });
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════
+// Admin UI — edit/delete visibility for global exercises
+// ══════════════════════════════════════════════════════════════════
+
+describe("Admin UI — global exercise edit/delete", () => {
+  describe("exercise-detail-page", () => {
+    let detail: string;
+
+    beforeEach(() => {
+      detail = readSrc("components/exercises/exercise-detail-page.tsx");
+    });
+
+    it("should accept isPlatformAdmin prop", () => {
+      expect(detail).toContain("isPlatformAdmin?: boolean");
+      expect(detail).toContain("isPlatformAdmin = false");
+    });
+
+    it("should compute canEdit and canDelete based on admin status", () => {
+      expect(detail).toContain("const canEdit = !isGlobal || isPlatformAdmin");
+      expect(detail).toContain("const canDelete = !isGlobal || isPlatformAdmin");
+    });
+
+    it("should show edit button for admin on global exercises", () => {
+      expect(detail).toContain("{canEdit && (");
+    });
+
+    it("should show delete button for admin on global exercises", () => {
+      expect(detail).toContain("{canDelete && (");
+    });
+
+    it("should show clone button only for non-admins on global exercises", () => {
+      expect(detail).toContain("{isGlobal && !isPlatformAdmin && (");
+    });
+  });
+
+  describe("exercise-slide-over", () => {
+    let slideOver: string;
+
+    beforeEach(() => {
+      slideOver = readSrc("components/exercises/exercise-slide-over.tsx");
+    });
+
+    it("should accept isPlatformAdmin prop", () => {
+      expect(slideOver).toContain("isPlatformAdmin?: boolean");
+      expect(slideOver).toContain("isPlatformAdmin = false");
+    });
+
+    it("should compute canEdit and canDelete based on admin status", () => {
+      expect(slideOver).toContain("const canEdit = !isGlobal || isPlatformAdmin");
+      expect(slideOver).toContain("const canDelete = !isGlobal || isPlatformAdmin");
+    });
+
+    it("should have delete handler with ConfirmDialog", () => {
+      expect(slideOver).toContain("handleDelete");
+      expect(slideOver).toContain("deleteExercise");
+      expect(slideOver).toContain("ConfirmDialog");
+      expect(slideOver).toContain("deleteConfirm");
+    });
+
+    it("should import Trash2 icon and deleteExercise action", () => {
+      expect(slideOver).toContain("Trash2");
+      expect(slideOver).toContain('import { cloneExercise, deleteExercise }');
+    });
+  });
+
+  describe("exercise-library-page", () => {
+    let library: string;
+
+    beforeEach(() => {
+      library = readSrc("components/exercises/exercise-library-page.tsx");
+    });
+
+    it("should accept isPlatformAdmin prop", () => {
+      expect(library).toContain("isPlatformAdmin?: boolean");
+      expect(library).toContain("isPlatformAdmin = false");
+    });
+
+    it("should pass isPlatformAdmin to ExerciseSlideOver", () => {
+      expect(library).toContain("isPlatformAdmin={isPlatformAdmin}");
+    });
+  });
+
+  describe("page routes pass isPlatformAdmin", () => {
+    it("exercises list page should pass isPlatformAdmin", () => {
+      const page = readSrc(
+        "app/[locale]/(protected)/training/exercises/page.tsx"
+      );
+      expect(page).toContain("isPlatformAdmin");
+      expect(page).toContain("is_platform_admin");
+    });
+
+    it("exercise detail page should pass isPlatformAdmin", () => {
+      const page = readSrc(
+        "app/[locale]/(protected)/training/exercises/[id]/page.tsx"
+      );
+      expect(page).toContain("isPlatformAdmin={isAdmin === true}");
+    });
+
+    it("new exercise page should pass isPlatformAdmin", () => {
+      const page = readSrc(
+        "app/[locale]/(protected)/training/exercises/new/page.tsx"
+      );
+      expect(page).toContain("isPlatformAdmin={isAdmin === true}");
+    });
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════
+// DB Constraint: scope + created_by consistency
+// ══════════════════════════════════════════════════════════════════
+
+describe("CHECK constraint awareness", () => {
+  it("migration should enforce scope-creator constraint", () => {
+    const migration = readRoot(
+      "supabase/migrations/20260320200000_proj12_exercise_library.sql"
+    );
+    expect(migration).toContain("chk_exercise_scope_creator");
+    // global → created_by IS NULL, trainer → created_by IS NOT NULL
+    expect(migration).toContain("scope = 'global'");
+    expect(migration).toContain("created_by IS NULL");
+    expect(migration).toContain("scope = 'trainer'");
+    expect(migration).toContain("created_by IS NOT NULL");
+  });
+
+  it("createExercise should respect CHECK constraint (admin: null, trainer: user.id)", () => {
+    const actions = readSrc("lib/exercises/actions.ts");
+    expect(actions).toContain("created_by: isAdmin ? null : user.id");
   });
 });
