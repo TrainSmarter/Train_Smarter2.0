@@ -43,8 +43,8 @@ import type { AiUsageData } from "@/lib/ai/usage-types";
 
 // Form schema (matches the server schemas but for the form)
 const exerciseFormSchema = z.object({
-  nameDe: z.string().min(1).max(100),
-  nameEn: z.string().min(1).max(100),
+  nameDe: z.string().min(1, { message: "required" }).max(100),
+  nameEn: z.string().min(1, { message: "required" }).max(100),
   descriptionDe: z.string().max(2000),
   descriptionEn: z.string().max(2000),
   exerciseType: z.enum(["strength", "endurance", "speed", "flexibility"]),
@@ -126,7 +126,7 @@ export function ExerciseForm({
   }, []);
 
   // Single-field optimization state
-  const [optimizingField, setOptimizingField] = React.useState<string | null>(null);
+  const [optimizingFields, setOptimizingFields] = React.useState<Set<string>>(new Set());
   // Undo state: stores previous values before AI optimization
   const [undoValues, setUndoValues] = React.useState<Map<string, string>>(new Map());
 
@@ -232,7 +232,8 @@ export function ExerciseForm({
         filled.add("descriptionEn");
       }
       const currentType = form.getValues("exerciseType");
-      if ((!currentType || currentType === "strength") && suggestion.exerciseType && suggestion.exerciseType !== currentType) {
+      const isTypeDirty = form.formState.dirtyFields.exerciseType;
+      if (!isTypeDirty && suggestion.exerciseType && suggestion.exerciseType !== currentType) {
         form.setValue("exerciseType", suggestion.exerciseType as ExerciseType);
         filled.add("exerciseType");
       }
@@ -276,7 +277,7 @@ export function ExerciseForm({
 
     const currentValue = form.getValues(formFieldName) as string;
 
-    setOptimizingField(formFieldName);
+    setOptimizingFields(prev => new Set(prev).add(formFieldName));
     try {
       const result = await optimizeExerciseField(
         serverFieldName,
@@ -312,7 +313,7 @@ export function ExerciseForm({
     } catch {
       toast.error(t("aiOptimizeError"));
     } finally {
-      setOptimizingField(null);
+      setOptimizingFields(prev => { const next = new Set(prev); next.delete(formFieldName); return next; });
     }
   }
 
@@ -331,6 +332,7 @@ export function ExerciseForm({
   }
 
   async function onSubmit(values: ExerciseFormValues) {
+    if (isSaving) return;
     setIsSaving(true);
     // Clear undo state on save
     setUndoValues(new Map());
@@ -453,12 +455,13 @@ export function ExerciseForm({
             {...form.register("nameDe")}
             maxLength={100}
             aria-invalid={!!form.formState.errors.nameDe}
+            aria-describedby={form.formState.errors.nameDe ? "nameDe-error" : undefined}
             className={`flex-1 ${aiHighlight("nameDe")}`}
           />
           {showAiSuggest && (
             <FieldAiActions
               fieldName="nameDe"
-              isOptimizing={optimizingField === "nameDe"}
+              isOptimizing={optimizingFields.has("nameDe")}
               isDisabled={isAiLoading || isSaving || isRateLimited || !canShowAiButton}
               hasUndo={undoValues.has("nameDe")}
               onOptimize={() => handleOptimizeField("nameDe")}
@@ -477,7 +480,11 @@ export function ExerciseForm({
           )}
         </div>
         {form.formState.errors.nameDe && (
-          <p className="text-caption text-error">{form.formState.errors.nameDe.message}</p>
+          <p id="nameDe-error" className="text-caption text-error">
+            {form.formState.errors.nameDe.message === "required"
+              ? t("validationRequired")
+              : form.formState.errors.nameDe.message}
+          </p>
         )}
       </div>
 
@@ -490,12 +497,13 @@ export function ExerciseForm({
             {...form.register("nameEn")}
             maxLength={100}
             aria-invalid={!!form.formState.errors.nameEn}
+            aria-describedby={form.formState.errors.nameEn ? "nameEn-error" : undefined}
             className={`flex-1 ${aiHighlight("nameEn")}`}
           />
           {showAiSuggest && (
             <FieldAiActions
               fieldName="nameEn"
-              isOptimizing={optimizingField === "nameEn"}
+              isOptimizing={optimizingFields.has("nameEn")}
               isDisabled={isAiLoading || isSaving || isRateLimited || !canShowAiButton}
               hasUndo={undoValues.has("nameEn")}
               onOptimize={() => handleOptimizeField("nameEn")}
@@ -514,7 +522,11 @@ export function ExerciseForm({
           )}
         </div>
         {form.formState.errors.nameEn && (
-          <p className="text-caption text-error">{form.formState.errors.nameEn.message}</p>
+          <p id="nameEn-error" className="text-caption text-error">
+            {form.formState.errors.nameEn.message === "required"
+              ? t("validationRequired")
+              : form.formState.errors.nameEn.message}
+          </p>
         )}
       </div>
 
@@ -533,7 +545,7 @@ export function ExerciseForm({
           {showAiSuggest && (
             <FieldAiActions
               fieldName="descriptionDe"
-              isOptimizing={optimizingField === "descriptionDe"}
+              isOptimizing={optimizingFields.has("descriptionDe")}
               isDisabled={isAiLoading || isSaving || isRateLimited || !canShowAiButton}
               hasUndo={undoValues.has("descriptionDe")}
               onOptimize={() => handleOptimizeField("descriptionDe")}
@@ -567,7 +579,7 @@ export function ExerciseForm({
           {showAiSuggest && (
             <FieldAiActions
               fieldName="descriptionEn"
-              isOptimizing={optimizingField === "descriptionEn"}
+              isOptimizing={optimizingFields.has("descriptionEn")}
               isDisabled={isAiLoading || isSaving || isRateLimited || !canShowAiButton}
               hasUndo={undoValues.has("descriptionEn")}
               onOptimize={() => handleOptimizeField("descriptionEn")}

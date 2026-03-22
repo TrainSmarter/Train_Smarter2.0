@@ -111,7 +111,7 @@ export async function createExercise(data: {
   ];
 
   if (assignments.length > 0) {
-    const { error: assignError } = await supabase
+    const { error: assignError } = await dbClient
       .from("exercise_taxonomy_assignments")
       .insert(assignments);
 
@@ -163,6 +163,14 @@ export async function updateExercise(data: {
     equipmentIds,
   } = parsed.data;
 
+  // Admin uses service-role client to bypass RLS (global exercises have created_by=NULL)
+  const isAdmin = user.app_metadata?.is_platform_admin === true;
+  const dbClient = isAdmin
+    ? createSupabaseClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : supabase;
+
   // Build update object
   const dbUpdates: Record<string, unknown> = {};
   if (name !== undefined) dbUpdates.name = name;
@@ -170,14 +178,6 @@ export async function updateExercise(data: {
   if (exerciseType !== undefined) dbUpdates.exercise_type = exerciseType;
 
   if (Object.keys(dbUpdates).length > 0) {
-    // Admin uses service-role client to bypass RLS (global exercises have created_by=NULL)
-    const isAdmin = user.app_metadata?.is_platform_admin === true;
-    const dbClient = isAdmin
-      ? createSupabaseClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-          auth: { autoRefreshToken: false, persistSession: false },
-        })
-      : supabase;
-
     const { error: updateError } = await dbClient
       .from("exercises")
       .update(dbUpdates)
@@ -197,7 +197,7 @@ export async function updateExercise(data: {
 
   if (hasTaxonomyUpdate) {
     // Delete existing assignments
-    const { error: deleteAssignError } = await supabase
+    const { error: deleteAssignError } = await dbClient
       .from("exercise_taxonomy_assignments")
       .delete()
       .eq("exercise_id", id);
@@ -226,7 +226,7 @@ export async function updateExercise(data: {
     ];
 
     if (assignments.length > 0) {
-      const { error: assignError } = await supabase
+      const { error: assignError } = await dbClient
         .from("exercise_taxonomy_assignments")
         .insert(assignments);
 

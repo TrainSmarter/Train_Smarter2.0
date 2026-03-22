@@ -895,3 +895,160 @@ All 3 occurrences of `<Button asChild>` in the exercises feature are affected:
 | `src/components/exercises/exercise-slide-over.tsx` | 201 | "Open Detail" link in slide-over |
 
 No other pages in the codebase use `<Button asChild>`. The bug is latent in `button.tsx` and will affect any future usage of `<Button asChild>` as well.
+
+---
+
+## QA Audit: Exercise Creation Page (2026-03-22)
+
+**Scope:** `new/page.tsx`, `exercise-detail-page.tsx`, `exercise-form.tsx`, `taxonomy-multi-select.tsx`, `actions.ts`, `types.ts`
+**Auditor:** QA Engineer (automated)
+
+### Summary
+
+| Severity | Count |
+|----------|-------|
+| CRITICAL | 1 |
+| HIGH | 5 |
+| MEDIUM | 7 |
+| LOW | 4 |
+
+---
+
+### CRITICAL
+
+#### BUG-QA-01: No double-submit protection on form submission
+- **File:** `src/components/exercises/exercise-form.tsx:660`
+- **Description:** The submit button checks `disabled={isSaving}` but the `<form>` element itself has no guard against double submission. If a user presses Enter rapidly or double-clicks the submit button before `isSaving` flips to `true` (async state update), two `createExercise` server actions can fire concurrently, creating duplicate exercises.
+- **Steps to Reproduce:** Open create form, fill all fields, rapidly double-click "Save" or press Enter twice quickly.
+- **Expected:** Only one exercise is created.
+- **Actual:** Two identical exercises may be created.
+- **Fix Suggestion:** Use a `ref` flag (synchronous) to guard `onSubmit`, or disable the form immediately via `event.preventDefault()` + ref guard before the async `setIsSaving(true)`.
+
+---
+
+### HIGH
+
+#### BUG-QA-02: Form validation errors lack `aria-describedby` association
+- **File:** `src/components/exercises/exercise-form.tsx:479-481, 516-518`
+- **Description:** Error messages are rendered as `<p>` elements below the input but are not linked to the input via `aria-describedby`. The inputs have `aria-invalid` but screen readers cannot announce the specific error message. This violates WCAG 2.1 SC 1.3.1 (Info and Relationships).
+- **Affected Fields:** `nameDe`, `nameEn`
+- **Fix Suggestion:** Add `id="nameDe-error"` to the error `<p>` and `aria-describedby="nameDe-error"` to the `<Input>`. Same for `nameEn`.
+
+#### BUG-QA-03: Error messages display raw Zod messages (not translated)
+- **File:** `src/components/exercises/exercise-form.tsx:480, 517`
+- **Description:** `form.formState.errors.nameDe.message` displays the raw Zod error string (e.g., "String must contain at least 1 character(s)") rather than a localized, user-friendly message. The Zod schema on line 46 does not specify custom error messages.
+- **Steps to Reproduce:** Submit the form with empty name fields.
+- **Expected:** Localized error like "Name (DE) ist erforderlich" / "Name (DE) is required".
+- **Actual:** Raw English Zod message displayed regardless of locale.
+- **Fix Suggestion:** Add `{ message: t("...") }` to the Zod schema, or use `zodResolver` with a custom error map, or use react-hook-form's `setError` with translated messages.
+
+#### BUG-QA-04: No input sanitization on server-side text fields
+- **File:** `src/lib/exercises/actions.ts:59-66, 78-86`
+- **Description:** The `name` and `description` fields pass through Zod validation (length check only) but are not sanitized for HTML/script content before database insertion. While Next.js/React auto-escapes on render, the data is stored as-is in the database. If this data is ever rendered in a context that does not auto-escape (email templates, PDF exports, admin dashboards with `dangerouslySetInnerHTML`), stored XSS becomes possible.
+- **Security Impact:** Stored XSS risk (currently mitigated by React's auto-escaping, but fragile).
+- **Fix Suggestion:** Add `.transform(val => val.trim())` to Zod schemas at minimum. Consider stripping HTML tags from name fields.
+
+#### BUG-QA-05: Taxonomy delete has no confirmation dialog
+- **File:** `src/components/exercises/taxonomy-multi-select.tsx:293-305`
+- **Description:** Clicking the delete (Trash2) icon on an own taxonomy entry immediately fires `handleDelete()` with no confirmation step. This is destructive and irreversible from the user's perspective (soft-delete server-side, but no undo in UI). A misclick on the small icon can delete a taxonomy entry.
+- **Steps to Reproduce:** Open any TaxonomyMultiSelect, hover over an own entry, click the trash icon.
+- **Expected:** Confirmation dialog before deletion.
+- **Actual:** Entry is deleted immediately.
+
+#### BUG-QA-06: Clone exercise does not check if already cloned before executing
+- **File:** `src/lib/exercises/actions.ts:297-378`
+- **Description:** The `cloneExercise` server action has no server-side check for whether the exercise has already been cloned by this user. The `hasBeenCloned` check only exists client-side in `exercise-detail-page.tsx:79-83`. A user could bypass the UI warning and clone the same exercise multiple times via direct server action calls or by opening multiple browser tabs.
+- **Security Impact:** Data integrity -- multiple duplicate clones possible.
+
+---
+
+### MEDIUM
+
+#### BUG-QA-07: `useSearchParams` imported from `next/navigation` instead of `@/i18n/navigation`
+- **File:** `src/components/exercises/exercise-detail-page.tsx:6`
+- **Description:** The i18n rules state that `usePathname`, `useRouter`, `Link` must come from `@/i18n/navigation`. While `useSearchParams` is not locale-aware and technically works from `next/navigation`, this inconsistency with the project convention could cause confusion. The `useRouter` and `Link` on line 25 are correctly imported from `@/i18n/navigation`.
+- **Note:** This is a convention violation, not a functional bug. `useSearchParams` is not exported by `@/i18n/navigation` in next-intl, so the import is technically correct but worth documenting.
+
+#### BUG-QA-08: Hardcoded placeholder strings "DE" and "EN" in taxonomy edit form
+- **File:** `src/components/exercises/taxonomy-multi-select.tsx:230, 237`
+- **Description:** The inline edit form for taxonomy entries uses hardcoded `placeholder="DE"` and `placeholder="EN"` strings. Per i18n rules, all user-facing strings must go through the translation system.
+- **Fix Suggestion:** Use translation keys like `t("placeholderDe")` and `t("placeholderEn")`.
+
+#### BUG-QA-09: Category Select not linked to Label via htmlFor/id
+- **File:** `src/components/exercises/exercise-form.tsx:599, 600-613`
+- **Description:** The `<Label>` for the category field has no `htmlFor` attribute and the `<Select>` has no `id`. This means clicking the label text does not focus/open the select dropdown. The `aria-label` on `SelectTrigger` partially compensates, but the visual label-to-control association is broken for accessibility.
+
+#### BUG-QA-10: TaxonomyMultiSelect Labels not linked to control
+- **File:** `src/components/exercises/exercise-form.tsx:618, 631, 644`
+- **Description:** The `<Label>` elements for "Primary Muscle Groups", "Secondary Muscle Groups", and "Equipment" have no `htmlFor` attribute, and the `TaxonomyMultiSelect` Popover trigger has no matching `id`. Clicking the label does not open the popover. WCAG 1.3.1 violation.
+
+#### BUG-QA-11: Newly created taxonomy entries not reflected in the dropdown
+- **File:** `src/components/exercises/taxonomy-multi-select.tsx:85-109`
+- **Description:** After `handleCreate` succeeds, the `onEntryCreated` callback fires and the `showCreate` form resets, but the `entries` prop is not updated. The new entry will not appear in the dropdown until the page is revalidated (which `revalidatePath` triggers on the server). However, the user sees the "success" toast while the entry is invisible in the current dropdown. This causes a confusing UX gap.
+- **Workaround:** The user can close and reopen the page, but inline the entry should appear immediately.
+
+#### BUG-QA-12: AI autofill overwrites exercise type even when "strength" is intentionally selected
+- **File:** `src/components/exercises/exercise-form.tsx:234-238`
+- **Description:** The condition `(!currentType || currentType === "strength") && suggestion.exerciseType && suggestion.exerciseType !== currentType` will overwrite the exercise type if the user intentionally kept "strength" (the default) and the AI suggests a different type. The logic assumes "strength" means "unset" because it's the default, but the user may have deliberately chosen it.
+- **Fix Suggestion:** Track whether the user explicitly changed the exercise type via a `dirtyFields` check or a separate boolean.
+
+#### BUG-QA-13: `redirect` in server component page uses locale-unaware path
+- **File:** `src/app/[locale]/(protected)/training/exercises/new/page.tsx:2, 29, 37`
+- **Description:** `redirect("/login")` and `redirect("/dashboard")` use `next/navigation`'s redirect, which does not prepend the locale. In a server component under `[locale]`, this may redirect to a path without the locale prefix (e.g., `/login` instead of `/de/login`), potentially causing a 404 or falling through to the default locale. This depends on how next-intl middleware handles it.
+- **Note:** If next-intl middleware catches the unprefixed path and redirects to the default locale, this is benign but adds an unnecessary redirect hop.
+
+---
+
+### LOW
+
+#### BUG-QA-14: `form.watch()` calls on every render for taxonomy selects cause unnecessary re-renders
+- **File:** `src/components/exercises/exercise-form.tsx:601, 621-622, 632-633, 647`
+- **Description:** `form.watch("exerciseType")`, `form.watch("primaryMuscleGroupIds")`, etc. are called inline in the JSX, which subscribes to all form changes and triggers re-renders for every keystroke in any field. For a form this size it is not a performance issue, but for future scalability, using `useWatch` with specific field names or `Controller` would be cleaner.
+
+#### BUG-QA-15: Highlight timer uses single ref -- concurrent AI field optimizations share it
+- **File:** `src/components/exercises/exercise-form.tsx:254-255, 306-308`
+- **Description:** `highlightTimerRef` is a single `setTimeout` ref shared across all AI operations (autofill + individual field optimizations). If two field optimizations complete in rapid succession, the first timer is cleared by the second, and the first field's highlight may be cut short or the second field's highlight extends to cover both. This is cosmetic only.
+
+#### BUG-QA-16: Unused `fieldName` parameter in `FieldAiActions`
+- **File:** `src/components/exercises/exercise-form.tsx:684`
+- **Description:** The `fieldName` prop is received but only used in the `aria-label` string. It is passed as a raw camelCase form field name (e.g., "nameDe") which is not user-readable. The `aria-label` becomes "Optimieren nameDe" which is not meaningful for screen reader users.
+- **Fix Suggestion:** Map field names to translated labels for the aria-label.
+
+#### BUG-QA-17: No `maxLength` validation on taxonomy create/edit inline inputs
+- **File:** `src/components/exercises/taxonomy-multi-select.tsx:229-240, 334-346`
+- **Description:** The inline `<Input>` elements for creating and editing taxonomy entries do not enforce `maxLength`. The server Zod schema (`bilingualTextSchema`) limits to 100 characters, but the user gets no client-side feedback until submit fails. The create form inputs (lines 334-346) also lack `maxLength`.
+
+---
+
+### Security Audit Summary
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| Authentication on all server actions | PASS | All actions verify `supabase.auth.getUser()` |
+| Authorization (role checks) | PASS | Admin check for global exercises, RLS for trainer exercises |
+| Zod validation on server side | PASS | All mutations validate with Zod schemas |
+| UUID validation on IDs | PASS | `z.string().uuid()` used for all ID fields |
+| Rate limiting on AI endpoints | PASS | Server-side `checkRateLimit` before AI calls |
+| AI authorization check | PASS | `isAiAuthorized()` check before AI operations |
+| RLS policies on tables | PASS | Verified `exercise_taxonomy_assignments` RLS includes admin check |
+| Service-role client scoped correctly | PASS | Only used for exercises table where `created_by=NULL` breaks RLS |
+| CSRF protection | PASS | Next.js server actions have built-in CSRF protection |
+| Input sanitization | FAIL | See BUG-QA-04 -- no HTML stripping or trimming on text inputs |
+| Error message leakage | PASS | Generic error messages returned to client, detailed logs server-side only |
+| Soft-delete vs hard-delete | PASS | Both exercises and taxonomy use soft-delete |
+
+### i18n Audit Summary
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| All user-facing strings translated | FAIL | "DE"/"EN" hardcoded in taxonomy-multi-select.tsx:230,237 |
+| DE and EN message files in sync | PASS | Both have identical key sets for "exercises" namespace |
+| German umlauts correct | PASS | Verified in de.json |
+| Navigation imports from @/i18n/navigation | PASS | Router and Link correctly imported (useSearchParams exception noted) |
+| Locale-aware redirects | WARN | Server-side redirect() may skip locale prefix (BUG-QA-13) |
+
+### Cross-Browser / Responsive Notes
+
+- **Popover width fixed at 320px** (`taxonomy-multi-select.tsx:188`): On screens narrower than 375px, the 320px popover may overflow the viewport edge. The `align="start"` helps but does not prevent overflow on very narrow screens.
+- **Form layout responsive:** The form uses `space-y-5` with a single column, which works well on mobile. The AI action buttons alongside inputs (`flex items-center gap-1.5`) may feel cramped on 375px screens but remain functional.
+- **Header actions wrap correctly:** `flex-wrap gap-2` on lines 155 and 181 of exercise-detail-page.tsx ensures buttons wrap on small screens.

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Check, ChevronsUpDown, Plus, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,6 +28,7 @@ import {
   updateTaxonomyEntry,
   deleteTaxonomyEntry,
 } from "@/lib/exercises/actions";
+import { useTypedLocale } from "@/hooks/use-typed-locale";
 import type { TaxonomyEntry, TaxonomyType } from "@/lib/exercises/types";
 
 interface TaxonomyMultiSelectProps {
@@ -58,7 +59,7 @@ export function TaxonomyMultiSelect({
 }: TaxonomyMultiSelectProps) {
   const t = useTranslations("exercises");
   const tCommon = useTranslations("common");
-  const locale = useLocale();
+  const locale = useTypedLocale();
   const [open, setOpen] = React.useState(false);
   const [showCreate, setShowCreate] = React.useState(false);
   const [newNameDe, setNewNameDe] = React.useState("");
@@ -72,7 +73,18 @@ export function TaxonomyMultiSelect({
   const [isSavingEdit, setIsSavingEdit] = React.useState(false);
   const [isDeletingId, setIsDeletingId] = React.useState<string | null>(null);
 
-  const selectedEntries = entries.filter((e) => selectedIds.includes(e.id));
+  // Delete confirmation state (H1)
+  const [confirmDeleteId, setConfirmDeleteId] = React.useState<string | null>(null);
+
+  // Optimistic local state for entries (H2)
+  const [localEntries, setLocalEntries] = React.useState<TaxonomyEntry[]>(entries);
+
+  // Sync when prop changes (after server revalidation)
+  React.useEffect(() => {
+    setLocalEntries(entries);
+  }, [entries]);
+
+  const selectedEntries = localEntries.filter((e) => selectedIds.includes(e.id));
 
   function toggleEntry(id: string) {
     if (selectedIds.includes(id)) {
@@ -93,6 +105,20 @@ export function TaxonomyMultiSelect({
       });
 
       if (result.success) {
+        // Optimistically add the new entry to local state
+        const newEntry: TaxonomyEntry = {
+          id: crypto.randomUUID(),
+          name: { de: newNameDe.trim(), en: newNameEn.trim() },
+          type: taxonomyType,
+          scope: "trainer" as const,
+          createdBy: null,
+          sortOrder: localEntries.length,
+          isDeleted: false,
+          deletedAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setLocalEntries(prev => [...prev, newEntry]);
         toast.success(t("taxonomyCreated"));
         setNewNameDe("");
         setNewNameEn("");
@@ -131,6 +157,11 @@ export function TaxonomyMultiSelect({
       });
 
       if (result.success) {
+        setLocalEntries(prev => prev.map(e =>
+          e.id === editingId
+            ? { ...e, name: { de: editNameDe.trim(), en: editNameEn.trim() } }
+            : e
+        ));
         toast.success(t("taxonomyUpdated"));
         cancelEditing();
       } else {
@@ -149,6 +180,7 @@ export function TaxonomyMultiSelect({
       const result = await deleteTaxonomyEntry(entryId);
 
       if (result.success) {
+        setLocalEntries(prev => prev.filter(e => e.id !== entryId));
         toast.success(t("taxonomyDeleted"));
         // Remove from selection if selected
         if (selectedIds.includes(entryId)) {
@@ -165,8 +197,8 @@ export function TaxonomyMultiSelect({
   }
 
   // Separate global and own entries
-  const globalEntries = entries.filter((e) => e.scope === "global");
-  const ownEntries = entries.filter((e) => e.scope === "trainer");
+  const globalEntries = localEntries.filter((e) => e.scope === "global");
+  const ownEntries = localEntries.filter((e) => e.scope === "trainer");
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -206,7 +238,7 @@ export function TaxonomyMultiSelect({
                         selectedIds.includes(entry.id) ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    <span className="flex-1">{entry.name[locale as "de" | "en"]}</span>
+                    <span className="flex-1">{entry.name[locale]}</span>
                     <Badge variant="primary" size="sm">{t("platform")}</Badge>
                   </CommandItem>
                 ))}
@@ -227,17 +259,19 @@ export function TaxonomyMultiSelect({
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Input
-                            placeholder="DE"
+                            placeholder={t("placeholderDe")}
                             value={editNameDe}
                             onChange={(e) => setEditNameDe(e.target.value)}
                             className="h-7 text-xs"
+                            maxLength={100}
                             autoFocus
                           />
                           <Input
-                            placeholder="EN"
+                            placeholder={t("placeholderEn")}
                             value={editNameEn}
                             onChange={(e) => setEditNameEn(e.target.value)}
                             className="h-7 text-xs"
+                            maxLength={100}
                           />
                           <div className="flex gap-1">
                             <Button
@@ -274,36 +308,62 @@ export function TaxonomyMultiSelect({
                               selectedIds.includes(entry.id) ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          <span className="flex-1">{entry.name[locale as "de" | "en"]}</span>
-                          <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                            <button
-                              type="button"
-                              className="rounded p-0.5 hover:bg-muted"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                startEditing(entry);
-                              }}
-                              aria-label={tCommon("edit")}
-                            >
-                              <Pencil className="h-3 w-3 text-muted-foreground" />
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded p-0.5 hover:bg-destructive/10"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(entry.id);
-                              }}
-                              disabled={isDeletingId === entry.id}
-                              aria-label={tCommon("delete")}
-                            >
-                              {isDeletingId === entry.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                              ) : (
-                                <Trash2 className="h-3 w-3 text-destructive" />
-                              )}
-                            </button>
-                          </div>
+                          <span className="flex-1">{entry.name[locale]}</span>
+                          {confirmDeleteId === entry.id ? (
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                className="rounded px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(entry.id);
+                                  setConfirmDeleteId(null);
+                                }}
+                              >
+                                {tCommon("delete")}
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmDeleteId(null);
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                type="button"
+                                className="rounded p-0.5 hover:bg-muted"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(entry);
+                                }}
+                                aria-label={tCommon("edit")}
+                              >
+                                <Pencil className="h-3 w-3 text-muted-foreground" />
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded p-0.5 hover:bg-destructive/10"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setConfirmDeleteId(entry.id);
+                                }}
+                                disabled={isDeletingId === entry.id}
+                                aria-label={tCommon("delete")}
+                              >
+                                {isDeletingId === entry.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                ) : (
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                )}
+                              </button>
+                            </div>
+                          )}
                           <Badge variant="secondary" size="sm">{t("own")}</Badge>
                         </CommandItem>
                       )}
@@ -332,17 +392,19 @@ export function TaxonomyMultiSelect({
                 ) : (
                   <div className="space-y-2">
                     <Input
-                      placeholder={`${t("createNewPlaceholder")} (DE)`}
+                      placeholder={`${t("createNewPlaceholder")} (${t("placeholderDe")})`}
                       value={newNameDe}
                       onChange={(e) => setNewNameDe(e.target.value)}
                       className="h-8 text-sm"
+                      maxLength={100}
                       autoFocus
                     />
                     <Input
-                      placeholder={`${t("createNewPlaceholder")} (EN)`}
+                      placeholder={`${t("createNewPlaceholder")} (${t("placeholderEn")})`}
                       value={newNameEn}
                       onChange={(e) => setNewNameEn(e.target.value)}
                       className="h-8 text-sm"
+                      maxLength={100}
                     />
                     <div className="flex gap-2">
                       <Button
@@ -388,7 +450,7 @@ export function TaxonomyMultiSelect({
                 className="cursor-pointer"
                 onClick={() => toggleEntry(entry.id)}
               >
-                {entry.name[locale as "de" | "en"]}
+                {entry.name[locale]}
                 <span className="ml-1">&times;</span>
               </Badge>
             ))}
