@@ -2,7 +2,7 @@
 
 ## Status: Deployed
 **Created:** 2026-03-19
-**Last Updated:** 2026-03-19
+**Last Updated:** 2026-03-22
 
 ### Implementation Notes (Phase 1: Backend)
 - Migration `20260320000000_proj18_trainer_defaults.sql`: new `trainer_category_defaults` table with RLS, `is_required` column on `feedback_category_overrides`, two SECURITY DEFINER functions
@@ -22,6 +22,15 @@
 - **AthleteDetailView** extended: Accepts `trainerDefaults` prop and passes to `CategoryManager` with `targetAthleteId`.
 - **Athlete detail page** (`feedback/[athleteId]/page.tsx`): Loads `getTrainerDefaults()` and passes to `AthleteDetailView`.
 - Build passes with zero errors.
+
+### Post-Deploy Fixes (2026-03-22)
+
+- **BUG-01 (CRITICAL) — Fixed 2026-03-22:** `copy_trainer_defaults_to_athlete` RPC had no caller authorization. Any authenticated user could call it with arbitrary `trainer_id`/`athlete_id`. Fixed in migration `20260322200000_fix_proj18_security.sql`:
+  - Now allows caller to be: the trainer (`auth.uid() = p_trainer_id`), the athlete (`auth.uid() = p_athlete_id`), or a platform admin
+  - Still verifies an active `trainer_athlete_connections` row exists
+  - Previously the function always failed silently because it was called from the athlete's context during `acceptInvitation`, but `auth.uid()` didn't match `p_trainer_id`
+
+- **BUG-02 (LOW) — Fixed 2026-03-22:** `updateTrainerDefault` server action in `src/lib/feedback/actions.ts` was missing TRAINER role check. An athlete could upsert rows into `trainer_category_defaults`. Fixed by adding `app_metadata.roles` check for `"TRAINER"`.
 
 ## Dependencies
 - Requires: PROJ-6 (Feedback & Monitoring) — Kategorie-System, Check-in Formulare, Week Strip
