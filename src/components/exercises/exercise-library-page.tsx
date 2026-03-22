@@ -18,11 +18,14 @@ import { ExerciseToolbar } from "./exercise-toolbar";
 import { Link } from "@/i18n/navigation";
 import { useExerciseLibraryPreferences } from "@/hooks/use-exercise-library-preferences";
 import { CATEGORY_LABELS } from "@/lib/exercises/constants";
+import { getDescendantIds } from "@/lib/taxonomy/tree-utils";
 import type {
   ExerciseWithTaxonomy,
+  ExerciseWithCategories,
   TaxonomyEntry,
   ExerciseType,
 } from "@/lib/exercises/types";
+import type { DimensionWithNodes } from "@/lib/taxonomy/types";
 import type { ExerciseSourceFilter } from "./exercise-filters";
 import type { FilterChip } from "./exercise-filter-chips";
 
@@ -31,6 +34,8 @@ interface ExerciseLibraryPageProps {
   muscleGroups: TaxonomyEntry[];
   equipment: TaxonomyEntry[];
   isPlatformAdmin?: boolean;
+  /** PROJ-20: Taxonomy dimensions with nodes for hierarchical filtering */
+  taxonomyData?: DimensionWithNodes[];
 }
 
 export function ExerciseLibraryPage({
@@ -38,6 +43,7 @@ export function ExerciseLibraryPage({
   muscleGroups,
   equipment,
   isPlatformAdmin = false,
+  taxonomyData,
 }: ExerciseLibraryPageProps) {
   const t = useTranslations("exercises");
   const locale = useTypedLocale();
@@ -58,6 +64,9 @@ export function ExerciseLibraryPage({
   // Avoid layout flash: use default "grid" until localStorage is hydrated
   const viewMode = isHydrated ? persistedViewMode : "grid";
 
+  // PROJ-20: Whether hierarchical taxonomy is available
+  const hasHierarchicalTaxonomy = !!taxonomyData && taxonomyData.length > 0;
+
   // Local state
   const [search, setSearch] = React.useState("");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
@@ -66,6 +75,8 @@ export function ExerciseLibraryPage({
   const [equipmentFilter, setEquipmentFilter] = React.useState<string[]>([]);
   const [sourceFilter, setSourceFilter] = React.useState<ExerciseSourceFilter>("all");
   const [page, setPage] = React.useState(1);
+  // PROJ-20: Dimension-based filters (dimensionId -> selected nodeId or empty)
+  const [dimensionFilters, setDimensionFilters] = React.useState<Record<string, string>>({});
 
   // Slide-over state
   const [slideOverOpen, setSlideOverOpen] = React.useState(false);
@@ -80,26 +91,34 @@ export function ExerciseLibraryPage({
   // Reset page when filters/search/sort change
   React.useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, categoryFilter, muscleGroupFilter, equipmentFilter, sourceFilter, sort]);
+  }, [debouncedSearch, categoryFilter, muscleGroupFilter, equipmentFilter, sourceFilter, sort, dimensionFilters]);
 
   // Precomputed search index for unified search
   const searchIndex = React.useMemo(
     () =>
-      exercises.map((ex) => ({
-        exercise: ex,
-        searchText: [
-          ex.name.de,
-          ex.name.en,
-          ex.description?.de ?? "",
-          ex.description?.en ?? "",
-          ...ex.primaryMuscleGroups.flatMap((mg) => [mg.name.de, mg.name.en]),
-          ...ex.secondaryMuscleGroups.flatMap((mg) => [mg.name.de, mg.name.en]),
-          ...ex.equipment.flatMap((eq) => [eq.name.de, eq.name.en]),
-          t(CATEGORY_LABELS[ex.exerciseType]),
-        ]
-          .join(" ")
-          .toLowerCase(),
-      })),
+      exercises.map((ex) => {
+        const exWithCats = ex as ExerciseWithCategories;
+        const categoryNames = (exWithCats.categoryAssignments ?? []).flatMap((ca) => [
+          ca.nodeName.de,
+          ca.nodeName.en,
+        ]);
+        return {
+          exercise: ex,
+          searchText: [
+            ex.name.de,
+            ex.name.en,
+            ex.description?.de ?? "",
+            ex.description?.en ?? "",
+            ...ex.primaryMuscleGroups.flatMap((mg) => [mg.name.de, mg.name.en]),
+            ...ex.secondaryMuscleGroups.flatMap((mg) => [mg.name.de, mg.name.en]),
+            ...ex.equipment.flatMap((eq) => [eq.name.de, eq.name.en]),
+            ...categoryNames,
+            t(CATEGORY_LABELS[ex.exerciseType]),
+          ]
+            .join(" ")
+            .toLowerCase(),
+        };
+      }),
     [exercises, t]
   );
 
@@ -147,6 +166,27 @@ export function ExerciseLibraryPage({
       );
     }
 
+    // PROJ-20: Dimension-based filters (subtree matching)
+    if (hasHierarchicalTaxonomy && taxonomyData) {
+      for (const [dimId, selectedNodeId] of Object.entries(dimensionFilters)) {
+        if (!selectedNodeId) continue;
+        const dimensionData = taxonomyData.find((d) => d.dimension.id === dimId);
+        if (!dimensionData) continue;
+        // Get the selected node + all its descendants
+        const matchingIds = new Set([
+          selectedNodeId,
+          ...getDescendantIds(selectedNodeId, dimensionData.nodes),
+        ]);
+        result = result.filter((entry) => {
+          const exWithCats = entry.exercise as ExerciseWithCategories;
+          if (!exWithCats.categoryAssignments) return false;
+          return exWithCats.categoryAssignments.some(
+            (ca) => ca.dimensionId === dimId && matchingIds.has(ca.nodeId)
+          );
+        });
+      }
+    }
+
     // Extract exercises from search entries
     let sorted = result.map((entry) => entry.exercise);
 
@@ -174,7 +214,7 @@ export function ExerciseLibraryPage({
     }
 
     return sorted;
-  }, [searchIndex, debouncedSearch, categoryFilter, sourceFilter, muscleGroupFilter, equipmentFilter, sort, locale]);
+  }, [searchIndex, debouncedSearch, categoryFilter, sourceFilter, muscleGroupFilter, equipmentFilter, sort, locale, dimensionFilters, hasHierarchicalTaxonomy, taxonomyData]);
 
   // Pagination
   const totalPages = Math.ceil(filteredExercises.length / pageSize);
@@ -190,11 +230,13 @@ export function ExerciseLibraryPage({
   );
 
   // Active filter count
+  const activeDimensionFilterCount = Object.values(dimensionFilters).filter(Boolean).length;
   const activeFilterCount = [
     categoryFilter !== "all" ? 1 : 0,
     muscleGroupFilter.length > 0 ? 1 : 0,
     equipmentFilter.length > 0 ? 1 : 0,
     sourceFilter !== "all" ? 1 : 0,
+    activeDimensionFilterCount,
   ].reduce((sum, v) => sum + v, 0);
 
   // Filter chips
@@ -241,14 +283,36 @@ export function ExerciseLibraryPage({
       });
     }
 
+    // PROJ-20: Dimension filter chips
+    if (hasHierarchicalTaxonomy && taxonomyData) {
+      for (const [dimId, selectedNodeId] of Object.entries(dimensionFilters)) {
+        if (!selectedNodeId) continue;
+        const dimensionData = taxonomyData.find((d) => d.dimension.id === dimId);
+        if (!dimensionData) continue;
+        const node = dimensionData.nodes.find((n) => n.id === selectedNodeId);
+        if (!node) continue;
+        chips.push({
+          id: `dim-${dimId}-${selectedNodeId}`,
+          label: `${dimensionData.dimension.name[locale]}: ${node.name[locale]}`,
+          onRemove: () =>
+            setDimensionFilters((prev) => {
+              const next = { ...prev };
+              delete next[dimId];
+              return next;
+            }),
+        });
+      }
+    }
+
     return chips;
-  }, [categoryFilter, muscleGroupFilter, equipmentFilter, sourceFilter, muscleGroups, equipment, locale, t]);
+  }, [categoryFilter, muscleGroupFilter, equipmentFilter, sourceFilter, muscleGroups, equipment, locale, t, dimensionFilters, hasHierarchicalTaxonomy, taxonomyData]);
 
   function handleClearAllFilters() {
     setCategoryFilter("all");
     setMuscleGroupFilter([]);
     setEquipmentFilter([]);
     setSourceFilter("all");
+    setDimensionFilters({});
   }
 
   function handleExerciseClick(exercise: ExerciseWithTaxonomy) {
@@ -313,6 +377,19 @@ export function ExerciseLibraryPage({
           onSortChange={setSortOption}
           muscleGroups={muscleGroups}
           equipmentEntries={equipment}
+          taxonomyData={taxonomyData}
+          dimensionFilters={dimensionFilters}
+          onDimensionFilterChange={(dimId, nodeId) =>
+            setDimensionFilters((prev) => {
+              if (!nodeId) {
+                const next = { ...prev };
+                delete next[dimId];
+                return next;
+              }
+              return { ...prev, [dimId]: nodeId };
+            })
+          }
+          isPlatformAdmin={isPlatformAdmin}
         />
       )}
 

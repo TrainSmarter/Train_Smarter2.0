@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
   ExerciseWithTaxonomy,
+  ExerciseWithCategories,
+  CategoryAssignmentInfo,
   TaxonomyEntry,
   TaxonomyType,
   BilingualText,
@@ -270,4 +272,147 @@ export async function getExerciseById(
     secondaryMuscleGroups,
     equipment,
   };
+}
+
+// ── PROJ-20: Exercises with Hierarchical Category Assignments ──
+
+interface DbCategoryAssignment {
+  id: string;
+  exercise_id: string;
+  node_id: string;
+  assigned_by: string | null;
+  created_at: string;
+  node: {
+    id: string;
+    dimension_id: string;
+    name: unknown;
+    path: string;
+    depth: number;
+  } | null;
+}
+
+/** Map a DB category assignment row to CategoryAssignmentInfo */
+function mapCategoryAssignment(row: DbCategoryAssignment): CategoryAssignmentInfo | null {
+  if (!row.node) return null;
+  return {
+    nodeId: row.node.id,
+    dimensionId: row.node.dimension_id,
+    nodeName: row.node.name as { de: string; en: string },
+    nodePath: row.node.path,
+    nodeDepth: row.node.depth,
+  };
+}
+
+/** Fetch all visible exercises with BOTH old taxonomy AND new category assignments */
+export async function getExercisesWithCategories(): Promise<ExerciseWithCategories[]> {
+  const supabase = await createClient();
+
+  const { data: exercises, error } = await supabase
+    .from("exercises")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to fetch exercises:", error);
+    return [];
+  }
+
+  if (!exercises || exercises.length === 0) return [];
+
+  const exerciseIds = exercises.map((e) => e.id);
+
+  // Parallel: fetch old taxonomy assignments + new category assignments
+  const [assignResult, catResult] = await Promise.all([
+    supabase
+      .from("exercise_taxonomy_assignments")
+      .select(`
+        id, exercise_id, taxonomy_id, is_primary, created_at,
+        taxonomy:exercise_taxonomy (
+          id, name, type, scope, created_by, sort_order,
+          is_deleted, deleted_at, created_at, updated_at
+        )
+      `)
+      .in("exercise_id", exerciseIds),
+    supabase
+      .from("exercise_category_assignments")
+      .select(`
+        id, exercise_id, node_id, assigned_by, created_at,
+        node:category_nodes (
+          id, dimension_id, name, path, depth
+        )
+      `)
+      .in("exercise_id", exerciseIds),
+  ]);
+
+  if (assignResult.error) {
+    console.error("Failed to fetch taxonomy assignments:", assignResult.error);
+  }
+  if (catResult.error) {
+    console.error("Failed to fetch category assignments:", catResult.error);
+  }
+
+  // Group old assignments by exercise_id
+  const assignmentMap = new Map<string, DbAssignment[]>();
+  for (const a of (assignResult.data ?? []) as unknown as DbAssignment[]) {
+    if (!assignmentMap.has(a.exercise_id)) {
+      assignmentMap.set(a.exercise_id, []);
+    }
+    assignmentMap.get(a.exercise_id)!.push(a);
+  }
+
+  // Group new category assignments by exercise_id
+  const categoryMap = new Map<string, CategoryAssignmentInfo[]>();
+  for (const ca of (catResult.data ?? []) as unknown as DbCategoryAssignment[]) {
+    const mapped = mapCategoryAssignment(ca);
+    if (!mapped) continue;
+    if (!categoryMap.has(ca.exercise_id)) {
+      categoryMap.set(ca.exercise_id, []);
+    }
+    categoryMap.get(ca.exercise_id)!.push(mapped);
+  }
+
+  return exercises.map((row) => {
+    const ex = row as unknown as DbExercise;
+    const exAssignments = assignmentMap.get(ex.id) ?? [];
+
+    const primaryMuscleGroups: TaxonomyEntry[] = [];
+    const secondaryMuscleGroups: TaxonomyEntry[] = [];
+    const equipment: TaxonomyEntry[] = [];
+
+    for (const a of exAssignments) {
+      if (!a.taxonomy) continue;
+      const tax = mapTaxonomy(a.taxonomy);
+      if (tax.type === "muscle_group") {
+        if (a.is_primary) {
+          primaryMuscleGroups.push(tax);
+        } else {
+          secondaryMuscleGroups.push(tax);
+        }
+      } else if (tax.type === "equipment") {
+        equipment.push(tax);
+      }
+    }
+
+    primaryMuscleGroups.sort((a, b) => a.sortOrder - b.sortOrder);
+    secondaryMuscleGroups.sort((a, b) => a.sortOrder - b.sortOrder);
+    equipment.sort((a, b) => a.sortOrder - b.sortOrder);
+
+    return {
+      id: ex.id,
+      name: ex.name as BilingualText,
+      description: ex.description as BilingualText | null,
+      exerciseType: ex.exercise_type as ExerciseType,
+      scope: ex.scope as ExerciseScope,
+      createdBy: ex.created_by,
+      clonedFrom: ex.cloned_from,
+      isDeleted: ex.is_deleted,
+      deletedAt: ex.deleted_at,
+      createdAt: ex.created_at,
+      updatedAt: ex.updated_at,
+      primaryMuscleGroups,
+      secondaryMuscleGroups,
+      equipment,
+      categoryAssignments: categoryMap.get(ex.id) ?? [],
+    };
+  });
 }

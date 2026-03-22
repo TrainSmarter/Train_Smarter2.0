@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { useTypedLocale } from "@/hooks/use-typed-locale";
+// Exception: useSearchParams is not exported by @/i18n/navigation (next-intl only
+// wraps Link, useRouter, usePathname, redirect). Using next/navigation directly is correct here.
 import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -25,9 +27,11 @@ import { deleteExercise, cloneExercise } from "@/lib/exercises/actions";
 import { Link, useRouter } from "@/i18n/navigation";
 import type {
   ExerciseWithTaxonomy,
+  ExerciseWithCategories,
   TaxonomyEntry,
   TaxonomyType,
 } from "@/lib/exercises/types";
+import type { DimensionWithNodes } from "@/lib/taxonomy/types";
 import { CATEGORY_LABELS } from "@/lib/exercises/constants";
 import type { AiUsageData } from "@/lib/ai/usage-types";
 
@@ -46,6 +50,8 @@ interface ExerciseDetailPageProps {
   usageData?: AiUsageData | null;
   /** Whether the current user is a platform admin */
   isPlatformAdmin?: boolean;
+  /** PROJ-20: Taxonomy dimensions with nodes for hierarchical selectors */
+  taxonomyData?: DimensionWithNodes[];
 }
 
 export function ExerciseDetailPage({
@@ -56,6 +62,7 @@ export function ExerciseDetailPage({
   showAiSuggest = false,
   usageData = null,
   isPlatformAdmin = false,
+  taxonomyData,
 }: ExerciseDetailPageProps) {
   const t = useTranslations("exercises");
   const tCommon = useTranslations("common");
@@ -227,6 +234,8 @@ export function ExerciseDetailPage({
           onTaxonomyCreated={handleTaxonomyCreated}
           showAiSuggest={showAiSuggest}
           usageData={usageData}
+          taxonomyData={taxonomyData}
+          isPlatformAdmin={isPlatformAdmin}
         />
       )}
 
@@ -283,8 +292,46 @@ export function ExerciseDetailPage({
 
           {/* Right Column: Metadata */}
           <div className="space-y-6">
-            {/* Primary Muscle Groups */}
-            {exercise.primaryMuscleGroups.length > 0 && (
+            {/* PROJ-20: Hierarchical category assignments grouped by dimension */}
+            {(() => {
+              const exWithCats = exercise as ExerciseWithCategories;
+              const hasCats = exWithCats.categoryAssignments && exWithCats.categoryAssignments.length > 0;
+              if (hasCats && taxonomyData) {
+                // Group assignments by dimension
+                const byDimension = new Map<string, typeof exWithCats.categoryAssignments>();
+                for (const ca of exWithCats.categoryAssignments) {
+                  if (!byDimension.has(ca.dimensionId)) {
+                    byDimension.set(ca.dimensionId, []);
+                  }
+                  byDimension.get(ca.dimensionId)!.push(ca);
+                }
+
+                return Array.from(byDimension.entries()).map(([dimId, assignments]) => {
+                  const dimData = taxonomyData.find((d) => d.dimension.id === dimId);
+                  const dimName = dimData?.dimension.name[locale] ?? dimId;
+                  return (
+                    <Card key={dimId}>
+                      <CardHeader>
+                        <CardTitle className="text-body-lg">{dimName}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-1.5">
+                          {assignments.map((ca) => (
+                            <Badge key={ca.nodeId} variant="outline">
+                              {ca.nodeName[locale]}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                });
+              }
+              return null;
+            })()}
+
+            {/* Legacy: Primary Muscle Groups (shown when no hierarchical assignments) */}
+            {exercise.primaryMuscleGroups.length > 0 && !((exercise as ExerciseWithCategories).categoryAssignments?.length > 0) && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-body-lg">
@@ -303,8 +350,8 @@ export function ExerciseDetailPage({
               </Card>
             )}
 
-            {/* Secondary Muscle Groups */}
-            {exercise.secondaryMuscleGroups.length > 0 && (
+            {/* Legacy: Secondary Muscle Groups */}
+            {exercise.secondaryMuscleGroups.length > 0 && !((exercise as ExerciseWithCategories).categoryAssignments?.length > 0) && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-body-lg">

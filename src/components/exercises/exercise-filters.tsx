@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { useTypedLocale } from "@/hooks/use-typed-locale";
 
 import {
   Select,
@@ -12,6 +13,8 @@ import {
 } from "@/components/ui/select";
 import { TaxonomyMultiSelect } from "./taxonomy-multi-select";
 import type { TaxonomyEntry, ExerciseType } from "@/lib/exercises/types";
+import type { DimensionWithNodes, CategoryNode } from "@/lib/taxonomy/types";
+import { buildTree, filterTreeForTrainer, flattenTree } from "@/lib/taxonomy/tree-utils";
 import type { ExerciseSortOption } from "@/hooks/use-exercise-library-preferences";
 
 export type { ExerciseSortOption };
@@ -37,6 +40,14 @@ interface ExerciseFiltersProps {
   muscleGroups: TaxonomyEntry[];
   /** Available equipment for filter */
   equipmentEntries: TaxonomyEntry[];
+  /** PROJ-20: Taxonomy data for hierarchical dimension filters */
+  taxonomyData?: DimensionWithNodes[];
+  /** PROJ-20: Current dimension filter values */
+  dimensionFilters?: Record<string, string>;
+  /** PROJ-20: Callback when dimension filter changes */
+  onDimensionFilterChange?: (dimensionId: string, nodeId: string) => void;
+  /** PROJ-20: Whether user is platform admin */
+  isPlatformAdmin?: boolean;
 }
 
 export function ExerciseFilters({
@@ -52,9 +63,30 @@ export function ExerciseFilters({
   onSortChange,
   muscleGroups,
   equipmentEntries,
+  taxonomyData,
+  dimensionFilters,
+  onDimensionFilterChange,
+  isPlatformAdmin = false,
 }: ExerciseFiltersProps) {
   const t = useTranslations("exercises");
   const tCommon = useTranslations("common");
+  const locale = useTypedLocale();
+
+  const hasHierarchicalTaxonomy = !!taxonomyData && taxonomyData.length > 0;
+
+  // PROJ-20: Build flat visible node lists per dimension for the Select dropdowns
+  const dimensionFilterOptions = React.useMemo(() => {
+    if (!taxonomyData) return [];
+    return taxonomyData.map((dw) => {
+      const tree = buildTree(dw.nodes);
+      const filtered = filterTreeForTrainer(tree, isPlatformAdmin);
+      const flatVisible = flattenTree(filtered);
+      return {
+        dimension: dw.dimension,
+        nodes: flatVisible,
+      };
+    });
+  }, [taxonomyData, isPlatformAdmin]);
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -75,29 +107,60 @@ export function ExerciseFilters({
         </SelectContent>
       </Select>
 
-      {/* Muscle group filter (multi-select) */}
-      <div className="w-[200px]">
-        <TaxonomyMultiSelect
-          entries={muscleGroups}
-          selectedIds={muscleGroupFilter}
-          onSelectionChange={onMuscleGroupFilterChange}
-          taxonomyType="muscle_group"
-          placeholder={t("filterMuscleGroup")}
-          allowCreate={false}
-        />
-      </div>
+      {/* PROJ-20: Hierarchical dimension filters */}
+      {hasHierarchicalTaxonomy && dimensionFilterOptions.map((dimOpt) => (
+        <Select
+          key={dimOpt.dimension.id}
+          value={dimensionFilters?.[dimOpt.dimension.id] ?? "all"}
+          onValueChange={(v) =>
+            onDimensionFilterChange?.(dimOpt.dimension.id, v === "all" ? "" : v)
+          }
+        >
+          <SelectTrigger
+            className="w-[200px]"
+            aria-label={dimOpt.dimension.name[locale]}
+          >
+            <SelectValue placeholder={dimOpt.dimension.name[locale]} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filterAll")}</SelectItem>
+            {dimOpt.nodes.map((node) => (
+              <SelectItem key={node.id} value={node.id}>
+                {node.depth > 0 ? `${"  ".repeat(node.depth)}${node.name[locale]}` : node.name[locale]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ))}
 
-      {/* Equipment filter (multi-select) */}
-      <div className="w-[200px]">
-        <TaxonomyMultiSelect
-          entries={equipmentEntries}
-          selectedIds={equipmentFilter}
-          onSelectionChange={onEquipmentFilterChange}
-          taxonomyType="equipment"
-          placeholder={t("filterEquipment")}
-          allowCreate={false}
-        />
-      </div>
+      {/* Legacy flat filters (when no hierarchical taxonomy) */}
+      {!hasHierarchicalTaxonomy && (
+        <>
+          {/* Muscle group filter (multi-select) */}
+          <div className="w-[200px]">
+            <TaxonomyMultiSelect
+              entries={muscleGroups}
+              selectedIds={muscleGroupFilter}
+              onSelectionChange={onMuscleGroupFilterChange}
+              taxonomyType="muscle_group"
+              placeholder={t("filterMuscleGroup")}
+              allowCreate={false}
+            />
+          </div>
+
+          {/* Equipment filter (multi-select) */}
+          <div className="w-[200px]">
+            <TaxonomyMultiSelect
+              entries={equipmentEntries}
+              selectedIds={equipmentFilter}
+              onSelectionChange={onEquipmentFilterChange}
+              taxonomyType="equipment"
+              placeholder={t("filterEquipment")}
+              allowCreate={false}
+            />
+          </div>
+        </>
+      )}
 
       {/* Source filter */}
       <Select

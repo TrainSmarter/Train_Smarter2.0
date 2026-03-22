@@ -34,7 +34,7 @@
 
 | PROJ-19 | KI-gestützte Übungserstellung | Deployed | [PROJ-19-ki-uebungserstellung.md](PROJ-19-ki-uebungserstellung.md) | 2026-03-21 |
 
-| PROJ-20 | Hierarchisches Übungs-Taxonomie-System | Planned | [PROJ-20-hierarchische-uebungs-taxonomie.md](PROJ-20-hierarchische-uebungs-taxonomie.md) | 2026-03-22 |
+| PROJ-20 | Hierarchisches Übungs-Taxonomie-System | In Review | [PROJ-20-hierarchische-uebungs-taxonomie.md](PROJ-20-hierarchische-uebungs-taxonomie.md) | 2026-03-22 |
 
 <!-- Add features above this line -->
 

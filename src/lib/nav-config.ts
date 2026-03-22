@@ -8,6 +8,7 @@ import {
   Library,
   UsersRound,
   Settings,
+  FolderTree,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/auth-user";
@@ -108,6 +109,11 @@ export const navConfig: NavEntry[] = [
           labelKey: "adminSettings",
           icon: Settings,
           path: "/admin/settings",
+        },
+        {
+          labelKey: "adminTaxonomy",
+          icon: FolderTree,
+          path: "/admin/taxonomy",
         },
       ],
     },

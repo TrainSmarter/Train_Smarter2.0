@@ -19,6 +19,7 @@ import {
   updateTaxonomySchema,
   deleteTaxonomySchema,
 } from "./types";
+import { setExerciseCategoryAssignments } from "@/lib/taxonomy/actions";
 
 /**
  * Server Actions for Exercise Library — PROJ-12
@@ -39,6 +40,8 @@ export async function createExercise(data: {
   primaryMuscleGroupIds?: string[];
   secondaryMuscleGroupIds?: string[];
   equipmentIds?: string[];
+  /** PROJ-20: hierarchical category assignments (dimensionId -> nodeIds) */
+  categoryAssignments?: Record<string, string[]>;
 }): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -122,6 +125,14 @@ export async function createExercise(data: {
     }
   }
 
+  // PROJ-20: Save hierarchical category assignments if provided
+  if (data.categoryAssignments) {
+    const allNodeIds = Object.values(data.categoryAssignments).flat();
+    if (allNodeIds.length > 0) {
+      await setExerciseCategoryAssignments(exercise.id, allNodeIds);
+    }
+  }
+
   revalidatePath("/training/exercises", "page");
   return { success: true };
 }
@@ -136,6 +147,8 @@ export async function updateExercise(data: {
   primaryMuscleGroupIds?: string[];
   secondaryMuscleGroupIds?: string[];
   equipmentIds?: string[];
+  /** PROJ-20: hierarchical category assignments (dimensionId -> nodeIds) */
+  categoryAssignments?: Record<string, string[]>;
 }): Promise<ActionResult> {
   const supabase = await createClient();
   const {
@@ -234,6 +247,12 @@ export async function updateExercise(data: {
         console.error("Failed to create taxonomy assignments:", assignError);
       }
     }
+  }
+
+  // PROJ-20: Save hierarchical category assignments if provided
+  if (data.categoryAssignments) {
+    const allNodeIds = Object.values(data.categoryAssignments).flat();
+    await setExerciseCategoryAssignments(id, allNodeIds);
   }
 
   revalidatePath("/training/exercises", "page");
@@ -586,6 +605,10 @@ export async function suggestExerciseDetails(
 
   try {
     const suggestion = await suggestExercise(name.trim(), locale, modelId, useThinking);
+
+    // PROJ-20: categoryAssignments is already included in the suggestion
+    // if the hierarchical taxonomy was used. The form will handle both
+    // the legacy fields and the new categoryAssignments.
 
     return { success: true, data: suggestion };
   } catch (err) {

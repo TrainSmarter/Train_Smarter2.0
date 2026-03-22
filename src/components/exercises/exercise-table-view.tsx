@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { ExerciseWithTaxonomy } from "@/lib/exercises/types";
+import type { ExerciseWithTaxonomy, ExerciseWithCategories } from "@/lib/exercises/types";
 import type { ExerciseSortOption } from "@/hooks/use-exercise-library-preferences";
 import { CATEGORY_LABELS } from "@/lib/exercises/constants";
 
@@ -117,9 +117,9 @@ export function ExerciseTableView({
               </button>
             </TableHead>
 
-            {/* Primary Muscles */}
+            {/* Categories / Primary Muscles */}
             <TableHead className="min-w-[200px]">
-              {t("columnMuscles")}
+              {t("columnCategories")}
             </TableHead>
 
             {/* Equipment */}
@@ -150,6 +150,8 @@ export function ExerciseTableView({
           {exercises.map((exercise) => {
             const name = exercise.name[locale] || exercise.name.de;
             const description = exercise.description?.[locale] || exercise.description?.de || null;
+            const exWithCats = exercise as ExerciseWithCategories;
+            const hasCategoryAssignments = exWithCats.categoryAssignments && exWithCats.categoryAssignments.length > 0;
             const visibleMuscles = exercise.primaryMuscleGroups.slice(0, 3);
             const remainingMuscles = exercise.primaryMuscleGroups.length - 3;
             const visibleEquipment = exercise.equipment.slice(0, 2);
@@ -184,18 +186,35 @@ export function ExerciseTableView({
                   </Badge>
                 </TableCell>
 
-                {/* Primary Muscles */}
+                {/* Categories / Primary Muscles */}
                 <TableCell className="min-w-[200px]">
                   <div className="flex flex-wrap gap-1">
-                    {visibleMuscles.map((muscle) => (
-                      <Badge key={muscle.id} variant="outline" size="sm">
-                        {muscle.name[locale] || muscle.name.de}
-                      </Badge>
-                    ))}
-                    {remainingMuscles > 0 && (
-                      <Badge variant="outline" size="sm">
-                        {t("moreItems", { count: remainingMuscles })}
-                      </Badge>
+                    {hasCategoryAssignments ? (
+                      <>
+                        {exWithCats.categoryAssignments.slice(0, 3).map((ca) => (
+                          <Badge key={ca.nodeId} variant="outline" size="sm">
+                            {ca.nodeName[locale]}
+                          </Badge>
+                        ))}
+                        {exWithCats.categoryAssignments.length > 3 && (
+                          <Badge variant="outline" size="sm">
+                            {t("moreItems", { count: exWithCats.categoryAssignments.length - 3 })}
+                          </Badge>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {visibleMuscles.map((muscle) => (
+                          <Badge key={muscle.id} variant="outline" size="sm">
+                            {muscle.name[locale] || muscle.name.de}
+                          </Badge>
+                        ))}
+                        {remainingMuscles > 0 && (
+                          <Badge variant="outline" size="sm">
+                            {t("moreItems", { count: remainingMuscles })}
+                          </Badge>
+                        )}
+                      </>
                     )}
                   </div>
                 </TableCell>

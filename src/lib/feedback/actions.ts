@@ -693,6 +693,12 @@ export async function updateTrainerDefault(
     return { success: false, error: "UNAUTHORIZED" };
   }
 
+  // BUG-02 fix: Only trainers can modify trainer defaults
+  const roles = (user.app_metadata?.roles as string[]) ?? [];
+  if (!roles.includes("TRAINER")) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
   // Validate input
   const parsed = updateTrainerDefaultSchema.safeParse({ categoryId, field, value });
   if (!parsed.success) {

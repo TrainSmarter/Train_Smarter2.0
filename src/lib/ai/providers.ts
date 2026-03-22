@@ -29,6 +29,8 @@ export interface AiExerciseSuggestion {
   primaryMuscleGroupIds: string[];
   secondaryMuscleGroupIds: string[];
   equipmentIds: string[];
+  /** PROJ-20: Hierarchical category assignments (dimensionSlug -> nodeUUIDs) */
+  categoryAssignments?: Record<string, string[]>;
 }
 
 export interface ApiKeyStatus {

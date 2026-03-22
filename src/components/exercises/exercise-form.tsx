@@ -36,6 +36,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { TaxonomyMultiSelect } from "./taxonomy-multi-select";
+import { HierarchicalMultiSelect } from "@/components/taxonomy/hierarchical-multi-select";
 import {
   createExercise,
   updateExercise,
@@ -44,10 +45,12 @@ import {
 } from "@/lib/exercises/actions";
 import type {
   ExerciseWithTaxonomy,
+  ExerciseWithCategories,
   TaxonomyEntry,
   ExerciseType,
   TaxonomyType,
 } from "@/lib/exercises/types";
+import type { CategoryDimension, CategoryNode, DimensionWithNodes } from "@/lib/taxonomy/types";
 import type { AiUsageData } from "@/lib/ai/usage-types";
 
 // Form schema (matches the server schemas but for the form)
@@ -102,6 +105,10 @@ interface ExerciseFormProps {
   showAiSuggest?: boolean;
   /** AI usage data for displaying quota (null if not available) */
   usageData?: AiUsageData | null;
+  /** PROJ-20: Taxonomy dimensions with nodes for hierarchical selectors */
+  taxonomyData?: DimensionWithNodes[];
+  /** PROJ-20: Whether user is platform admin (for taxonomy visibility) */
+  isPlatformAdmin?: boolean;
 }
 
 export function ExerciseForm({
@@ -114,6 +121,8 @@ export function ExerciseForm({
   onTaxonomyCreated,
   showAiSuggest = false,
   usageData: initialUsageData = null,
+  taxonomyData,
+  isPlatformAdmin = false,
 }: ExerciseFormProps) {
   const t = useTranslations("exercises");
   const tCommon = useTranslations("common");
@@ -121,6 +130,28 @@ export function ExerciseForm({
   const [isSaving, setIsSaving] = React.useState(false);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [highlightedFields, setHighlightedFields] = React.useState<Set<string>>(new Set());
+
+  // PROJ-20: Whether hierarchical taxonomy is available
+  const hasHierarchicalTaxonomy = !!taxonomyData && taxonomyData.length > 0;
+
+  // PROJ-20: Category assignments state (dimensionId -> nodeId[])
+  const [categoryAssignments, setCategoryAssignments] = React.useState<Record<string, string[]>>(
+    () => {
+      // Initialize from exercise if it has category assignments
+      const exerciseWithCats = exercise as ExerciseWithCategories | undefined;
+      if (exerciseWithCats?.categoryAssignments && exerciseWithCats.categoryAssignments.length > 0) {
+        const map: Record<string, string[]> = {};
+        for (const ca of exerciseWithCats.categoryAssignments) {
+          if (!map[ca.dimensionId]) {
+            map[ca.dimensionId] = [];
+          }
+          map[ca.dimensionId].push(ca.nodeId);
+        }
+        return map;
+      }
+      return {};
+    }
+  );
 
   // Track AI usage client-side (updated after each call)
   const [usageData, setUsageData] = React.useState<AiUsageData | null>(initialUsageData);
@@ -259,6 +290,30 @@ export function ExerciseForm({
         filled.add("equipmentIds");
       }
 
+      // PROJ-20: Apply hierarchical category assignments from AI
+      if (suggestion.categoryAssignments && hasHierarchicalTaxonomy && taxonomyData) {
+        // Build a slug->dimensionId map for mapping AI response to form state
+        const slugToDimId = new Map<string, string>();
+        for (const dw of taxonomyData) {
+          slugToDimId.set(dw.dimension.slug, dw.dimension.id);
+        }
+
+        for (const [slug, nodeIds] of Object.entries(suggestion.categoryAssignments)) {
+          const dimId = slugToDimId.get(slug);
+          if (!dimId) continue;
+
+          // Only fill if the dimension has no selections yet
+          const current = categoryAssignments[dimId] ?? [];
+          if (current.length === 0 && nodeIds.length > 0) {
+            setCategoryAssignments((prev) => ({
+              ...prev,
+              [dimId]: nodeIds,
+            }));
+            filled.add(`category_${dimId}`);
+          }
+        }
+      }
+
       // Show highlight animation for 1 second
       setHighlightedFields(filled);
       if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
@@ -340,6 +395,25 @@ export function ExerciseForm({
     }
   }
 
+  // PROJ-20: Get dimensions relevant to the selected exercise type
+  const watchExerciseType = form.watch("exerciseType");
+  const relevantDimensions = React.useMemo(() => {
+    if (!taxonomyData) return [];
+    return taxonomyData.filter((d) => {
+      // Cross-cutting dimensions (exerciseType = null) + type-specific
+      if (!d.dimension.exerciseType) return true;
+      return d.dimension.exerciseType === watchExerciseType;
+    });
+  }, [taxonomyData, watchExerciseType]);
+
+  // PROJ-20: Update category assignment for a specific dimension
+  function handleCategoryChange(dimensionId: string, nodeIds: string[]) {
+    setCategoryAssignments((prev) => ({
+      ...prev,
+      [dimensionId]: nodeIds,
+    }));
+  }
+
   async function onSubmit(values: ExerciseFormValues) {
     if (isSaving) return;
     setIsSaving(true);
@@ -355,6 +429,8 @@ export function ExerciseForm({
         primaryMuscleGroupIds: values.primaryMuscleGroupIds,
         secondaryMuscleGroupIds: values.secondaryMuscleGroupIds,
         equipmentIds: values.equipmentIds,
+        // PROJ-20: Include hierarchical category assignments
+        ...(hasHierarchicalTaxonomy ? { categoryAssignments } : {}),
       };
 
       let result;
@@ -677,52 +753,74 @@ export function ExerciseForm({
 
               <Separator />
 
-              {/* Primary Muscle Groups */}
-              <div className="space-y-1.5">
-                <Label>{t("primaryMuscleGroupsLabel")}</Label>
-                <div className={aiHighlight("primaryMuscleGroupIds")}>
-                  <TaxonomyMultiSelect
-                    entries={muscleGroups}
-                    selectedIds={form.watch("primaryMuscleGroupIds")}
-                    onSelectionChange={(ids) => form.setValue("primaryMuscleGroupIds", ids)}
-                    taxonomyType="muscle_group"
-                    placeholder={t("selectItems")}
-                    onEntryCreated={onTaxonomyCreated}
+              {/* PROJ-20: Hierarchical dimension selectors (when taxonomy data available) */}
+              {hasHierarchicalTaxonomy && relevantDimensions.map((dw) => (
+                <div key={dw.dimension.id} className="space-y-1.5">
+                  <Label>{dw.dimension.name[locale]}</Label>
+                  <HierarchicalMultiSelect
+                    dimensionId={dw.dimension.id}
+                    nodes={dw.nodes}
+                    selectedNodeIds={categoryAssignments[dw.dimension.id] ?? []}
+                    onChange={(ids) => handleCategoryChange(dw.dimension.id, ids)}
+                    isAdmin={isPlatformAdmin}
+                    locale={locale}
+                    label={dw.dimension.name[locale]}
+                    placeholder={t("selectCategories")}
                   />
                 </div>
-              </div>
+              ))}
 
-              {/* Secondary Muscle Groups */}
-              <div className="space-y-1.5">
-                <Label>{t("secondaryMuscleGroupsLabel")}</Label>
-                <div className={aiHighlight("secondaryMuscleGroupIds")}>
-                  <TaxonomyMultiSelect
-                    entries={muscleGroups}
-                    selectedIds={form.watch("secondaryMuscleGroupIds")}
-                    onSelectionChange={(ids) => form.setValue("secondaryMuscleGroupIds", ids)}
-                    taxonomyType="muscle_group"
-                    placeholder={t("selectItems")}
-                    onEntryCreated={onTaxonomyCreated}
-                  />
-                </div>
-              </div>
+              {/* Legacy flat selectors (when no hierarchical taxonomy available) */}
+              {!hasHierarchicalTaxonomy && (
+                <>
+                  {/* Primary Muscle Groups */}
+                  <div className="space-y-1.5">
+                    <Label>{t("primaryMuscleGroupsLabel")}</Label>
+                    <div className={aiHighlight("primaryMuscleGroupIds")}>
+                      <TaxonomyMultiSelect
+                        entries={muscleGroups}
+                        selectedIds={form.watch("primaryMuscleGroupIds")}
+                        onSelectionChange={(ids) => form.setValue("primaryMuscleGroupIds", ids)}
+                        taxonomyType="muscle_group"
+                        placeholder={t("selectItems")}
+                        onEntryCreated={onTaxonomyCreated}
+                      />
+                    </div>
+                  </div>
 
-              <Separator />
+                  {/* Secondary Muscle Groups */}
+                  <div className="space-y-1.5">
+                    <Label>{t("secondaryMuscleGroupsLabel")}</Label>
+                    <div className={aiHighlight("secondaryMuscleGroupIds")}>
+                      <TaxonomyMultiSelect
+                        entries={muscleGroups}
+                        selectedIds={form.watch("secondaryMuscleGroupIds")}
+                        onSelectionChange={(ids) => form.setValue("secondaryMuscleGroupIds", ids)}
+                        taxonomyType="muscle_group"
+                        placeholder={t("selectItems")}
+                        onEntryCreated={onTaxonomyCreated}
+                      />
+                    </div>
+                  </div>
 
-              {/* Equipment */}
-              <div className="space-y-1.5">
-                <Label>{t("equipmentLabel")}</Label>
-                <div className={aiHighlight("equipmentIds")}>
-                  <TaxonomyMultiSelect
-                    entries={equipment}
-                    selectedIds={form.watch("equipmentIds")}
-                    onSelectionChange={(ids) => form.setValue("equipmentIds", ids)}
-                    taxonomyType="equipment"
-                    placeholder={t("selectItems")}
-                    onEntryCreated={onTaxonomyCreated}
-                  />
-                </div>
-              </div>
+                  <Separator />
+
+                  {/* Equipment */}
+                  <div className="space-y-1.5">
+                    <Label>{t("equipmentLabel")}</Label>
+                    <div className={aiHighlight("equipmentIds")}>
+                      <TaxonomyMultiSelect
+                        entries={equipment}
+                        selectedIds={form.watch("equipmentIds")}
+                        onSelectionChange={(ids) => form.setValue("equipmentIds", ids)}
+                        taxonomyType="equipment"
+                        placeholder={t("selectItems")}
+                        onEntryCreated={onTaxonomyCreated}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </section>
         </aside>

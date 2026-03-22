@@ -134,3 +134,31 @@ export const deleteTaxonomySchema = z.object({
 export const deleteExerciseSchema = z.object({
   id: z.string().uuid(),
 });
+
+// ── PROJ-20: Hierarchical Taxonomy Types ───────────────────────
+
+/** Category assignment as returned by queries (node info attached) */
+export interface CategoryAssignmentInfo {
+  nodeId: string;
+  dimensionId: string;
+  nodeName: { de: string; en: string };
+  /** Materialized path, e.g. "muscle_group.upper.push" */
+  nodePath: string;
+  nodeDepth: number;
+}
+
+/** Exercise with hierarchical category assignments (PROJ-20) */
+export interface ExerciseWithCategories extends Exercise {
+  /** Legacy flat taxonomy — kept for backward compat */
+  primaryMuscleGroups: TaxonomyEntry[];
+  secondaryMuscleGroups: TaxonomyEntry[];
+  equipment: TaxonomyEntry[];
+  /** New hierarchical assignments grouped by dimension ID */
+  categoryAssignments: CategoryAssignmentInfo[];
+}
+
+/** Zod schema for category assignments in exercise form */
+export const exerciseCategoryAssignmentsSchema = z.record(
+  z.string().uuid(),
+  z.array(z.string().uuid())
+);

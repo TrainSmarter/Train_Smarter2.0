@@ -1297,3 +1297,52 @@ describe("feedback page — query deduplication", () => {
     expect(page).toContain("requiredCategoryIds");
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// PROJ-18 Security Fix: BUG-01 + BUG-02
+// ═══════════════════════════════════════════════════════════════
+
+describe("Migration 20260322200000_fix_proj18_security.sql — BUG-01 fix", () => {
+  const migration = readRoot(
+    "supabase/migrations/20260322200000_fix_proj18_security.sql"
+  );
+
+  it("recreates copy_trainer_defaults_to_athlete with SECURITY DEFINER", () => {
+    expect(migration).toMatch(
+      /CREATE OR REPLACE FUNCTION public\.copy_trainer_defaults_to_athlete/
+    );
+    expect(migration).toContain("SECURITY DEFINER");
+  });
+
+  it("allows caller to be trainer, athlete, or admin", () => {
+    // Must check both trainer and athlete IDs
+    expect(migration).toContain("v_caller != p_trainer_id");
+    expect(migration).toContain("v_caller != p_athlete_id");
+    expect(migration).toContain("is_platform_admin()");
+  });
+
+  it("still verifies an active trainer-athlete connection exists", () => {
+    expect(migration).toContain("trainer_athlete_connections");
+    expect(migration).toContain("status = 'active'");
+  });
+
+  it("GRANTs EXECUTE to authenticated", () => {
+    expect(migration).toContain(
+      "GRANT EXECUTE ON FUNCTION public.copy_trainer_defaults_to_athlete"
+    );
+  });
+});
+
+describe("PROJ-18 BUG-02: updateTrainerDefault requires TRAINER role", () => {
+  const actions = readRoot("src/lib/feedback/actions.ts");
+
+  it("checks app_metadata roles for TRAINER before allowing update", () => {
+    // The updateTrainerDefault function should check for TRAINER role
+    // Find the section between "Update Trainer Default" and the upsert
+    const fnStart = actions.indexOf("Update Trainer Default");
+    const fnEnd = actions.indexOf("updateTrainerDefaultSchema.safeParse");
+    const fnBody = actions.slice(fnStart, fnEnd);
+
+    expect(fnBody).toContain('roles.includes("TRAINER")');
+  });
+});
