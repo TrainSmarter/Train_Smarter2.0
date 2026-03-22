@@ -5,32 +5,26 @@ import { useTypedLocale } from "@/hooks/use-typed-locale";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import type { ExerciseWithTaxonomy } from "@/lib/exercises/types";
 import { CATEGORY_LABELS } from "@/lib/exercises/constants";
 
 interface ExerciseCardProps {
   exercise: ExerciseWithTaxonomy;
   onClick: () => void;
-  viewMode: "grid" | "list";
 }
 
-export function ExerciseCard({ exercise, onClick, viewMode }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, onClick }: ExerciseCardProps) {
   const t = useTranslations("exercises");
   const locale = useTypedLocale();
 
   const name = exercise.name[locale];
+  const description = exercise.description?.[locale];
   const isGlobal = exercise.scope === "global";
-  const maxTags = viewMode === "grid" ? 3 : 5;
+  const maxTags = 3;
 
   return (
     <Card
-      className={cn(
-        "cursor-pointer transition-all duration-200",
-        "hover:-translate-y-0.5 hover:shadow-lg",
-        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        viewMode === "list" && "flex-row"
-      )}
+      className="cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       tabIndex={0}
       role="button"
       aria-label={name}
@@ -42,14 +36,9 @@ export function ExerciseCard({ exercise, onClick, viewMode }: ExerciseCardProps)
         }
       }}
     >
-      <CardContent
-        className={cn(
-          "p-4",
-          viewMode === "list" && "flex items-center gap-4 w-full"
-        )}
-      >
+      <CardContent className="p-4">
         {/* Name + Source Badge Row */}
-        <div className={cn("flex items-start gap-2", viewMode === "list" && "flex-1 min-w-0")}>
+        <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-body font-medium text-foreground">
               {name}
@@ -64,11 +53,15 @@ export function ExerciseCard({ exercise, onClick, viewMode }: ExerciseCardProps)
           </Badge>
         </div>
 
+        {/* Description Preview */}
+        {description && (
+          <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
+            {description}
+          </p>
+        )}
+
         {/* Tags Row */}
-        <div className={cn(
-          "flex flex-wrap items-center gap-1.5",
-          viewMode === "grid" ? "mt-3" : "mt-0 ml-4 shrink-0"
-        )}>
+        <div className="flex flex-wrap items-center gap-1.5 mt-3">
           {/* Category Badge */}
           <Badge variant="gray" size="sm">
             {t(CATEGORY_LABELS[exercise.exerciseType])}
@@ -82,7 +75,7 @@ export function ExerciseCard({ exercise, onClick, viewMode }: ExerciseCardProps)
           ))}
           {exercise.primaryMuscleGroups.length > maxTags && (
             <Badge variant="outline" size="sm">
-              +{exercise.primaryMuscleGroups.length - maxTags}
+              {t("moreItems", { count: exercise.primaryMuscleGroups.length - maxTags })}
             </Badge>
           )}
 
@@ -94,7 +87,7 @@ export function ExerciseCard({ exercise, onClick, viewMode }: ExerciseCardProps)
           ))}
           {exercise.equipment.length > 2 && (
             <Badge variant="info" size="sm">
-              +{exercise.equipment.length - 2}
+              {t("moreItems", { count: exercise.equipment.length - 2 })}
             </Badge>
           )}
         </div>

@@ -2,14 +2,38 @@
 
 ## Status: Deployed
 **Created:** 2026-03-12
-**Last Updated:** 2026-03-20
+**Last Updated:** 2026-03-22
+
+### Redesign (Frontend — 2026-03-22)
+
+**Neue Komponenten:**
+- `ExerciseToolbar` — Unified Search (multi-term, durchsucht Name/Beschreibung/Muskelgruppen/Equipment/Kategorie in DE+EN) + View-Switcher (Grid/Tabelle/Kompakt) + einklappbarer Filter-Toggle mit Badge-Zähler
+- `ExerciseTableView` — Sortierbare Tabelle (Name, Kategorie, Muskelgruppen, Equipment, Quelle, Erstellt) mit Spalten-Sortierung via Header-Klick
+- `ExerciseCompactCard` — Dichte Mini-Karten (4 Spalten) mit Name + Kategorie + Quelle-Badge
+- `ExerciseFilterChips` — Aktive Filter als entfernbare Badges mit "Alle löschen"-Button
+- `ExercisePagination` — Seitennavigation (24/48/96 pro Seite) mit Seiten-Buttons + Ellipsis
+- `useExerciseLibraryPreferences` — localStorage-Hook für View-Modus, Sortierung, Seitengröße, Filter-Toggle (isHydrated-Guard gegen Layout-Flash)
+
+**Überarbeitete Komponenten:**
+- `ExerciseLibraryPage` — Komplett refactored: Toolbar, 3 Views, Pagination, vorberechneter Such-Index, Filter-Chips, Ergebnis-Info-Leiste, Page-Clamp bei Datenlöschung
+- `ExerciseFilters` — Vereinfacht: nur noch Filter-Dropdowns (Kategorie/Muskelgruppe/Equipment/Quelle/Sortierung), Search + View-Switcher in Toolbar ausgelagert
+- `ExerciseCard` — Grid-only (kein list-Mode mehr), Beschreibungs-Preview hinzugefügt, i18n-konforme Overflow-Badges
+
+**Neue i18n-Keys:** 24+ Keys in DE+EN (searchUnifiedPlaceholder, viewTable, viewCompact, filtersToggle, filtersCount, clearAllFilters, resultCount, resultCountAll, columnName/Category/Muscles/Equipment/Source/Created, pageSize, pageInfo, paginationPrev/Next, viewSwitcher, moreItems, removeFilter)
+
+**Zukunftssicherheit:**
+- Multi-Term-Suche: "Brust Langhantel" matcht Übungen mit beiden Begriffen unabhängig
+- Vorberechneter Such-Index via `useMemo` für Performance bei 100+ Übungen
+- Datengetriebene Filter: neue Taxonomy-Typen automatisch filterbar
+- Tabellen-Spalten erweiterbar für neue Felder (Schwierigkeit, Notizen)
+- Pagination server-side-ready (`totalCount` als Prop-Pattern)
 
 ### Implementation Notes (Frontend — 2026-03-20)
 - Route: `src/app/[locale]/(protected)/training/exercises/page.tsx` — Server Component with data fetching
 - Loading skeleton: `src/app/[locale]/(protected)/training/exercises/loading.tsx`
 - `ExerciseLibraryPage` — Main client component with search, filter, sort, view mode state
-- `ExerciseCard` — Card component for grid/list display with localized name, badges, tags
-- `ExerciseFilters` — Search input (300ms debounce), category/source/sort selects, muscle group + equipment multi-select filters, grid/list view switcher
+- `ExerciseCard` — Card component for grid display with localized name, badges, tags, description preview
+- `ExerciseFilters` — Category/source/sort selects, muscle group + equipment multi-select filters
 - `ExerciseSlideOver` — Sheet panel from right with detail, edit, and create modes
 - `ExerciseForm` — react-hook-form + Zod form for create/edit with duplicate name warning
 - `TaxonomyMultiSelect` — Reusable multi-select with Popover/Command, global/own grouping, inline create + edit/delete for own entries
@@ -281,6 +305,141 @@ _Keine eigene Tabelle — die 4 Typen sind im Schema als CHECK constraint defini
 - [ ] **Übungs-Bilder:** Upload-Funktion für Übungsfotos (aktuell nur Video-URL Platzhalter)
 - [ ] **Übungs-Vorschau im Plan:** Inline-Preview der Übungsbeschreibung beim Hovern im Trainingsplan
 - [ ] **Import/Export:** CSV/JSON Import für Bulk-Upload von Übungen
+
+---
+
+## QA Report: Exercise Library Redesign (2026-03-22)
+
+**Scope:** Redesigned exercise library with 3 view modes (grid/table/compact), unified toolbar, filter chips, pagination, and localStorage preferences.
+
+### 1. TypeScript -- PASS
+- `npx tsc --noEmit` passes with zero errors.
+- All new files compile cleanly. Type exports (`ExerciseViewMode`, `ExerciseSortOption`) are consistent across `use-exercise-library-preferences.ts`, `exercise-toolbar.tsx`, `exercise-filters.tsx`, and `exercise-table-view.tsx`.
+
+### 2. ESLint -- PASS
+- `npm run lint` produces 0 errors and only 3 pre-existing warnings (none from new/modified files).
+
+### 3. Production Build -- PASS
+- `npm run build` succeeds. All exercise routes render correctly in the build output.
+
+### 4. i18n -- PASS
+- All 21+ new keys exist in both `de.json` and `en.json` under the `exercises` namespace.
+- Keys verified: `searchUnifiedPlaceholder`, `filtersCount`, `filtersToggle`, `viewGrid`, `viewTable`, `viewCompact`, `removeFilter`, `clearAllFilters`, `columnName`, `columnCategory`, `columnMuscles`, `columnEquipment`, `columnSource`, `columnCreated`, `moreItems`, `pageInfo`, `pageSize`, `resultCount`, `resultCountAll`, `emptySearchTitle`, `emptySearchDescription`, `sourcePlatform`, `sourceOwn`.
+- German umlauts correct throughout (e.g., "Ubung" correctly "Ubung", "loschen" correctly "loschen").
+- All strings use `useTranslations("exercises")` or `useTranslations("common")` -- no hardcoded user-facing strings found.
+
+### 5. Import Consistency -- PASS
+- No circular imports detected. All imports resolve correctly.
+- `Link` imported from `@/i18n/navigation` (not `next/link`) in `exercise-library-page.tsx`.
+
+### 6. Page Route Compatibility -- PASS
+- `src/app/[locale]/(protected)/training/exercises/page.tsx` passes `exercises`, `muscleGroups`, `equipment`, `isPlatformAdmin` props.
+- `ExerciseLibraryPage` interface matches exactly: `ExerciseLibraryPageProps { exercises, muscleGroups, equipment, isPlatformAdmin? }`.
+- No breaking changes to the page route.
+
+### 7. Unchanged Files -- PASS
+- `exercise-slide-over.tsx` -- unchanged, still receives correct props from `ExerciseLibraryPage`.
+- `exercise-form.tsx`, `taxonomy-multi-select.tsx`, detail page, new page -- not modified, no breakage.
+
+### 8. Pagination Logic -- PASS
+- `getPageNumbers()` tested with edge cases: totalPages=0 (empty array, but component returns null for totalPages<=1), totalPages=1 (returns null), totalPages=2, 6, 10 at various page positions -- all correct.
+- Page resets to 1 when filters/search/sort change (line 77-79 of `exercise-library-page.tsx`).
+- Page resets to 1 when pageSize changes (`handlePageSizeChange` on line 252).
+
+### 9. Security (XSS/Injection) -- PASS
+- No `dangerouslySetInnerHTML` or `innerHTML` usage in any exercise component.
+- Search input is used only for string comparison (`includes()`) -- not interpolated into HTML or SQL.
+- All data rendering uses React's automatic escaping via JSX.
+- localStorage input is validated against whitelist arrays (`VALID_VIEWS`, `VALID_SORTS`, `VALID_PAGE_SIZES`) with fallback to defaults on invalid data (line 64-85 of `use-exercise-library-preferences.ts`).
+
+### 10. Empty States -- PASS
+- No exercises at all: `EmptyState` with create button rendered (line 323-338).
+- No filter/search results: separate `EmptyState` rendered (line 341-348).
+- Pagination hidden when `totalPages <= 1` (line 63 of `exercise-pagination.tsx`).
+- Filter chips hidden when `chips.length === 0` (line 25 of `exercise-filter-chips.tsx`).
+
+---
+
+### BUGS FOUND
+
+#### BUG-R01: Missing `isHydrated` guard causes potential hydration mismatch (MEDIUM)
+**File:** `src/components/exercises/exercise-library-page.tsx`
+**Description:** The hook `useExerciseLibraryPreferences()` returns `isHydrated` but the library page never uses it. On the server, `getServerSnapshot()` returns default prefs (`viewMode: "grid"`, `sortOption: "az"`, `pageSize: 24`). If a user has saved different preferences in localStorage (e.g., `viewMode: "table"`), the server-rendered HTML will show a grid layout but the client will immediately switch to table layout, causing a visible layout flash.
+**Comparison:** Other similar components in the codebase (`unified-organisation-view.tsx` line 440, `monitoring-dashboard.tsx` line 157) guard their view-mode-dependent rendering with `isHydrated` to prevent this exact issue.
+**Steps to reproduce:**
+1. Open exercise library, switch to table view
+2. Hard refresh the page
+3. Observe brief flash of grid layout before switching to table
+**Severity:** MEDIUM
+**Priority:** P2
+**Suggested fix:** Guard the view-mode-dependent rendering sections (lines 351-384) with `isHydrated` check, consistent with the pattern used elsewhere.
+
+#### BUG-R02: Pagination previous/next buttons lack `aria-label` (LOW)
+**File:** `src/components/exercises/exercise-pagination.tsx`, lines 78-86 and 109-117
+**Description:** The previous (`ChevronLeft`) and next (`ChevronRight`) pagination buttons have no `aria-label`. Screen readers will announce them as empty buttons. The page number buttons also lack `aria-label` (e.g., "Go to page 3").
+**Steps to reproduce:** Navigate to exercise library with screen reader enabled, tab to pagination controls.
+**Severity:** LOW (accessibility)
+**Priority:** P3
+**Suggested fix:** Add `aria-label={t("previousPage")}` and `aria-label={t("nextPage")}` to the buttons, and `aria-label` with page number to each page button.
+
+#### BUG-R03: View mode radiogroup has misleading `aria-label` (LOW)
+**File:** `src/components/exercises/exercise-toolbar.tsx`, line 87
+**Description:** The view mode switcher `<div role="radiogroup">` uses `aria-label={tCommon("filter")}` which translates to "Filtern"/"Filter". This is semantically wrong -- the radiogroup switches view modes, not filters. It should be labeled something like "Ansichtsmodus"/"View mode".
+**Steps to reproduce:** Inspect the radiogroup element with accessibility dev tools.
+**Severity:** LOW (accessibility)
+**Priority:** P3
+**Suggested fix:** Add a new i18n key like `exercises.viewModeLabel` ("Ansichtsmodus"/"View mode") and use that instead.
+
+#### BUG-R04: Inconsistent overflow badge format between card and table views (LOW)
+**File:** `src/components/exercises/exercise-card.tsx`, lines 78 and 90
+**File:** `src/components/exercises/exercise-table-view.tsx`, lines 197 and 213
+**Description:** In `exercise-card.tsx`, overflow badges use hardcoded format `+{count}` (e.g., `+2`). In `exercise-table-view.tsx`, they use the i18n key `moreItems` which renders as `+2 weitere`/`+2 more`. This is inconsistent UX between view modes for the same data.
+**Steps to reproduce:** Create an exercise with 5+ muscle groups, view in grid vs table mode.
+**Severity:** LOW (UI consistency)
+**Priority:** P3
+**Suggested fix:** Update `exercise-card.tsx` to use `t("moreItems", { count })` for consistency.
+
+#### BUG-R05: `category` sort in table view is a one-way toggle (LOW)
+**File:** `src/components/exercises/exercise-table-view.tsx`, lines 73-75
+**Description:** Clicking the "Category" column header always sets sort to `"category"`. Unlike "Name" (toggles az/za) and "Created" (toggles newest/oldest), clicking Category repeatedly does nothing -- there is no reverse sort for category. The `SortIcon` component (line 49) treats `"category"` as ascending (showing ChevronUp), but there is no way to toggle it to descending. This may confuse users expecting a toggle behavior.
+**Steps to reproduce:** Switch to table view, click the "Category" column header multiple times.
+**Severity:** LOW (UX)
+**Priority:** P4
+
+---
+
+### REGRESSION CHECK
+
+| Feature | Status |
+|---------|--------|
+| PROJ-3 App Shell & Navigation | No changes to nav, sidebar, header -- PASS |
+| PROJ-4 Auth & Onboarding | No changes to auth flow -- PASS |
+| PROJ-5 Athleten-Management | No changes -- PASS |
+| PROJ-6 Feedback & Monitoring | No changes -- PASS |
+| PROJ-9 Team-Verwaltung | No changes -- PASS |
+| PROJ-10 Admin-Bereich | No changes -- PASS |
+| PROJ-12 Exercise slide-over, form, detail page | Unchanged, props still match -- PASS |
+| PROJ-12 Exercise route, new exercise route | Unchanged, correct props passed -- PASS |
+
+---
+
+### SUMMARY
+
+| Check | Result |
+|-------|--------|
+| TypeScript | PASS (0 errors) |
+| ESLint | PASS (0 new warnings) |
+| Build | PASS |
+| i18n keys (de + en) | PASS (all present, umlauts correct) |
+| Import consistency | PASS |
+| Page route compatibility | PASS |
+| Unchanged file breakage | PASS |
+| Pagination edge cases | PASS |
+| Security (XSS) | PASS |
+| Empty states | PASS |
+| Bugs found | 5 (0 CRITICAL, 0 HIGH, 1 MEDIUM, 4 LOW) |
+
+<!-- End QA Report -->
 
 ---
 <!-- Sections below are added by subsequent skills -->
