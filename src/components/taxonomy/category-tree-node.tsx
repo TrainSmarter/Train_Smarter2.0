@@ -90,192 +90,239 @@ export function CategoryTreeNode({
   const displayName = node.name[locale] || node.name.de || node.slug;
   const scopeBadge = node.scope === "global" ? t("global") : t("trainer");
 
+  // Depth-based left border color for card styling (consistent with graph view)
+  const depthBorderClass =
+    depth === 0
+      ? "border-l-teal-700 dark:border-l-teal-400"
+      : depth === 1
+        ? "border-l-teal-600 dark:border-l-teal-500"
+        : depth === 2
+          ? "border-l-teal-500 dark:border-l-teal-600"
+          : depth === 3
+            ? "border-l-teal-400 dark:border-l-teal-700"
+            : "border-l-teal-300 dark:border-l-teal-800";
+
+  // Compute Tailwind-compatible indent classes for depth
+  // We use a fixed set for depths 0-6, with a CSS variable fallback beyond that
+  const indentClass =
+    depth === 0 ? "pl-0"
+    : depth === 1 ? "pl-6"
+    : depth === 2 ? "pl-12"
+    : depth === 3 ? "pl-[72px]"
+    : depth === 4 ? "pl-24"
+    : depth === 5 ? "pl-[120px]"
+    : "pl-[144px]";
+
   return (
     <div ref={setNodeRef} style={style}>
-      {/* Node Row */}
-      <div
-        className={cn(
-          "group flex items-center gap-2 px-3 py-2 transition-colors hover:bg-muted/50",
-          isSelected && "bg-primary/5 border-l-2 border-l-primary",
-          isDragging && "opacity-50"
+      {/* Node Row -- card-tree style */}
+      <div className={cn("relative", indentClass)}>
+        {/* Vertical connector line from parent */}
+        {depth > 0 && (
+          <div
+            className="absolute -left-2 top-0 h-full w-px bg-border"
+            style={{ left: `${depth * 24 - 8}px` }}
+            aria-hidden="true"
+          />
         )}
-        style={{ paddingLeft: `${depth * 24 + 12}px` }}
-      >
-        {/* Drag Handle */}
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab touch-none text-muted-foreground/50 hover:text-muted-foreground"
-          aria-label={t("treeDragHint")}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
+        {/* Horizontal connector line for non-root nodes */}
+        {depth > 0 && (
+          <div
+            className="absolute top-1/2 h-px bg-border"
+            style={{ left: `${depth * 24 - 8}px`, width: "8px" }}
+            aria-hidden="true"
+          />
+        )}
 
-        {/* Expand/Collapse Chevron */}
-        {hasChildren ? (
+        <div
+          className={cn(
+            "group mx-1 my-0.5 flex items-center gap-2 rounded-lg border border-l-4 bg-card px-3 py-2 shadow-sm transition-all duration-200 hover:bg-muted/50 hover:shadow",
+            depthBorderClass,
+            isSelected && "bg-primary/5 ring-2 ring-primary/30 shadow",
+            isDragging && "opacity-50"
+          )}
+        >
+          {/* Drag Handle */}
           <button
-            onClick={() => onToggle(node.id)}
-            className="text-muted-foreground hover:text-foreground"
-            aria-label={isExpanded ? t("treeCollapse") : t("treeExpand")}
+            {...attributes}
+            {...listeners}
+            className="cursor-grab touch-none text-muted-foreground/50 hover:text-muted-foreground"
+            aria-label={t("treeDragHint")}
           >
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
+            <GripVertical className="h-4 w-4" />
           </button>
-        ) : (
-          <span className="w-4" />
-        )}
 
-        {/* Node Icon (if set) */}
-        {node.icon && (
-          <span className="text-xs text-muted-foreground" title={node.icon}>
-            {node.icon}
-          </span>
-        )}
-
-        {/* Node Name — clickable to open detail */}
-        <button
-          onClick={() => onSelect(node)}
-          className="flex-1 truncate text-left text-sm font-medium text-foreground hover:text-primary"
-        >
-          {displayName}
-        </button>
-
-        {/* Badges */}
-        <div className="flex items-center gap-1.5">
-          {hasChildren && (
-            <Badge variant="gray" size="sm" className="text-xs">
-              {node.children.length}
-            </Badge>
+          {/* Expand/Collapse Chevron */}
+          {hasChildren ? (
+            <button
+              onClick={() => onToggle(node.id)}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label={isExpanded ? t("treeCollapse") : t("treeExpand")}
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </button>
+          ) : (
+            <span className="w-4" />
           )}
-          {node.scope === "trainer" && (
-            <Badge variant="secondary" size="sm" className="text-xs">
-              {scopeBadge}
-            </Badge>
+
+          {/* Node Icon (if set) */}
+          {node.icon && (
+            <span className="text-xs text-muted-foreground" title={node.icon}>
+              {node.icon}
+            </span>
           )}
+
+          {/* Node Name — clickable to open detail */}
+          <button
+            onClick={() => onSelect(node)}
+            className="flex-1 truncate text-left text-sm font-medium text-foreground hover:text-primary"
+          >
+            {displayName}
+          </button>
+
+          {/* Badges + Hover Actions (single TooltipProvider) */}
           <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="text-muted-foreground">
-                  {node.trainerVisible ? (
-                    <Eye className="h-3.5 w-3.5 text-success" />
-                  ) : (
-                    <EyeOff className="h-3.5 w-3.5 text-muted-foreground/50" />
-                  )}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {node.trainerVisible ? t("trainerVisible") : t("notTrainerVisible")}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+            <div className="flex items-center gap-1.5">
+              {hasChildren && (
+                <Badge variant="gray" size="sm" className="tabular-nums text-xs">
+                  {node.children.length}
+                </Badge>
+              )}
+              {node.scope === "trainer" && (
+                <Badge variant="secondary" size="sm" className="text-xs">
+                  {scopeBadge}
+                </Badge>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-muted-foreground">
+                    {node.trainerVisible ? (
+                      <Eye className="h-3.5 w-3.5 text-success" />
+                    ) : (
+                      <EyeOff className="h-3.5 w-3.5 text-muted-foreground/50" />
+                    )}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {node.trainerVisible ? t("trainerVisible") : t("notTrainerVisible")}
+                </TooltipContent>
+              </Tooltip>
+            </div>
 
-        {/* Hover Actions */}
-        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelect(node);
-                  }}
-                  aria-label={t("nodeEdit")}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("nodeEdit")}</TooltipContent>
-            </Tooltip>
+            {/* Hover Actions */}
+            <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelect(node);
+                    }}
+                    aria-label={t("nodeEdit")}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("nodeEdit")}</TooltipContent>
+              </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddChild(node.id);
-                  }}
-                  aria-label={t("nodeAddChild")}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("nodeAddChild")}</TooltipContent>
-            </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddChild(node.id);
+                    }}
+                    aria-label={t("nodeAddChild")}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("nodeAddChild")}</TooltipContent>
+              </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMove(node);
-                  }}
-                  aria-label={t("nodeMove")}
-                >
-                  <Move className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("nodeMove")}</TooltipContent>
-            </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMove(node);
+                    }}
+                    aria-label={t("nodeMove")}
+                  >
+                    <Move className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("nodeMove")}</TooltipContent>
+              </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-destructive hover:text-destructive"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(node);
-                  }}
-                  aria-label={t("nodeDelete")}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("nodeDelete")}</TooltipContent>
-            </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(node);
+                    }}
+                    aria-label={t("nodeDelete")}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("nodeDelete")}</TooltipContent>
+              </Tooltip>
+            </div>
           </TooltipProvider>
         </div>
       </div>
 
       {/* Children (recursive, wrapped in SortableContext for DnD) */}
-      {hasChildren && isExpanded && (
-        <SortableContext
-          items={node.children.map((c) => c.id)}
-          strategy={verticalListSortingStrategy}
+      {hasChildren && (
+        <div
+          className={cn(
+            "overflow-hidden transition-all duration-200",
+            isExpanded ? "max-h-[5000px] opacity-100" : "max-h-0 opacity-0"
+          )}
         >
-          <div>
-            {node.children.map((child) => (
-              <CategoryTreeNode
-                key={child.id}
-                node={child}
-                depth={depth + 1}
-                isExpanded={expandedNodes.has(child.id)}
-                onToggle={onToggle}
-                onSelect={onSelect}
-                onAddChild={onAddChild}
-                onDelete={onDelete}
-                onMove={onMove}
-                isSelected={child.id === selectedNodeId}
-                selectedNodeId={selectedNodeId}
-                expandedNodes={expandedNodes}
-              />
-            ))}
-          </div>
-        </SortableContext>
+          <SortableContext
+            items={node.children.map((c) => c.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div>
+              {node.children.map((child) => (
+                <CategoryTreeNode
+                  key={child.id}
+                  node={child}
+                  depth={depth + 1}
+                  isExpanded={expandedNodes.has(child.id)}
+                  onToggle={onToggle}
+                  onSelect={onSelect}
+                  onAddChild={onAddChild}
+                  onDelete={onDelete}
+                  onMove={onMove}
+                  isSelected={child.id === selectedNodeId}
+                  selectedNodeId={selectedNodeId}
+                  expandedNodes={expandedNodes}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </div>
       )}
     </div>
   );

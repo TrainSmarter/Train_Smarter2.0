@@ -1435,7 +1435,16 @@
     "saving": "Wird gespeichert...",
     "deleting": "Wird gelöscht...",
     "addRootNode": "Knoten hinzufügen",
-    "loadingError": "Taxonomie-Daten konnten nicht geladen werden"
+    "loadingError": "Taxonomie-Daten konnten nicht geladen werden",
+    "viewList": "Liste",
+    "viewGraph": "Grafik",
+    "viewSwitcherLabel": "Ansicht",
+    "graphZoomIn": "Vergrößern",
+    "graphZoomOut": "Verkleinern",
+    "graphZoomReset": "Ansicht zurücksetzen",
+    "graphClickToEdit": "Klicken zum Bearbeiten",
+    "graphEmpty": "Keine Knoten in dieser Dimension",
+    "graphDoubleClickHint": "Doppelklick zum Zurücksetzen der Ansicht"
   },
   "errors": {
     "authPageError": "Beim Laden der Seite ist ein Fehler aufgetreten.",
