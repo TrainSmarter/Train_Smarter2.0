@@ -41,11 +41,14 @@ export default async function ExercisesPage() {
     getTaxonomy("equipment"),
   ]);
 
+  const isPlatformAdmin = authUser.app_metadata.is_platform_admin === true;
+
   return (
     <ExerciseLibraryPage
       exercises={exercises}
       muscleGroups={muscleGroups}
       equipment={equipment}
+      isPlatformAdmin={isPlatformAdmin}
     />
   );
 }

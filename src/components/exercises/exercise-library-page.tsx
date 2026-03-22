@@ -26,12 +26,14 @@ interface ExerciseLibraryPageProps {
   exercises: ExerciseWithTaxonomy[];
   muscleGroups: TaxonomyEntry[];
   equipment: TaxonomyEntry[];
+  isPlatformAdmin?: boolean;
 }
 
 export function ExerciseLibraryPage({
   exercises: initialExercises,
   muscleGroups: initialMuscleGroups,
   equipment: initialEquipment,
+  isPlatformAdmin = false,
 }: ExerciseLibraryPageProps) {
   const t = useTranslations("exercises");
   const locale = useLocale() as "de" | "en";
@@ -229,6 +231,7 @@ export function ExerciseLibraryPage({
         exercise={selectedExercise}
         allExercises={exercises}
         onActionComplete={handleActionComplete}
+        isPlatformAdmin={isPlatformAdmin}
       />
     </div>
   );

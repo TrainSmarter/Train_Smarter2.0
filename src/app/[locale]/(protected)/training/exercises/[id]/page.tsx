@@ -78,6 +78,7 @@ export default async function ExerciseDetailRoute({
       allExercises={allExercises}
       showAiSuggest={showAiSuggest}
       usageData={usageData}
+      isPlatformAdmin={isAdmin === true}
     />
   );
 }

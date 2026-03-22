@@ -50,6 +50,8 @@ interface ExerciseDetailPageProps {
   showAiSuggest?: boolean;
   /** AI usage data for displaying quota */
   usageData?: AiUsageData | null;
+  /** Whether the current user is a platform admin */
+  isPlatformAdmin?: boolean;
 }
 
 export function ExerciseDetailPage({
@@ -59,6 +61,7 @@ export function ExerciseDetailPage({
   allExercises,
   showAiSuggest = false,
   usageData = null,
+  isPlatformAdmin = false,
 }: ExerciseDetailPageProps) {
   const t = useTranslations("exercises");
   const tCommon = useTranslations("common");
@@ -77,6 +80,8 @@ export function ExerciseDetailPage({
   const [deleteConfirm, setDeleteConfirm] = React.useState(false);
 
   const isGlobal = exercise?.scope === "global";
+  const canEdit = !isGlobal || isPlatformAdmin;
+  const canDelete = !isGlobal || isPlatformAdmin;
   const hasBeenCloned = exercise
     ? allExercises.some(
         (ex) => ex.clonedFrom === exercise.id && ex.scope === "trainer"
@@ -180,7 +185,19 @@ export function ExerciseDetailPage({
         {/* Header Actions */}
         {!isCreateMode && !isEditing && (
           <div className="flex flex-wrap gap-2">
-            {isGlobal ? (
+            {/* Edit: own exercises + admin on global */}
+            {canEdit && (
+              <Button
+                variant="outline"
+                onClick={() => setIsEditing(true)}
+                iconLeft={<Pencil className="h-4 w-4" />}
+              >
+                {tCommon("edit")}
+              </Button>
+            )}
+
+            {/* Clone: global exercises for non-admins */}
+            {isGlobal && !isPlatformAdmin && (
               <Button
                 onClick={handleClone}
                 loading={isCloning}
@@ -188,23 +205,17 @@ export function ExerciseDetailPage({
               >
                 {t("copyToLibrary")}
               </Button>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditing(true)}
-                  iconLeft={<Pencil className="h-4 w-4" />}
-                >
-                  {tCommon("edit")}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => setDeleteConfirm(true)}
-                  iconLeft={<Trash2 className="h-4 w-4" />}
-                >
-                  {tCommon("delete")}
-                </Button>
-              </>
+            )}
+
+            {/* Delete: own exercises + admin on global */}
+            {canDelete && (
+              <Button
+                variant="destructive"
+                onClick={() => setDeleteConfirm(true)}
+                iconLeft={<Trash2 className="h-4 w-4" />}
+              >
+                {tCommon("delete")}
+              </Button>
             )}
           </div>
         )}

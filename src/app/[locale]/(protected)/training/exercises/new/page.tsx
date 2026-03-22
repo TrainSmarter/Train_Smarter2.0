@@ -56,6 +56,7 @@ export default async function NewExercisePage() {
       allExercises={allExercises}
       showAiSuggest={showAiSuggest}
       usageData={usageData}
+      isPlatformAdmin={isAdmin === true}
     />
   );
 }

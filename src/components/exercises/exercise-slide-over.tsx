@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { Copy, ExternalLink, Pencil, AlertTriangle, Info } from "lucide-react";
+import { Copy, ExternalLink, Pencil, Trash2, AlertTriangle, Info } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -15,7 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { cloneExercise } from "@/lib/exercises/actions";
+import { cloneExercise, deleteExercise } from "@/lib/exercises/actions";
+import { ConfirmDialog } from "@/components/modal";
 import { Link, useRouter } from "@/i18n/navigation";
 import type {
   ExerciseWithTaxonomy,
@@ -40,6 +41,8 @@ interface ExerciseSlideOverProps {
   allExercises: ExerciseWithTaxonomy[];
   /** Callback after successful action */
   onActionComplete: () => void;
+  /** Whether the current user is a platform admin */
+  isPlatformAdmin?: boolean;
 }
 
 export function ExerciseSlideOver({
@@ -48,14 +51,20 @@ export function ExerciseSlideOver({
   exercise,
   allExercises,
   onActionComplete,
+  isPlatformAdmin = false,
 }: ExerciseSlideOverProps) {
   const t = useTranslations("exercises");
   const tCommon = useTranslations("common");
   const locale = useLocale() as "de" | "en";
   const router = useRouter();
   const [isCloning, setIsCloning] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [deleteConfirm, setDeleteConfirm] = React.useState(false);
 
   const isGlobal = exercise?.scope === "global";
+  // Admin can edit/delete global exercises
+  const canEdit = !isGlobal || isPlatformAdmin;
+  const canDelete = !isGlobal || isPlatformAdmin;
   const hasBeenCloned = exercise
     ? allExercises.some(
         (ex) => ex.clonedFrom === exercise.id && ex.scope === "trainer"
@@ -78,6 +87,26 @@ export function ExerciseSlideOver({
       toast.error(t("errorGeneric"));
     } finally {
       setIsCloning(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!exercise) return;
+    setIsDeleting(true);
+    try {
+      const result = await deleteExercise(exercise.id);
+      if (result.success) {
+        toast.success(t("deleteSuccess"));
+        onOpenChange(false);
+        onActionComplete();
+      } else {
+        toast.error(t("errorGeneric"));
+      }
+    } catch {
+      toast.error(t("errorGeneric"));
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirm(false);
     }
   }
 
@@ -214,7 +243,20 @@ export function ExerciseSlideOver({
                 </Link>
               </Button>
 
-              {isGlobal ? (
+              {/* Edit button: own exercises + admin on global */}
+              {canEdit && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={handleEditClick}
+                  iconLeft={<Pencil className="h-4 w-4" />}
+                >
+                  {tCommon("edit")}
+                </Button>
+              )}
+
+              {/* Clone button: global exercises for non-admins */}
+              {isGlobal && !isPlatformAdmin && (
                 <>
                   <Button
                     onClick={handleClone}
@@ -231,20 +273,36 @@ export function ExerciseSlideOver({
                     </div>
                   )}
                 </>
-              ) : (
+              )}
+
+              {/* Delete button: own exercises + admin on global */}
+              {canDelete && (
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   className="w-full justify-start"
-                  onClick={handleEditClick}
-                  iconLeft={<Pencil className="h-4 w-4" />}
+                  onClick={() => setDeleteConfirm(true)}
+                  iconLeft={<Trash2 className="h-4 w-4" />}
                 >
-                  {tCommon("edit")}
+                  {tCommon("delete")}
                 </Button>
               )}
             </div>
           </div>
         )}
       </SheetContent>
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={deleteConfirm}
+        onOpenChange={setDeleteConfirm}
+        variant="danger"
+        title={t("deleteConfirmTitle")}
+        message={t("deleteConfirmMessage")}
+        confirmLabel={tCommon("delete")}
+        cancelLabel={tCommon("cancel")}
+        onConfirm={handleDelete}
+        loading={isDeleting}
+      />
     </Sheet>
   );
 }
