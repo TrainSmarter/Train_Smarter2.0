@@ -445,6 +445,10 @@
       "lockedByInvite": "Durch deine Einladung vorausgewählt.",
       "roleRequired": "Bitte wähle eine Rolle aus.",
       "roleSaveError": "Rolle konnte nicht gespeichert werden. Bitte versuche es erneut."
+    },
+    "complete": {
+      "title": "Alles eingerichtet!",
+      "description": "Dein Konto ist bereit. Du wirst gleich zum Dashboard weitergeleitet."
     }
   },
   "athletes": {
@@ -920,6 +924,7 @@
     "manageCategories": "Kategorien anpassen",
     "notePlaceholder": "Anmerkungen, Befinden, Sonstiges...",
     "myTrends": "Meine Trends",
+    "fullscreenChartDescription": "Vollbildansicht der Trend-Diagramme mit allen aktiven Kategorien",
     "noCategoriesActive": "Keine aktiven Kategorien. Mindestens eine Kategorie muss aktiv sein.",
     "noCategories": "Keine Kategorien vorhanden.",
     "required": "Pflicht",

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { gdprConsentRateLimiter, getRateLimitKey } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const consentSchema = z.object({
@@ -30,6 +31,15 @@ export async function POST(request: Request) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limit: 10 requests per minute per user
+    const { limited } = gdprConsentRateLimiter.check(getRateLimitKey(request, user.id));
+    if (limited) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429 }
+      );
     }
 
     const body = await request.json();

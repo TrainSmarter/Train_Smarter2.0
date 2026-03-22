@@ -817,11 +817,12 @@ export async function updateCategorySortOrder(
     return { success: false, error: "INVALID_INPUT" };
   }
 
-  // Update the sort_order for this category
+  // Update the sort_order for this category (ownership check: created_by = user.id)
   const { error: updateError } = await supabase
     .from("feedback_categories")
     .update({ sort_order: newSortOrder })
-    .eq("id", categoryId);
+    .eq("id", categoryId)
+    .eq("created_by", user.id);
 
   if (updateError) {
     console.error("Failed to update category sort order:", updateError);

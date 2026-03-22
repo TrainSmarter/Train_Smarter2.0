@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { env } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { authRateLimiter, getRateLimitKey } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const setRoleSchema = z.object({
@@ -25,6 +25,15 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
+      );
+    }
+
+    // Rate limit: 10 requests per minute per user
+    const { limited } = authRateLimiter.check(getRateLimitKey(request, user.id));
+    if (limited) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429 }
       );
     }
 
@@ -72,17 +81,14 @@ export async function POST(request: Request) {
     }
 
     // 5. Use service-role key to set app_metadata.roles
-    const adminClient = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    //    Spread existing app_metadata to preserve other fields (e.g. provider, consent flags)
+    const adminClient = createAdminClient();
 
     const { error: updateError } = await adminClient.auth.admin.updateUserById(
       user.id,
       {
         app_metadata: {
+          ...user.app_metadata,
           roles: [role],
         },
       }

@@ -6,13 +6,15 @@ import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { logError } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { CheckinForm } from "./checkin-form";
 import { WeekStrip } from "./week-strip";
-import { UnifiedTrendChart } from "./unified-trend-chart";
+import { UnifiedTrendChart } from "./trend-chart";
 import { StreakBadge } from "./streak-badge";
 import { loadWeekCheckins } from "@/lib/feedback/actions";
 import { computeStreak } from "@/lib/feedback/dot-color";
@@ -96,7 +98,7 @@ export function AthleteCheckinPage({
       setLoadedWeekStarts((prev) => new Set([...prev, startDate]));
       setCheckins((prev) => ({ ...prev, ...newCheckins }));
     } catch (err) {
-      console.error("Failed to load week check-ins:", err);
+      logError("Failed to load week check-ins", err);
     }
   }
 
@@ -233,6 +235,7 @@ export function AthleteCheckinPage({
           <DialogContent className="w-[calc(100vw-2rem)] max-w-5xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>{t("myTrends")}</DialogTitle>
+              <DialogDescription className="sr-only">{t("fullscreenChartDescription")}</DialogDescription>
             </DialogHeader>
             <div className="min-w-0 w-full">
               <UnifiedTrendChart trendData={localTrendData} />

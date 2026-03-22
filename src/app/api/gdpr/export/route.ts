@@ -114,6 +114,32 @@ export async function POST() {
       .eq("athlete_id", userId)
       .order("created_at", { ascending: true });
 
+    // Custom exercises (PROJ-12 — user's own trainer-scope exercises)
+    const { data: customExercises } = await supabase
+      .from("exercises")
+      .select("id, name, description, exercise_type, scope, cloned_from, created_at, updated_at")
+      .eq("created_by", userId)
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: true });
+
+    // Custom taxonomy entries (user's own trainer-scope taxonomy)
+    const { data: customTaxonomy } = await supabase
+      .from("exercise_taxonomy")
+      .select("id, name, type, scope, sort_order, created_at, updated_at")
+      .eq("created_by", userId)
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: true });
+
+    // Exercise taxonomy assignments for user's exercises
+    const exerciseIds = (customExercises ?? []).map((e) => e.id);
+    const { data: taxonomyAssignments } = exerciseIds.length > 0
+      ? await supabase
+          .from("exercise_taxonomy_assignments")
+          .select("id, exercise_id, taxonomy_id, is_primary, created_at")
+          .in("exercise_id", exerciseIds)
+          .order("created_at", { ascending: true })
+      : { data: [] };
+
     // Build export payload
     const exportData = {
       _meta: {
@@ -191,6 +217,32 @@ export async function POST() {
           aktualisiert_am: o.updated_at,
         })
       ),
+      eigene_uebungen: (customExercises ?? []).map((e) => ({
+        id: e.id,
+        name: e.name,
+        beschreibung: e.description,
+        uebungstyp: e.exercise_type,
+        scope: e.scope,
+        geklont_von: e.cloned_from,
+        erstellt_am: e.created_at,
+        aktualisiert_am: e.updated_at,
+      })),
+      eigene_taxonomie: (customTaxonomy ?? []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        typ: t.type,
+        scope: t.scope,
+        sortierung: t.sort_order,
+        erstellt_am: t.created_at,
+        aktualisiert_am: t.updated_at,
+      })),
+      uebungs_taxonomie_zuordnungen: (taxonomyAssignments ?? []).map((a) => ({
+        id: a.id,
+        uebung_id: a.exercise_id,
+        taxonomie_id: a.taxonomy_id,
+        ist_primaer: a.is_primary,
+        erstellt_am: a.created_at,
+      })),
     };
 
     // ── Record export in data_exports table ──

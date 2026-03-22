@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { logError } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { toAuthUser } from "@/lib/auth-user";
 import { FeedbackTrainerPage } from "@/components/feedback/feedback-trainer-page";
@@ -135,7 +136,7 @@ async function getAllCategories(): Promise<FeedbackCategory[]> {
     .order("sort_order", { ascending: true });
 
   if (error || !data) {
-    console.error("Failed to fetch all categories:", error);
+    logError("Failed to fetch all categories", error);
     return [];
   }
 

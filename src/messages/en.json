@@ -445,6 +445,10 @@
       "lockedByInvite": "Pre-selected by your invitation.",
       "roleRequired": "Please select a role.",
       "roleSaveError": "Could not save role. Please try again."
+    },
+    "complete": {
+      "title": "All set!",
+      "description": "Your account is ready. You will be redirected to the dashboard shortly."
     }
   },
   "athletes": {
@@ -920,6 +924,7 @@
     "manageCategories": "Manage categories",
     "notePlaceholder": "Notes, how you feel, anything else...",
     "myTrends": "My Trends",
+    "fullscreenChartDescription": "Full-screen view of trend charts with all active categories",
     "noCategoriesActive": "No active categories. At least one category must be active.",
     "noCategories": "No categories available.",
     "required": "Required",

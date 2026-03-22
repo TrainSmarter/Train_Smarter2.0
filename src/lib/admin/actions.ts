@@ -8,27 +8,11 @@
  */
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { env } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { UserStats } from "./types";
 
 type ActionResult = { success: boolean; error?: string };
-
-// ── Admin Client ────────────────────────────────────────────────
-
-function createAdminClient() {
-  return createClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
-}
 
 // ── Ban User ────────────────────────────────────────────────────
 

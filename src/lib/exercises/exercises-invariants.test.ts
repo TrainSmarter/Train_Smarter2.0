@@ -957,9 +957,10 @@ describe("PROJ-12 Component source invariants", () => {
     }
   });
 
-  it("should use useLocale for bilingual name display", () => {
+  it("should use useLocale or useTypedLocale for bilingual name display", () => {
     const libraryPage = readSrc("components/exercises/exercise-library-page.tsx");
-    expect(libraryPage).toContain("useLocale");
+    const usesLocale = libraryPage.includes("useLocale") || libraryPage.includes("useTypedLocale");
+    expect(usesLocale).toBe(true);
   });
 
   it("should import Link from @/i18n/navigation (not next/link)", () => {

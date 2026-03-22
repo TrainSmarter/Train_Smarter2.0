@@ -14,15 +14,10 @@ import {
   Brush,
 } from "recharts";
 import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  ChevronDown,
   Maximize2,
   Settings2,
   X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -34,300 +29,23 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { AthleteTrendData } from "@/lib/feedback/types";
 
-/** Chart color palette from design system */
-const CHART_COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "hsl(var(--chart-6))",
-  "hsl(var(--chart-7))",
-  "hsl(var(--chart-8))",
-];
-
-const MAX_ACTIVE = 4;
-
-/** Width per axis — Recharts uses this for position calc + spacing between stacked axes */
-const AXIS_WIDTH = 35;
-
-/** Format numbers compactly for narrow axes: 14000→14k, 2200→2.2k, 150→150 */
-function formatAxisTick(value: number): string {
-  if (Math.abs(value) >= 10000) return `${Math.round(value / 1000)}k`;
-  if (Math.abs(value) >= 1000) {
-    const k = value / 1000;
-    return k === Math.floor(k) ? `${k}k` : `${k.toFixed(1)}k`;
-  }
-  return String(Math.round(value));
-}
-
-const STORAGE_KEY = "feedback-chart-axis-settings";
-
-type XRange = "7" | "14" | "30" | "90";
-
-interface AxisSettingsData {
-  [categoryId: string]: { min: number; max: number } | null;
-}
-
-interface StoredSettings {
-  axes: AxisSettingsData;
-  xRange: XRange;
-}
-
-function loadSettings(): StoredSettings {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        axes: parsed.axes ?? {},
-        xRange: parsed.xRange ?? "7",
-      };
-    }
-  } catch {
-    // ignore
-  }
-  return { axes: {}, xRange: "7" };
-}
-
-function saveSettings(settings: StoredSettings) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch {
-    // ignore
-  }
-}
+import { ChartTooltip } from "./chart-tooltip";
+import { ChartSettings, type XRange, type AxisSettingsData } from "./chart-settings";
+import { ChartLegend } from "./chart-legend";
+import {
+  CHART_COLORS,
+  MAX_ACTIVE,
+  AXIS_WIDTH,
+  formatAxisTick,
+  loadSettings,
+  saveSettings,
+} from "./chart-types";
 
 interface UnifiedTrendChartProps {
   trendData: AthleteTrendData[];
   className?: string;
   /** Callback to open fullscreen view */
   onExpand?: () => void;
-}
-
-/** Custom tooltip that shows colored dots + category name + value + unit */
-function CustomTooltip({
-  active,
-  payload,
-  label,
-  activeTrends,
-  colorMap,
-  locale,
-  getName,
-}: {
-  active?: boolean;
-  payload?: Array<{ dataKey: string; value: number | null }>;
-  label?: string;
-  activeTrends: AthleteTrendData[];
-  colorMap: Map<string, string>;
-  locale: string;
-  getName: (td: AthleteTrendData) => string;
-}) {
-  if (!active || !payload?.length) return null;
-
-  return (
-    <div
-      className="rounded-lg border bg-card px-3 py-2 shadow-md"
-      style={{ fontSize: "12px" }}
-    >
-      <p className="font-semibold mb-1">{label}</p>
-      {payload.map((entry) => {
-        const td = activeTrends.find((t) => t.categoryId === entry.dataKey);
-        if (!td || entry.value === null || entry.value === undefined)
-          return null;
-        const color = colorMap.get(td.categoryId)!;
-        const name = getName(td);
-        const formatted =
-          typeof entry.value === "number"
-            ? entry.value.toLocaleString(
-                locale === "en" ? "en-US" : "de-AT"
-              )
-            : entry.value;
-        return (
-          <div
-            key={entry.dataKey}
-            className="flex items-center gap-2 py-0.5"
-          >
-            <span
-              className="h-2.5 w-2.5 rounded-full shrink-0"
-              style={{ backgroundColor: color }}
-            />
-            <span className="text-muted-foreground">{name}</span>
-            <span className="ml-auto font-medium tabular-nums pl-3">
-              {formatted}
-              {td.unit ? ` ${td.unit}` : ""}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Number input with chevron up/down buttons */
-function AxisNumberInput({
-  value,
-  onChange,
-  label,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  label: string;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <span className="text-xs text-muted-foreground w-8 shrink-0">
-        {label}
-      </span>
-      <div className="flex items-center border rounded-md">
-        <input
-          type="number"
-          value={value}
-          onChange={(e) => {
-            const v = parseFloat(e.target.value);
-            if (!isNaN(v)) onChange(v);
-          }}
-          className="w-16 px-1.5 py-1 text-xs text-center bg-transparent focus:outline-none tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          aria-label={label}
-        />
-        <div className="flex flex-col border-l">
-          <button
-            type="button"
-            onClick={() => onChange(value + 1)}
-            className="px-1 py-0 hover:bg-muted transition-colors"
-            aria-label={`${label} +1`}
-          >
-            <ChevronUp className="h-3 w-3" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange(value - 1)}
-            className="px-1 py-0 hover:bg-muted transition-colors border-t"
-            aria-label={`${label} -1`}
-          >
-            <ChevronDown className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Settings panel content (shared between desktop inline and mobile sheet) */
-function SettingsPanelContent({
-  activeTrends,
-  colorMap,
-  getName,
-  axisOverrides,
-  autoRanges,
-  xRange,
-  onAxisChange,
-  onXRangeChange,
-  onResetAll,
-  t,
-}: {
-  activeTrends: AthleteTrendData[];
-  colorMap: Map<string, string>;
-  getName: (td: AthleteTrendData) => string;
-  axisOverrides: AxisSettingsData;
-  autoRanges: Map<string, { min: number; max: number }>;
-  xRange: XRange;
-  onAxisChange: (
-    categoryId: string,
-    field: "min" | "max",
-    value: number
-  ) => void;
-  onXRangeChange: (range: XRange) => void;
-  onResetAll: () => void;
-  t: ReturnType<typeof useTranslations>;
-}) {
-  const hasManualOverrides = activeTrends.some(
-    (td) => axisOverrides[td.categoryId] != null
-  );
-
-  const xRangeOptions: { value: XRange; labelKey: string }[] = [
-    { value: "7", labelKey: "days7" },
-    { value: "14", labelKey: "days14" },
-    { value: "30", labelKey: "days30" },
-    { value: "90", labelKey: "days90" },
-  ];
-
-  return (
-    <div className="space-y-4">
-      {/* X-axis time range */}
-      <div>
-        <p className="text-xs font-medium text-muted-foreground mb-2">
-          {t("timeRange")}
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {xRangeOptions.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onXRangeChange(opt.value)}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                xRange === opt.value
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {t(opt.labelKey)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Per-category axis settings */}
-      {activeTrends.map((td) => {
-        const color = colorMap.get(td.categoryId)!;
-        const name = getName(td);
-        const autoRange = autoRanges.get(td.categoryId) ?? {
-          min: 0,
-          max: 100,
-        };
-        const override = axisOverrides[td.categoryId];
-        const currentMin = override?.min ?? autoRange.min;
-        const currentMax = override?.max ?? autoRange.max;
-
-        return (
-          <div key={td.categoryId} className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span
-                className="h-2.5 w-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: color }}
-              />
-              <span className="text-sm font-medium truncate">{name}</span>
-            </div>
-            <div className="flex items-center gap-3 pl-4">
-              <AxisNumberInput
-                value={currentMin}
-                onChange={(v) => onAxisChange(td.categoryId, "min", v)}
-                label={t("axisMin")}
-              />
-              <AxisNumberInput
-                value={currentMax}
-                onChange={(v) => onAxisChange(td.categoryId, "max", v)}
-                label={t("axisMax")}
-              />
-            </div>
-          </div>
-        );
-      })}
-
-      {/* Auto reset button */}
-      {hasManualOverrides && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onResetAll}
-          className="w-full"
-        >
-          {t("axisAutoReset")}
-        </Button>
-      )}
-    </div>
-  );
 }
 
 export function UnifiedTrendChart({
@@ -347,7 +65,7 @@ export function UnifiedTrendChart({
     return initial;
   });
 
-  // Settings panel state — load once from localStorage
+  // Settings panel state -- load once from localStorage
   const [showSettings, setShowSettings] = React.useState(false);
   const initialSettings = React.useRef(loadSettings());
   const [axisOverrides, setAxisOverrides] = React.useState<AxisSettingsData>(
@@ -512,15 +230,10 @@ export function UnifiedTrendChart({
 
   // Dynamic margins: stack axes from outer edge inward
   const chartMargins = React.useMemo(() => {
-    const leftAxesCount = axisLayout.filter(
-      (a) => a.orientation === "left"
-    ).length;
     const rightAxesCount = axisLayout.filter(
       (a) => a.orientation === "right"
     ).length;
 
-    // Margins are ADDITIONAL space beyond the YAxis width — keep minimal
-    // Recharts: total left space = margin.left + sum of left YAxis widths
     return {
       top: 4,
       right: rightAxesCount > 0 ? 4 : 20,
@@ -531,32 +244,6 @@ export function UnifiedTrendChart({
 
   const chartHeight = isMobile ? 240 : 360;
   const isSparse = chartData.length < 3;
-
-  // No fixed min width — always use 100% responsive width
-
-  // Recharts handles axis positioning natively with width={AXIS_WIDTH}
-  // and margins = count * AXIS_WIDTH. No DOM manipulation needed.
-
-  // Chip scroll state
-  const chipsRef = React.useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = React.useState(false);
-  const [canScrollRight, setCanScrollRight] = React.useState(false);
-
-  const updateScrollState = React.useCallback(() => {
-    const el = chipsRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 1);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-  }, []);
-
-  React.useEffect(() => {
-    updateScrollState();
-    const el = chipsRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(updateScrollState);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [updateScrollState, trendData]);
 
   if (trendData.length === 0) {
     return (
@@ -569,10 +256,6 @@ export function UnifiedTrendChart({
         <p className="text-sm text-muted-foreground">{t("noTrendData")}</p>
       </div>
     );
-  }
-
-  function scrollChips(direction: -1 | 1) {
-    chipsRef.current?.scrollBy({ left: direction * 200, behavior: "smooth" });
   }
 
   const chartContent = (
@@ -596,7 +279,7 @@ export function UnifiedTrendChart({
           height={chartData.length > 14 && isMobile ? 40 : 30}
         />
 
-        {/* Independent Y-axis per active category — no unit labels (Change 3) */}
+        {/* Independent Y-axis per active category */}
         {axisLayout.map((axis) => (
           <YAxis
             key={axis.categoryId}
@@ -616,7 +299,7 @@ export function UnifiedTrendChart({
 
         <Tooltip
           content={
-            <CustomTooltip
+            <ChartTooltip
               activeTrends={activeTrends}
               colorMap={colorMap}
               locale={locale}
@@ -625,10 +308,9 @@ export function UnifiedTrendChart({
           }
         />
 
-        {/* Series — lines for number types, bars for scale types */}
+        {/* Series -- lines for number types, bars for scale types */}
         {(() => {
           const scaleCount = activeTrends.filter((td) => td.categoryType === "scale").length;
-          // Dynamic total bar width based on number of data points (days shown)
           const days = chartData.length;
           const totalBarWidth = days <= 7 ? 32 : days <= 14 ? 20 : days <= 30 ? 12 : 8;
           const barSize = scaleCount > 0 ? Math.max(2, Math.floor(totalBarWidth / scaleCount)) : totalBarWidth;
@@ -690,7 +372,7 @@ export function UnifiedTrendChart({
 
   // Settings panel content (reusable for both desktop inline and mobile sheet)
   const settingsContent = (
-    <SettingsPanelContent
+    <ChartSettings
       activeTrends={activeTrends}
       colorMap={colorMap}
       getName={getName}
@@ -700,88 +382,20 @@ export function UnifiedTrendChart({
       onAxisChange={handleAxisChange}
       onXRangeChange={handleXRangeChange}
       onResetAll={handleResetAll}
-      t={t}
     />
   );
 
   return (
     <div className={cn("space-y-3", className)}>
-      {/* Toggle chips — scrollable row with arrows on desktop */}
-      <div className="relative flex items-center gap-1">
-        {/* Left arrow (hidden on mobile, shown when scrollable) */}
-        {canScrollLeft && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hidden md:flex h-7 w-7 shrink-0"
-            onClick={() => scrollChips(-1)}
-            aria-label={t("scrollChipsLeft")}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        )}
-
-        <div
-          ref={chipsRef}
-          className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide"
-          style={{ scrollbarWidth: "none" }}
-          onScroll={updateScrollState}
-        >
-          {trendData.map((td) => {
-            const isActive = activeIds.has(td.categoryId);
-            const color = colorMap.get(td.categoryId)!;
-            const name = getName(td);
-            const chipLabel = td.unit ? `${name} (${td.unit})` : name;
-            const isFull = !isActive && activeIds.size >= MAX_ACTIVE;
-
-            return (
-              <button
-                key={td.categoryId}
-                type="button"
-                onClick={() => toggleCategory(td.categoryId)}
-                disabled={isFull}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all shrink-0",
-                  "border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  isActive
-                    ? "border-transparent text-white shadow-sm"
-                    : isFull
-                      ? "border-border text-muted-foreground/40 cursor-not-allowed"
-                      : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-                style={isActive ? { backgroundColor: color } : undefined}
-                aria-pressed={isActive}
-              >
-                <span
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{
-                    backgroundColor: isActive
-                      ? "rgba(255,255,255,0.6)"
-                      : isFull
-                        ? "transparent"
-                        : color,
-                    opacity: isFull ? 0.3 : 1,
-                  }}
-                />
-                {chipLabel}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right arrow (hidden on mobile, shown when scrollable) */}
-        {canScrollRight && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hidden md:flex h-7 w-7 shrink-0"
-            onClick={() => scrollChips(1)}
-            aria-label={t("scrollChipsRight")}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+      {/* Toggle chips -- scrollable row with arrows */}
+      <ChartLegend
+        trendData={trendData}
+        activeIds={activeIds}
+        colorMap={colorMap}
+        maxActive={MAX_ACTIVE}
+        getName={getName}
+        onToggle={toggleCategory}
+      />
 
       {/* No categories selected */}
       {activeTrends.length === 0 ? (
@@ -791,7 +405,7 @@ export function UnifiedTrendChart({
           </p>
         </div>
       ) : isSparse ? (
-        /* Too few data points — show values as summary instead of empty chart */
+        /* Too few data points -- show values as summary instead of empty chart */
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs text-muted-foreground mb-3">
             {t("tooFewDataPoints")}

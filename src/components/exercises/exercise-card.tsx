@@ -1,11 +1,13 @@
 "use client";
 
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useTypedLocale } from "@/hooks/use-typed-locale";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { ExerciseWithTaxonomy, ExerciseType } from "@/lib/exercises/types";
+import type { ExerciseWithTaxonomy } from "@/lib/exercises/types";
+import { CATEGORY_LABELS } from "@/lib/exercises/constants";
 
 interface ExerciseCardProps {
   exercise: ExerciseWithTaxonomy;
@@ -13,16 +15,9 @@ interface ExerciseCardProps {
   viewMode: "grid" | "list";
 }
 
-const CATEGORY_LABELS: Record<ExerciseType, string> = {
-  strength: "strength",
-  endurance: "endurance",
-  speed: "speed",
-  flexibility: "flexibility",
-};
-
 export function ExerciseCard({ exercise, onClick, viewMode }: ExerciseCardProps) {
   const t = useTranslations("exercises");
-  const locale = useLocale() as "de" | "en";
+  const locale = useTypedLocale();
 
   const name = exercise.name[locale];
   const isGlobal = exercise.scope === "global";

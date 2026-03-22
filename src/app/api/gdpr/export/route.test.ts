@@ -129,3 +129,97 @@ describe("GDPR Export: Error handling", () => {
     expect(routeSource).toContain('console.error("gdpr/export error:"');
   });
 });
+
+// ── Finding #5: PROJ-12 exercise data included in DSGVO export ──
+
+describe("GDPR Export: Custom exercises (Finding #5 — PROJ-12)", () => {
+  it("should query exercises table for user-created exercises", () => {
+    expect(routeSource).toContain('.from("exercises")');
+  });
+
+  it("should filter exercises by created_by = userId", () => {
+    expect(routeSource).toContain('.eq("created_by", userId)');
+  });
+
+  it("should exclude soft-deleted exercises", () => {
+    expect(routeSource).toContain('.eq("is_deleted", false)');
+  });
+
+  it("should include eigene_uebungen (custom exercises) in export payload", () => {
+    expect(routeSource).toContain("eigene_uebungen:");
+  });
+
+  it("should map exercise fields to German labels in payload", () => {
+    expect(routeSource).toContain("uebungstyp: e.exercise_type");
+    expect(routeSource).toContain("geklont_von: e.cloned_from");
+  });
+});
+
+describe("GDPR Export: Custom taxonomy (Finding #5 — PROJ-12)", () => {
+  it("should query exercise_taxonomy table for user-created taxonomy", () => {
+    expect(routeSource).toContain('.from("exercise_taxonomy")');
+  });
+
+  it("should filter taxonomy by created_by = userId", () => {
+    // The source contains .eq("created_by", userId) for both exercises and taxonomy
+    const matches = routeSource.match(/\.eq\("created_by", userId\)/g);
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("should exclude soft-deleted taxonomy entries", () => {
+    // Two occurrences of is_deleted check (exercises + taxonomy)
+    const matches = routeSource.match(/\.eq\("is_deleted", false\)/g);
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("should include eigene_taxonomie in export payload", () => {
+    expect(routeSource).toContain("eigene_taxonomie:");
+  });
+});
+
+describe("GDPR Export: Taxonomy assignments (Finding #5 — PROJ-12)", () => {
+  it("should query exercise_taxonomy_assignments table", () => {
+    expect(routeSource).toContain('.from("exercise_taxonomy_assignments")');
+  });
+
+  it("should filter assignments by exercise IDs using .in()", () => {
+    expect(routeSource).toContain('.in("exercise_id", exerciseIds)');
+  });
+
+  it("should only query assignments when custom exercises exist", () => {
+    expect(routeSource).toContain("exerciseIds.length > 0");
+  });
+
+  it("should default to empty array when no exercises exist", () => {
+    expect(routeSource).toContain("{ data: [] }");
+  });
+
+  it("should include uebungs_taxonomie_zuordnungen in export payload", () => {
+    expect(routeSource).toContain("uebungs_taxonomie_zuordnungen:");
+  });
+
+  it("should map assignment fields including ist_primaer", () => {
+    expect(routeSource).toContain("ist_primaer: a.is_primary");
+    expect(routeSource).toContain("uebung_id: a.exercise_id");
+    expect(routeSource).toContain("taxonomie_id: a.taxonomy_id");
+  });
+});
+
+describe("GDPR Export: Security", () => {
+  it("should use createClient from supabase/server (not browser)", () => {
+    expect(routeSource).toContain("@/lib/supabase/server");
+    expect(routeSource).not.toContain("@/lib/supabase/client");
+  });
+
+  it("should not expose foreign PII in connections", () => {
+    expect(routeSource).toContain("no foreign PII");
+  });
+
+  it("should only export POST handler", () => {
+    const exportMatches = routeSource.match(/^export\s+async\s+function\s+(\w+)/gm);
+    expect(exportMatches).toHaveLength(1);
+    expect(exportMatches![0]).toContain("POST");
+  });
+});

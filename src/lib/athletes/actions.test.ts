@@ -157,6 +157,157 @@ describe("addAthlete — identical response shape (no account enumeration)", () 
   });
 });
 
+// ── Finding #16: TRAINER role check ─────────────────────────────
+
+describe("addAthlete — TRAINER role authorization (Finding #16)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockChain = createChainMock();
+    mockSupabase.from.mockImplementation(() => mockChain);
+  });
+
+  it("should return UNAUTHORIZED when user has ATHLETE role", async () => {
+    mockSupabase.auth.getUser.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: "athlete-uuid",
+          email: "athlete@example.com",
+          app_metadata: { roles: ["ATHLETE"] },
+          user_metadata: { locale: "de" },
+        },
+      },
+      error: null,
+    });
+
+    const mod = await import("./actions");
+    const result = await mod.addAthlete({
+      email: "someone@example.com",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("UNAUTHORIZED");
+  });
+
+  it("should return UNAUTHORIZED when user has no roles array", async () => {
+    mockSupabase.auth.getUser.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: "norole-uuid",
+          email: "norole@example.com",
+          app_metadata: {},
+          user_metadata: { locale: "de" },
+        },
+      },
+      error: null,
+    });
+
+    const mod = await import("./actions");
+    const result = await mod.addAthlete({
+      email: "someone@example.com",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("UNAUTHORIZED");
+  });
+
+  it("should return UNAUTHORIZED when roles array is empty", async () => {
+    mockSupabase.auth.getUser.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: "empty-uuid",
+          email: "empty@example.com",
+          app_metadata: { roles: [] },
+          user_metadata: { locale: "de" },
+        },
+      },
+      error: null,
+    });
+
+    const mod = await import("./actions");
+    const result = await mod.addAthlete({
+      email: "someone@example.com",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("UNAUTHORIZED");
+  });
+
+  it("should proceed (not UNAUTHORIZED) when user has TRAINER role", async () => {
+    mockSupabase.auth.getUser.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: "trainer-uuid",
+          email: "trainer@example.com",
+          app_metadata: { roles: ["TRAINER"] },
+          user_metadata: { locale: "de" },
+        },
+      },
+      error: null,
+    });
+
+    const mod = await import("./actions");
+    // Call with trainer's own email to get SELF_INVITE (proves it passed the role check)
+    const result = await mod.addAthlete({
+      email: "trainer@example.com",
+    });
+
+    // SELF_INVITE means the role check passed (it comes after the role guard)
+    expect(result.error).toBe("SELF_INVITE");
+  });
+});
+
+describe("inviteAthlete — TRAINER role authorization (Finding #16)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockChain = createChainMock();
+    mockSupabase.from.mockImplementation(() => mockChain);
+  });
+
+  it("should return UNAUTHORIZED when user has ATHLETE role", async () => {
+    mockSupabase.auth.getUser.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: "athlete-uuid",
+          email: "athlete@example.com",
+          app_metadata: { roles: ["ATHLETE"] },
+          user_metadata: { locale: "de" },
+        },
+      },
+      error: null,
+    });
+
+    const mod = await import("./actions");
+    const result = await mod.inviteAthlete({
+      email: "someone@example.com",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("UNAUTHORIZED");
+  });
+
+  it("should return UNAUTHORIZED when user has empty roles", async () => {
+    mockSupabase.auth.getUser.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: "norole-uuid",
+          email: "norole@example.com",
+          app_metadata: { roles: [] },
+          user_metadata: { locale: "de" },
+        },
+      },
+      error: null,
+    });
+
+    const mod = await import("./actions");
+    const result = await mod.inviteAthlete({
+      email: "someone@example.com",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("UNAUTHORIZED");
+  });
+});
+
 describe("InviteModal does NOT import lookupAthleteByEmail", () => {
   it("invite-modal.tsx should not contain lookupAthleteByEmail", async () => {
     const fs = await import("fs");

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { env } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { authRateLimiter, getRateLimitKey } from "@/lib/rate-limit";
 
 /**
  * POST /api/auth/complete-onboarding
@@ -15,7 +15,7 @@ import { env } from "@/lib/env";
  * - User must have a role assigned (app_metadata.roles)
  * - User must have accepted terms (user_consents record)
  */
-export async function POST() {
+export async function POST(request: Request) {
   try {
     // 1. Verify the requesting user's session
     const supabase = await createServerClient();
@@ -28,6 +28,15 @@ export async function POST() {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
+      );
+    }
+
+    // Rate limit: 10 requests per minute per user
+    const { limited } = authRateLimiter.check(getRateLimitKey(request, user.id));
+    if (limited) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429 }
       );
     }
 
@@ -46,12 +55,7 @@ export async function POST() {
     }
 
     // 4. Use service-role key to set app_metadata.onboarding_completed
-    const adminClient = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    const adminClient = createAdminClient();
 
     const { error: updateError } = await adminClient.auth.admin.updateUserById(
       user.id,

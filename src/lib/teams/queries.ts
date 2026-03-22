@@ -35,37 +35,40 @@ export async function fetchTeams(): Promise<TeamListItem[]> {
 
   const teamIds = memberships.map((m) => m.team_id);
 
-  // Get teams (non-archived)
-  const { data: teams, error: teamsError } = await supabase
-    .from("teams")
-    .select("id, name, description, logo_url, created_at")
-    .in("id", teamIds)
-    .is("archived_at", null)
-    .order("created_at", { ascending: false });
+  // Run teams + member counts + athlete counts in parallel.
+  // Note: Supabase JS client does not support aggregate COUNT with GROUP BY
+  // in a single query, so we fetch the raw rows and count client-side.
+  // However, we parallelize the 3 independent queries to minimize latency.
+  const [teamsResult, memberCountsResult, athleteCountsResult] =
+    await Promise.all([
+      supabase
+        .from("teams")
+        .select("id, name, description, logo_url, created_at")
+        .in("id", teamIds)
+        .is("archived_at", null)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("team_members")
+        .select("team_id")
+        .in("team_id", teamIds),
+      supabase
+        .from("team_athletes")
+        .select("team_id")
+        .in("team_id", teamIds),
+    ]);
 
-  if (teamsError || !teams) return [];
-
-  // Get member counts per team
-  const { data: memberCounts } = await supabase
-    .from("team_members")
-    .select("team_id")
-    .in("team_id", teamIds);
-
-  // Get athlete counts per team
-  const { data: athleteCounts } = await supabase
-    .from("team_athletes")
-    .select("team_id")
-    .in("team_id", teamIds);
+  const teams = teamsResult.data;
+  if (teamsResult.error || !teams) return [];
 
   // Count per team
   const trainerCountMap = new Map<string, number>();
   const athleteCountMap = new Map<string, number>();
 
-  (memberCounts ?? []).forEach((m) => {
+  (memberCountsResult.data ?? []).forEach((m) => {
     trainerCountMap.set(m.team_id, (trainerCountMap.get(m.team_id) ?? 0) + 1);
   });
 
-  (athleteCounts ?? []).forEach((a) => {
+  (athleteCountsResult.data ?? []).forEach((a) => {
     athleteCountMap.set(a.team_id, (athleteCountMap.get(a.team_id) ?? 0) + 1);
   });
 

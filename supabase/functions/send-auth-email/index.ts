@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
+import { Webhook } from "npm:standardwebhooks@1.0.0";
 
 // ── Types ──────────────────────────────────────────────────────────────
 

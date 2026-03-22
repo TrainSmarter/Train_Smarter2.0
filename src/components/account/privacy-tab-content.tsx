@@ -6,6 +6,7 @@
  */
 import * as React from "react";
 import { useTranslations } from "next-intl";
+import { logError } from "@/lib/logger";
 import {
   Shield,
   Download,
@@ -116,7 +117,7 @@ export default function PrivacyTabContent() {
           .order("granted_at", { ascending: false });
 
         if (consentError) {
-          console.error("Error loading consents:", consentError);
+          logError("Error loading consents", consentError);
           setError(t("errorLoading"));
         } else if (consentData) {
           const latestByType = new Map<string, ConsentRecord>();

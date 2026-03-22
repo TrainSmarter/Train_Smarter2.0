@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { env } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { gdprDeleteRateLimiter, getRateLimitKey } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const deleteSchema = z.object({
@@ -46,10 +46,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Rate limit: 3 requests per minute (destructive action)
+    const { limited } = gdprDeleteRateLimiter.check(getRateLimitKey(request, user.id));
+    if (limited) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429 }
+      );
+    }
+
     // 3. Service-role client for admin operations
-    const adminClient = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const adminClient = createAdminClient();
 
     const userId = user.id;
 

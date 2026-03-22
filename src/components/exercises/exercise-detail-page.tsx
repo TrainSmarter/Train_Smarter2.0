@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useTypedLocale } from "@/hooks/use-typed-locale";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -25,17 +26,10 @@ import { Link, useRouter } from "@/i18n/navigation";
 import type {
   ExerciseWithTaxonomy,
   TaxonomyEntry,
-  ExerciseType,
   TaxonomyType,
 } from "@/lib/exercises/types";
+import { CATEGORY_LABELS } from "@/lib/exercises/constants";
 import type { AiUsageData } from "@/lib/ai/usage-types";
-
-const CATEGORY_LABELS: Record<ExerciseType, string> = {
-  strength: "strength",
-  endurance: "endurance",
-  speed: "speed",
-  flexibility: "flexibility",
-};
 
 interface ExerciseDetailPageProps {
   /** Existing exercise (null for create mode) */
@@ -65,7 +59,7 @@ export function ExerciseDetailPage({
 }: ExerciseDetailPageProps) {
   const t = useTranslations("exercises");
   const tCommon = useTranslations("common");
-  const locale = useLocale() as "de" | "en";
+  const locale = useTypedLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
 

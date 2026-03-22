@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useTypedLocale } from "@/hooks/use-typed-locale";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ export function ExerciseLibraryPage({
   isPlatformAdmin = false,
 }: ExerciseLibraryPageProps) {
   const t = useTranslations("exercises");
-  const locale = useLocale() as "de" | "en";
+  const locale = useTypedLocale();
 
   // State
   const [search, setSearch] = React.useState("");

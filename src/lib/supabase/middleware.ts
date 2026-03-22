@@ -30,12 +30,13 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Use getSession() for middleware — it reads the JWT from cookies without
-  // making a network call to Supabase Auth. This avoids an API roundtrip on
-  // every single request. The JWT contains all the user data we need for
+  // SECURITY NOTE: getSession() validates JWT locally without a server roundtrip.
+  // A revoked/banned user's JWT remains valid until expiry (~1 hour).
+  // For security-critical routes (admin, GDPR), server actions use getUser() instead.
+  //
+  // This is an accepted performance tradeoff: getSession() avoids an API roundtrip
+  // on every single request. The JWT contains all the user data we need for
   // routing decisions (email_confirmed_at, app_metadata, user_metadata).
-  // Security-critical operations (server actions, API routes) should still
-  // use getUser() which validates the token server-side.
   const {
     data: { session },
   } = await supabase.auth.getSession();

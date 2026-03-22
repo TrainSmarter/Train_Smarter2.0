@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useTypedLocale } from "@/hooks/use-typed-locale";
 import { Loader2, CheckCircle2, XCircle, Sparkles, AlertTriangle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -104,7 +105,7 @@ export function AdminSettingsPage({
 }: AdminSettingsPageProps) {
   const t = useTranslations("admin");
   const tCommon = useTranslations("common");
-  const locale = useLocale() as "de" | "en";
+  const locale = useTypedLocale();
   const getProviderLabel = useProviderLabel();
 
   // Model selection state

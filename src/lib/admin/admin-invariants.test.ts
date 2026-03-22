@@ -168,14 +168,20 @@ describe("PROJ-10 Server Actions invariants", () => {
   });
 
   describe("service-role key security", () => {
-    it("should use env.SUPABASE_SERVICE_ROLE_KEY (not process.env)", () => {
-      expect(actions).toContain("env.SUPABASE_SERVICE_ROLE_KEY");
+    it("should use createAdminClient or env.SUPABASE_SERVICE_ROLE_KEY (not process.env)", () => {
+      const usesAdminClient = actions.includes("createAdminClient");
+      const usesEnvKey = actions.includes("env.SUPABASE_SERVICE_ROLE_KEY");
+      expect(usesAdminClient || usesEnvKey).toBe(true);
       expect(actions).not.toContain("process.env.SUPABASE_SERVICE_ROLE_KEY");
     });
 
-    it("should disable autoRefreshToken and persistSession", () => {
-      expect(actions).toContain("autoRefreshToken: false");
-      expect(actions).toContain("persistSession: false");
+    it("should disable autoRefreshToken and persistSession (in admin client or inline)", () => {
+      // autoRefreshToken/persistSession may be in the shared admin client (src/lib/supabase/admin.ts)
+      // rather than inline in actions.ts — check both locations
+      const adminClientSrc = readSrc("lib/supabase/admin.ts");
+      const combined = actions + adminClientSrc;
+      expect(combined).toContain("autoRefreshToken: false");
+      expect(combined).toContain("persistSession: false");
     });
   });
 

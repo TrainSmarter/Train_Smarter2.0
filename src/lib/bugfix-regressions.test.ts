@@ -86,9 +86,11 @@ describe("PROJ-16 BUG-5: env.ts is wired into all Supabase usages", () => {
     ];
 
     for (const route of apiRoutes) {
-      it(`${route} imports from @/lib/env`, () => {
+      it(`${route} imports from @/lib/env or @/lib/supabase/admin`, () => {
         const content = readSrc(route);
-        expect(content).toContain('from "@/lib/env"');
+        const usesEnv = content.includes('from "@/lib/env"');
+        const usesAdminClient = content.includes('from "@/lib/supabase/admin"');
+        expect(usesEnv || usesAdminClient).toBe(true);
       });
 
       it(`${route} does not use process.env.SUPABASE_SERVICE_ROLE_KEY with !`, () => {

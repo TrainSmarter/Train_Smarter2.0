@@ -40,7 +40,7 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 
 import { ShowcaseNav } from "@/components/showcase-nav"
-import { ButtonExtended } from "@/components/button-extended"
+import { Button as ButtonExtended } from "@/components/ui/button"
 import {
   CardExtended,
   CardHeaderExtended,
@@ -50,7 +50,7 @@ import {
 import { Modal, ConfirmDialog } from "@/components/modal"
 import { FormField } from "@/components/form-field"
 import { StatsCard } from "@/components/stats-card"
-import { BadgeExtended } from "@/components/badge-extended"
+import { Badge as BadgeExtended } from "@/components/ui/badge"
 import { AlertExtended } from "@/components/alert-extended"
 import {
   SkeletonText,

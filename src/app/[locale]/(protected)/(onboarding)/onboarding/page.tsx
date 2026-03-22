@@ -4,15 +4,16 @@ import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Loader2 } from "lucide-react";
 
-import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { WizardProgressBar } from "@/components/wizard-progress-bar";
-import { ConsentCheckbox } from "@/components/consent-checkbox";
-import { FormField } from "@/components/form-field";
-import { AvatarUpload } from "@/components/avatar-upload";
-import { RoleSelectCard, type RoleValue } from "@/components/role-select-card";
+import type { RoleValue } from "@/components/role-select-card";
+import { OnboardingConsentStep } from "@/components/onboarding/OnboardingConsentStep";
+import { OnboardingProfileStep } from "@/components/onboarding/OnboardingProfileStep";
+import { OnboardingRoleStep } from "@/components/onboarding/OnboardingRoleStep";
+import { logError } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/client";
 import { profileSchema } from "@/lib/validations/auth";
 import { uploadAvatar } from "@/hooks/use-avatar-upload";
@@ -53,6 +54,7 @@ export default function OnboardingPage() {
       stepHeadingRef.current.focus();
     }
   }, [currentStep, isLoading]);
+
   // Load user data and onboarding state
   React.useEffect(() => {
     async function loadUserData() {
@@ -283,13 +285,13 @@ export default function OnboardingPage() {
           });
 
           if (!completeResponse.ok) {
-            console.error("complete-onboarding failed:", await completeResponse.text());
+            logError("complete-onboarding failed", await completeResponse.text());
           }
 
           // Refresh session so middleware reads updated JWT before redirect
           const { error: refreshError } = await supabase.auth.refreshSession();
           if (refreshError) {
-            console.error("Session refresh failed:", refreshError);
+            logError("Session refresh failed", refreshError);
           }
 
           // Small delay to ensure cookie is written before navigation
@@ -387,132 +389,43 @@ export default function OnboardingPage() {
 
           {/* Step 1: Consents */}
           {currentStep === 1 && (
-            <div className="space-y-4">
-              <ConsentCheckbox
-                id="terms"
-                checked={termsAccepted}
-                onCheckedChange={setTermsAccepted}
-                required
-              >
-                {t.rich("step1.termsRequired", {
-                  terms: (chunks) => (
-                    <Link
-                      href="/agb"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline font-medium"
-                      aria-label={`${chunks} ${t("step1.opensInNewTab")}`}
-                    >
-                      {chunks}
-                    </Link>
-                  ),
-                  privacy: (chunks) => (
-                    <Link
-                      href="/datenschutz"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline font-medium"
-                      aria-label={`${chunks} ${t("step1.opensInNewTab")}`}
-                    >
-                      {chunks}
-                    </Link>
-                  ),
-                })}
-              </ConsentCheckbox>
-
-              <ConsentCheckbox
-                id="bodyData"
-                checked={bodyDataConsent}
-                onCheckedChange={setBodyDataConsent}
-              >
-                {t("step1.bodyDataOptional")}
-              </ConsentCheckbox>
-
-              <ConsentCheckbox
-                id="nutrition"
-                checked={nutritionConsent}
-                onCheckedChange={setNutritionConsent}
-              >
-                {t("step1.nutritionOptional")}
-              </ConsentCheckbox>
-            </div>
+            <OnboardingConsentStep
+              termsAccepted={termsAccepted}
+              onTermsChange={setTermsAccepted}
+              bodyDataConsent={bodyDataConsent}
+              onBodyDataChange={setBodyDataConsent}
+              nutritionConsent={nutritionConsent}
+              onNutritionChange={setNutritionConsent}
+            />
           )}
 
           {/* Step 2: Profile */}
           {currentStep === 2 && (
-            <div className="space-y-6">
-              <AvatarUpload
-                currentUrl={avatarUrl}
-                initials={getInitials()}
-                onFileSelect={(file) => setAvatarFile(file)}
-                onRemove={() => {
-                  setAvatarFile(null);
-                  setAvatarUrl(null);
-                }}
-                isUploading={isUploadingAvatar}
-                labels={{
-                  upload: t("step2.avatarUpload"),
-                  remove: t("step2.avatarRemove"),
-                  uploading: t("step2.avatarUploading"),
-                  tooLarge: t("step2.avatarTooLarge"),
-                  invalidType: t("step2.avatarInvalidType"),
-                  hint: t("step2.avatarHint"),
-                }}
-              />
-
-              <div className="grid grid-cols-2 gap-3">
-                <FormField
-                  label={t("step2.firstName")}
-                  value={firstName}
-                  onChange={(e) => setFirstName((e.target as HTMLInputElement).value)}
-                  required
-                  autoComplete="given-name"
-                />
-                <FormField
-                  label={t("step2.lastName")}
-                  value={lastName}
-                  onChange={(e) => setLastName((e.target as HTMLInputElement).value)}
-                  required
-                  autoComplete="family-name"
-                />
-              </div>
-
-              <FormField
-                label={t("step2.birthDate")}
-                type="date"
-                value={birthDate}
-                onChange={(e) => setBirthDate((e.target as HTMLInputElement).value)}
-                placeholder={t("step2.birthDatePlaceholder")}
-              />
-            </div>
+            <OnboardingProfileStep
+              firstName={firstName}
+              onFirstNameChange={setFirstName}
+              lastName={lastName}
+              onLastNameChange={setLastName}
+              birthDate={birthDate}
+              onBirthDateChange={setBirthDate}
+              avatarUrl={avatarUrl}
+              onFileSelect={(file) => setAvatarFile(file)}
+              onAvatarRemove={() => {
+                setAvatarFile(null);
+                setAvatarUrl(null);
+              }}
+              isUploadingAvatar={isUploadingAvatar}
+              initials={getInitials()}
+            />
           )}
 
           {/* Step 3: Role Selection */}
           {currentStep === 3 && (
-            <div
-              className="grid gap-4 sm:grid-cols-2"
-              role="radiogroup"
-              aria-label={t("step3.title")}
-            >
-              <RoleSelectCard
-                role="TRAINER"
-                title={t("step3.trainer")}
-                description={t("step3.trainerDesc")}
-                selected={selectedRole === "TRAINER"}
-                disabled={isInvitedAthlete}
-                lockedMessage={
-                  isInvitedAthlete ? t("step3.lockedByInvite") : undefined
-                }
-                onSelect={setSelectedRole}
-              />
-              <RoleSelectCard
-                role="ATHLETE"
-                title={t("step3.athlete")}
-                description={t("step3.athleteDesc")}
-                selected={selectedRole === "ATHLETE"}
-                onSelect={setSelectedRole}
-              />
-            </div>
+            <OnboardingRoleStep
+              selectedRole={selectedRole}
+              onSelect={setSelectedRole}
+              isInvitedAthlete={isInvitedAthlete}
+            />
           )}
 
           {/* Navigation buttons */}

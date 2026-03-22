@@ -69,6 +69,12 @@ export async function addAthlete(data: {
     return { success: false, error: "UNAUTHORIZED" };
   }
 
+  // Only trainers can add athletes
+  const roles = (user.app_metadata?.roles as string[]) ?? [];
+  if (!roles.includes("TRAINER")) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
   const parsed = inviteSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false, error: "INVALID_INPUT" };
@@ -112,6 +118,12 @@ export async function inviteAthlete(data: {
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
+    return { success: false, error: "UNAUTHORIZED" };
+  }
+
+  // Only trainers can invite athletes
+  const roles = (user.app_metadata?.roles as string[]) ?? [];
+  if (!roles.includes("TRAINER")) {
     return { success: false, error: "UNAUTHORIZED" };
   }
 

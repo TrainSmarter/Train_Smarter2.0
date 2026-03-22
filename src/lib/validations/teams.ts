@@ -42,4 +42,9 @@ export type CreateTeamFormData = z.infer<typeof createTeamSchema>;
 export type UpdateTeamFormData = z.infer<typeof updateTeamSchema>;
 export type InviteTrainerFormData = z.infer<typeof inviteTrainerSchema>;
 export type AssignAthletesFormData = z.infer<typeof assignAthletesSchema>;
+export const cancelTeamInvitationSchema = z.object({
+  teamId: z.string().uuid(),
+  invitationId: z.string().uuid(),
+});
+
 export type ArchiveTeamFormData = z.infer<typeof archiveTeamSchema>;

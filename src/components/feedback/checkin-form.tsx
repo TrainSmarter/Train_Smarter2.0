@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Check, Loader2 } from "lucide-react";
 
+import { logError } from "@/lib/logger";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -191,7 +192,7 @@ export function CheckinForm({
         }, 2000);
       } else {
         const errorCode = (result.error ?? "CHECKIN_FAILED") as ErrorCode;
-        console.error("[CheckinForm] Save failed:", result.error, { date, categoryId, numericValue, textValue });
+        logError("CheckinForm save failed", result.error, { date, categoryId, numericValue, textValue });
         setFieldStatus((prev) => ({ ...prev, [categoryId]: "error" }));
         setFieldErrorCodes((prev) => ({ ...prev, [categoryId]: errorCode }));
 
@@ -202,7 +203,7 @@ export function CheckinForm({
         }
       }
     } catch (err) {
-      console.error("[CheckinForm] Save exception:", err, { date, categoryId, numericValue, textValue });
+      logError("CheckinForm save exception", err, { date, categoryId, numericValue, textValue });
       setFieldStatus((prev) => ({ ...prev, [categoryId]: "error" }));
       setFieldErrorCodes((prev) => ({ ...prev, [categoryId]: "CHECKIN_FAILED" }));
     }

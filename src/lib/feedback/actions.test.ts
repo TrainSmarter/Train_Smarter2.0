@@ -287,3 +287,51 @@ describe("actions.ts source-code invariants", () => {
     expect(backfillSource).toContain("export function computeBackfillMinDate");
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// 4. updateCategorySortOrder ownership check (Finding #26)
+// ═══════════════════════════════════════════════════════════════
+
+describe("updateCategorySortOrder ownership check (Finding #26)", () => {
+  const actionsSource = readSrc("lib/feedback/actions.ts");
+
+  it("updateCategorySortOrder includes .eq('created_by', user.id) ownership filter", () => {
+    // Extract the updateCategorySortOrder function body
+    const fnStart = actionsSource.indexOf("async function updateCategorySortOrder");
+    expect(fnStart).toBeGreaterThan(-1);
+
+    // Get the function body (generous slice to capture the full Supabase chain)
+    const fnBody = actionsSource.slice(fnStart, fnStart + 1200);
+
+    // The update query MUST include an ownership check via created_by
+    expect(fnBody).toContain('.eq("created_by", user.id)');
+  });
+
+  it("updateCategorySortOrder validates input with Zod schema", () => {
+    const fnStart = actionsSource.indexOf("async function updateCategorySortOrder");
+    const fnBody = actionsSource.slice(fnStart, fnStart + 800);
+
+    expect(fnBody).toContain("updateCategorySortOrderSchema.safeParse");
+  });
+
+  it("updateCategorySortOrderSchema requires categoryId as UUID and newSortOrder as non-negative int", () => {
+    // Verify the schema definition exists with proper constraints
+    expect(actionsSource).toContain("categoryId: z.string().uuid()");
+    expect(actionsSource).toContain("newSortOrder: z.number().int().min(0)");
+  });
+
+  it("updateCategory also includes .eq('created_by', user.id) ownership filter", () => {
+    // The updateCategory function should also have the ownership check
+    const fnStart = actionsSource.indexOf("async function updateCategory(");
+    const fnBody = actionsSource.slice(fnStart, fnStart + 2500);
+
+    expect(fnBody).toContain('.eq("created_by", user.id)');
+  });
+
+  it("archiveCategory includes .eq('created_by', user.id) ownership filter", () => {
+    const fnStart = actionsSource.indexOf("async function archiveCategory");
+    const fnBody = actionsSource.slice(fnStart, fnStart + 800);
+
+    expect(fnBody).toContain('.eq("created_by", user.id)');
+  });
+});

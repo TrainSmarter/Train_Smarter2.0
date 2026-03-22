@@ -5,11 +5,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Search, Users } from "lucide-react";
 
-import {
-  useRouter as useNextRouter,
-  usePathname as useNextPathname,
-} from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter, usePathname } from "@/i18n/navigation";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -36,8 +32,7 @@ interface AdminUsersPageProps {
 export function AdminUsersPage({ initialData, params }: AdminUsersPageProps) {
   const t = useTranslations("admin");
   const router = useRouter();
-  const nextRouter = useNextRouter();
-  const pathname = useNextPathname();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   // Local search state for debouncing
@@ -75,7 +70,9 @@ export function AdminUsersPage({ initialData, params }: AdminUsersPageProps) {
       newParams.delete("page");
     }
     const qs = newParams.toString();
-    nextRouter.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    const href = `${pathname}${qs ? `?${qs}` : ""}`;
+    // Cast needed: next-intl typed routes don't support dynamic query strings
+    router.replace(href as "/admin/users", { scroll: false });
   }
 
   function handleUserClick(user: AdminUser) {

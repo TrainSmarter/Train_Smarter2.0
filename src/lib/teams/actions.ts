@@ -11,6 +11,7 @@ import {
   archiveTeamSchema,
   removeAthleteFromTeamSchema,
   removeTrainerFromTeamSchema,
+  cancelTeamInvitationSchema,
 } from "@/lib/validations/teams";
 
 /**
@@ -779,7 +780,13 @@ export async function cancelTeamInvitation(data: {
     return { success: false, error: "UNAUTHORIZED" };
   }
 
-  const { teamId, invitationId } = data;
+  // Validate input
+  const parsed = cancelTeamInvitationSchema.safeParse(data);
+  if (!parsed.success) {
+    return { success: false, error: "INVALID_INPUT" };
+  }
+
+  const { teamId, invitationId } = parsed.data;
 
   // Authorize: must be team member
   const isMember = await assertTeamMember(supabase, user.id, teamId);

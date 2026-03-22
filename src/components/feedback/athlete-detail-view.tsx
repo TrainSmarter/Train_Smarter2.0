@@ -37,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { UnifiedTrendChart } from "./unified-trend-chart";
+import { UnifiedTrendChart } from "./trend-chart";
 import { StreakBadge } from "./streak-badge";
 import { CategoryManager } from "./category-manager";
 import { toggleAnalysisVisibility, updateBackfillMode, loadMoreCheckinHistory } from "@/lib/feedback/actions";

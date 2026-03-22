@@ -867,27 +867,29 @@ describe("athlete-checkin-page.tsx PROJ-18 extensions", () => {
 // 19. Trend chart UX — scroll arrows, sticky, fullscreen, layout
 // ═══════════════════════════════════════════════════════════════
 
-describe("unified-trend-chart.tsx — scroll arrows + expand button", () => {
-  const chart = readSrc("components/feedback/unified-trend-chart.tsx");
+describe("trend-chart module — scroll arrows + expand button", () => {
+  const chartMain = readSrc("components/feedback/trend-chart/unified-trend-chart.tsx");
+  const chartLegend = readSrc("components/feedback/trend-chart/chart-legend.tsx");
+  const chart = chartMain + "\n" + chartLegend;
 
-  it("imports ChevronLeft, ChevronRight, Maximize2 from lucide-react", () => {
-    expect(chart).toMatch(/import\s*\{[^}]*ChevronLeft[^}]*\}\s*from\s*"lucide-react"/);
-    expect(chart).toMatch(/import\s*\{[^}]*ChevronRight[^}]*\}\s*from\s*"lucide-react"/);
-    expect(chart).toMatch(/import\s*\{[^}]*Maximize2[^}]*\}\s*from\s*"lucide-react"/);
+  it("imports ChevronLeft, ChevronRight in legend and Maximize2 in main", () => {
+    expect(chartLegend).toMatch(/import\s*\{[^}]*ChevronLeft[^}]*\}\s*from\s*"lucide-react"/);
+    expect(chartLegend).toMatch(/import\s*\{[^}]*ChevronRight[^}]*\}\s*from\s*"lucide-react"/);
+    expect(chartMain).toMatch(/import\s*\{[^}]*Maximize2[^}]*\}\s*from\s*"lucide-react"/);
   });
 
   it("accepts onExpand optional prop", () => {
-    expect(chart).toContain("onExpand?: () => void");
+    expect(chartMain).toContain("onExpand?: () => void");
   });
 
   it("renders expand button inside chart border area when onExpand is provided", () => {
-    expect(chart).toContain("onExpand && (");
-    expect(chart).toContain("Maximize2");
-    expect(chart).toContain("expandChart");
+    expect(chartMain).toContain("onExpand && (");
+    expect(chartMain).toContain("Maximize2");
+    expect(chartMain).toContain("expandChart");
   });
 
   it("expand button is positioned absolute inside chart card", () => {
-    expect(chart).toContain("absolute top-2 right-2 z-10");
+    expect(chartMain).toContain("absolute top-2 right-2 z-10");
   });
 
   it("has scroll arrow buttons for chip overflow", () => {
@@ -896,22 +898,22 @@ describe("unified-trend-chart.tsx — scroll arrows + expand button", () => {
   });
 
   it("uses useRef for chip scroll container", () => {
-    expect(chart).toContain("chipsRef");
-    expect(chart).toMatch(/React\.useRef<HTMLDivElement>/);
+    expect(chartLegend).toContain("chipsRef");
+    expect(chartLegend).toMatch(/React\.useRef<HTMLDivElement>/);
   });
 
   it("tracks scroll state with canScrollLeft/canScrollRight", () => {
-    expect(chart).toContain("canScrollLeft");
-    expect(chart).toContain("canScrollRight");
+    expect(chartLegend).toContain("canScrollLeft");
+    expect(chartLegend).toContain("canScrollRight");
   });
 
   it("uses ResizeObserver to update scroll state", () => {
-    expect(chart).toContain("ResizeObserver");
+    expect(chartLegend).toContain("ResizeObserver");
   });
 
   it("chip container has overflow-x-auto and scrollbar-hide", () => {
-    expect(chart).toContain("overflow-x-auto");
-    expect(chart).toContain("scrollbar-hide");
+    expect(chartLegend).toContain("overflow-x-auto");
+    expect(chartLegend).toContain("scrollbar-hide");
   });
 });
 
@@ -1005,47 +1007,51 @@ describe("i18n: trend chart UX keys", () => {
 // 23. Unified trend chart — 4-axis system + settings panel + cleanup
 // ═══════════════════════════════════════════════════════════════
 
-describe("unified-trend-chart.tsx — 4-axis system (PROJ-6 redesign)", () => {
-  const chart = readSrc("components/feedback/unified-trend-chart.tsx");
+describe("trend-chart module — 4-axis system (PROJ-6 redesign)", () => {
+  const chartMain = readSrc("components/feedback/trend-chart/unified-trend-chart.tsx");
+  const chartTypes = readSrc("components/feedback/trend-chart/chart-types.ts");
+  const chartSettings = readSrc("components/feedback/trend-chart/chart-settings.tsx");
+  const chartLegend = readSrc("components/feedback/trend-chart/chart-legend.tsx");
+  const chart = [chartMain, chartTypes, chartSettings, chartLegend].join("\n");
 
   it("has AXIS_WIDTH constant set to 35", () => {
-    expect(chart).toContain("const AXIS_WIDTH = 35");
+    expect(chartTypes).toContain("const AXIS_WIDTH = 35");
   });
 
   it("has formatAxisTick compact number formatter", () => {
-    expect(chart).toContain("function formatAxisTick");
-    expect(chart).toContain("14k"); // referenced in comment or output
+    expect(chartTypes).toContain("function formatAxisTick");
+    expect(chartTypes).toContain("14k"); // referenced in comment or output
   });
 
   it("each YAxis uses width={AXIS_WIDTH}", () => {
-    expect(chart).toContain("width={AXIS_WIDTH}");
+    expect(chartMain).toContain("width={AXIS_WIDTH}");
   });
 
   it("each YAxis has color-coded ticks", () => {
-    expect(chart).toContain("fill: axis.color");
+    expect(chartMain).toContain("fill: axis.color");
   });
 
   it("each YAxis uses tickFormatter for compact numbers", () => {
-    expect(chart).toContain("tickFormatter={formatAxisTick}");
+    expect(chartMain).toContain("tickFormatter={formatAxisTick}");
   });
 
   it("axes alternate left/right orientation", () => {
-    expect(chart).toContain('index % 2 === 0 ? "left" : "right"');
+    expect(chartMain).toContain('index % 2 === 0 ? "left" : "right"');
   });
 
   it("tracks isOuter flag for 2nd axis on same side", () => {
-    expect(chart).toContain("isOuter");
-    expect(chart).toContain("leftCount > 0");
+    expect(chartMain).toContain("isOuter");
+    expect(chartMain).toContain("leftCount > 0");
   });
 
   it("outer axis gets smaller font size", () => {
-    expect(chart).toContain("axis.isOuter ? 9 : 11");
+    expect(chartMain).toContain("axis.isOuter ? 9 : 11");
   });
 
   it("margins are minimal — Recharts handles spacing via YAxis.width", () => {
     // Margins should NOT multiply by AXIS_WIDTH (that was the double-spacing bug)
-    expect(chart).not.toMatch(/leftAxesCount\s*\*\s*AXIS_WIDTH/);
-    expect(chart).not.toMatch(/rightAxesCount\s*\*\s*AXIS_WIDTH/);
+    expect(chartMain).not.toMatch(/leftAxesCount\s*\*\s*AXIS_WIDTH/);
+    expect(chartMain).not.toMatch(/rightAxesCount\s*\*\s*AXIS_WIDTH/);
   });
 
   it("does NOT have minChartWidth (removed)", () => {
@@ -1065,12 +1071,12 @@ describe("unified-trend-chart.tsx — 4-axis system (PROJ-6 redesign)", () => {
   });
 
   it("does NOT have mirror prop on YAxis (removed)", () => {
-    expect(chart).not.toMatch(/mirror\b/);
+    expect(chartMain).not.toMatch(/mirror\b/);
   });
 
   it("does NOT have isScale in axisLayout return object (dead code removed)", () => {
     // isScale is computed locally but should NOT be in the return object
-    const layoutReturn = chart.match(/return \{[\s\S]*?categoryId[\s\S]*?\};/g);
+    const layoutReturn = chartMain.match(/return \{[\s\S]*?categoryId[\s\S]*?\};/g);
     if (layoutReturn) {
       // Find the axisLayout return specifically
       const axisReturn = layoutReturn.find((r) => r.includes("orientation"));
@@ -1081,7 +1087,7 @@ describe("unified-trend-chart.tsx — 4-axis system (PROJ-6 redesign)", () => {
   });
 
   it("does NOT have bottom Legend component", () => {
-    expect(chart).not.toMatch(/<Legend\b/);
+    expect(chartMain).not.toMatch(/<Legend\b/);
   });
 
   it("shows units in toggle chips", () => {
@@ -1089,76 +1095,76 @@ describe("unified-trend-chart.tsx — 4-axis system (PROJ-6 redesign)", () => {
   });
 
   it("renders scale categories as Bar (not Line)", () => {
-    expect(chart).toContain("<Bar");
-    expect(chart).toContain('td.categoryType === "scale"');
+    expect(chartMain).toContain("<Bar");
+    expect(chartMain).toContain('td.categoryType === "scale"');
   });
 
   it("renders number categories as Line", () => {
-    expect(chart).toContain("<Line");
-    expect(chart).toContain('type="monotone"');
+    expect(chartMain).toContain("<Line");
+    expect(chartMain).toContain('type="monotone"');
   });
 
   it("bar width is dynamic based on days shown", () => {
-    expect(chart).toContain("chartData.length");
-    expect(chart).toContain("totalBarWidth");
-    expect(chart).toContain("barSize");
+    expect(chartMain).toContain("chartData.length");
+    expect(chartMain).toContain("totalBarWidth");
+    expect(chartMain).toContain("barSize");
   });
 
   it("bar total width scales: 32px (≤7d), 20px (≤14d), 12px (≤30d), 8px (>30d)", () => {
-    expect(chart).toContain("days <= 7 ? 32");
-    expect(chart).toContain("days <= 14 ? 20");
-    expect(chart).toContain("days <= 30 ? 12");
+    expect(chartMain).toContain("days <= 7 ? 32");
+    expect(chartMain).toContain("days <= 14 ? 20");
+    expect(chartMain).toContain("days <= 30 ? 12");
   });
 
   it("bar size per category has minimum of 2px", () => {
-    expect(chart).toContain("Math.max(2,");
+    expect(chartMain).toContain("Math.max(2,");
   });
 
   it("has Settings2 button for axis settings panel", () => {
-    expect(chart).toContain("Settings2");
-    expect(chart).toContain("showSettings");
-    expect(chart).toContain("axisSettings");
+    expect(chartMain).toContain("Settings2");
+    expect(chartMain).toContain("showSettings");
+    expect(chartMain).toContain("axisSettings");
   });
 
   it("has settings panel with min/max inputs per category", () => {
-    expect(chart).toContain("axisMin");
-    expect(chart).toContain("axisMax");
+    expect(chartSettings).toContain("axisMin");
+    expect(chartSettings).toContain("axisMax");
   });
 
   it("persists axis settings to localStorage", () => {
-    expect(chart).toContain("feedback-chart-axis-settings");
-    expect(chart).toContain("localStorage");
+    expect(chartTypes).toContain("feedback-chart-axis-settings");
+    expect(chartTypes).toContain("localStorage");
   });
 
   it("has time range selector (7/14/30/90 days)", () => {
     expect(chart).toContain("xRange");
-    expect(chart).toContain("days7");
-    expect(chart).toContain("days14");
-    expect(chart).toContain("days30");
-    expect(chart).toContain("days90");
+    expect(chartSettings).toContain("days7");
+    expect(chartSettings).toContain("days14");
+    expect(chartSettings).toContain("days30");
+    expect(chartSettings).toContain("days90");
   });
 
   it("has auto reset button for axis overrides", () => {
-    expect(chart).toContain("axisAutoReset");
+    expect(chartSettings).toContain("axisAutoReset");
   });
 
   it("settings panel is conditional flex layout (not always active)", () => {
-    expect(chart).toContain('showSettings && !isMobile ? "flex flex-row gap-4"');
+    expect(chartMain).toContain('showSettings && !isMobile ? "flex flex-row gap-4"');
   });
 
   it("uses Sheet for mobile settings", () => {
-    expect(chart).toContain("SheetContent");
-    expect(chart).toContain('side="bottom"');
+    expect(chartMain).toContain("SheetContent");
+    expect(chartMain).toContain('side="bottom"');
   });
 
-  it("CustomTooltip component exists", () => {
-    expect(chart).toContain("CustomTooltip");
-    expect(chart).toContain("activeTrends");
+  it("ChartTooltip component exists", () => {
+    expect(chartMain).toContain("ChartTooltip");
+    expect(chartMain).toContain("activeTrends");
   });
 
   it("ResponsiveContainer always uses width 100%", () => {
-    expect(chart).toContain('width="100%"');
-    expect(chart).not.toContain("minChartWidth");
+    expect(chartMain).toContain('width="100%"');
+    expect(chartMain).not.toContain("minChartWidth");
   });
 });
 

@@ -14,33 +14,6 @@ const DEFAULT_PREFS: OrganisationPreferences = {
   sortOption: "teams-first",
 };
 
-function readPrefs(): OrganisationPreferences {
-  if (typeof window === "undefined") return DEFAULT_PREFS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_PREFS;
-    const parsed = JSON.parse(raw);
-    const validViews: OrganisationViewMode[] = ["grid", "table", "kanban"];
-    const validSorts: OrganisationSortOption[] = [
-      "teams-first",
-      "athletes-first",
-      "name-asc",
-      "name-desc",
-      "status",
-    ];
-    return {
-      viewMode: validViews.includes(parsed.viewMode)
-        ? parsed.viewMode
-        : DEFAULT_PREFS.viewMode,
-      sortOption: validSorts.includes(parsed.sortOption)
-        ? parsed.sortOption
-        : DEFAULT_PREFS.sortOption,
-    };
-  } catch {
-    return DEFAULT_PREFS;
-  }
-}
-
 function writePrefs(prefs: OrganisationPreferences): void {
   if (typeof window === "undefined") return;
   try {

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { accountRateLimiter, getRateLimitKey } from "@/lib/rate-limit";
 
 const VALID_LOCALES = ["de", "en"] as const;
 
@@ -28,6 +29,15 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limit: 10 requests per minute per user
+    const { limited } = accountRateLimiter.check(getRateLimitKey(request, user.id));
+    if (limited) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429 }
+      );
     }
 
     // Update profiles.locale in the database

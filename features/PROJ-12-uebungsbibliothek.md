@@ -672,3 +672,67 @@ All 4 were fixed before Round 2.
 - **Vercel Deployment:** `dpl_4Nd1EefyBDckAGsLwE3vqWE6h1TD`
 - **Commit:** `184d4bd` (feat(PROJ-12): Übungsbibliothek — full implementation)
 - **Migration:** `20260320200000_proj12_exercise_library.sql` — applied via Supabase MCP
+
+---
+
+## QA Round 3 — Production Bug Investigation (2026-03-21)
+
+**Reported Issue:** `React.Children.only expected to receive a single React element child` error on the exercises page in production.
+
+### BUG-05: Button `asChild` with Slot receives multiple children (CRITICAL, OPEN)
+
+- **Severity:** CRITICAL (runtime crash in production)
+- **Priority:** P0
+- **Affects:** Every page/component that uses `<Button asChild>` with a `<Link>` child
+- **Root Cause:** The custom `Button` component (`src/components/ui/button.tsx`, lines 90-107) renders THREE children inside the `Slot` (Radix `@radix-ui/react-slot` v1.2.4) when `asChild=true`:
+
+```jsx
+// button.tsx lines 100-106 — inside <Comp> where Comp = Slot when asChild=true
+{loading ? (<Loader2 className="h-4 w-4 animate-spin" />) : (iconLeft)}   // => undefined
+{children}                                                                   // => <Link>...</Link>
+{!loading && iconRight}                                                      // => undefined
+```
+
+When `loading=false`, `iconLeft=undefined`, `iconRight=undefined`, the Slot receives `[undefined, <Link/>, undefined]`. Verified that `React.Children.count([undefined, <element/>, undefined])` returns **3** (not 1). The `SlotClone` component then hits this code path:
+
+```js
+// @radix-ui/react-slot v1.2.4, SlotClone:
+if (React.isValidElement(children)) { /* single element path */ }
+return React.Children.count(children) > 1 ? React.Children.only(null) : null;
+//                                           ^^^^^^^^^^^^^^^^^^^^^^^^ THROWS
+```
+
+`React.Children.only(null)` throws: "React.Children.only expected to receive a single React element child".
+
+- **Affected Files and Lines:**
+  1. **Root cause:** `src/components/ui/button.tsx` lines 100-106 -- renders `iconLeft`, `children`, `iconRight` inside Slot even when `asChild=true`
+  2. `src/components/exercises/exercise-library-page.tsx` line 149-154 -- `<Button asChild><Link>` with icon+text
+  3. `src/components/exercises/exercise-library-page.tsx` line 185-190 -- same pattern in empty state
+  4. `src/components/exercises/exercise-slide-over.tsx` line 201-215 -- `<Button asChild><Link>` in slide-over actions
+
+- **Steps to Reproduce:**
+  1. Log in as a Trainer
+  2. Navigate to `/training/exercises`
+  3. The page crashes with "React.Children.only expected to receive a single React element child"
+
+- **Why it only manifests on exercises pages:** `<Button asChild>` wrapping `<Link>` is ONLY used in exercise-related components. All other `asChild` usages in the codebase are `<TooltipTrigger asChild>`, `<PopoverTrigger asChild>`, `<CollapsibleTrigger asChild>`, etc., which wrap a single `<Button>` element (not using Button's own `asChild`). The exercises page is the first feature to use `<Button asChild>` with the custom Button that has `iconLeft`/`iconRight`/`loading` logic.
+
+- **Fix Direction (do NOT implement, document only):** In `button.tsx`, when `asChild=true`, the component must NOT render `iconLeft`/`iconRight` wrappers. The Slot should receive exactly one child element. Two approaches:
+  - A) When `asChild=true`, skip rendering `iconLeft`/`iconRight` and only pass `{children}` to `<Slot>`
+  - B) Wrap the three expressions in a Fragment only when `asChild=false`
+
+### Additional Finding: SidebarMenuButton asChild in nav-main.tsx is SAFE
+
+The `SidebarMenuButton` (`sidebar.tsx` line 566) also uses `Slot` when `asChild=true`, but the `NavItemLink` component (`nav-main.tsx` line 58-74) passes a single `<Link>` child containing `<Icon>` + `<span>`. This is safe because `SidebarMenuButton` does NOT inject additional children around the slot -- it only renders `<Comp>{...props.children}</Comp>`. The Link element IS the single child of Slot.
+
+### Scope of Impact
+
+All 3 occurrences of `<Button asChild>` in the exercises feature are affected:
+
+| File | Line | Usage |
+|------|------|-------|
+| `src/components/exercises/exercise-library-page.tsx` | 149 | "New Exercise" header button |
+| `src/components/exercises/exercise-library-page.tsx` | 185 | "New Exercise" empty state CTA |
+| `src/components/exercises/exercise-slide-over.tsx` | 201 | "Open Detail" link in slide-over |
+
+No other pages in the codebase use `<Button asChild>`. The bug is latent in `button.tsx` and will affect any future usage of `<Button asChild>` as well.

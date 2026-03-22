@@ -10,6 +10,8 @@
  * @param isDev  - true in development (allows 'unsafe-eval' for HMR)
  * @param supabaseUrl - the Supabase project URL for connect-src
  */
+// Next.js requires 'unsafe-inline' for hydration scripts.
+// TODO: Migrate to nonce-based CSP when Next.js 16+ provides native support.
 export function generateCSP(
   isDev: boolean,
   supabaseUrl = "https://*.supabase.co"

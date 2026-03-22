@@ -94,6 +94,11 @@ export async function fetchAthletes(
 
 // ── Fetch All Athletes for Trainer (no pagination) ──────────────
 
+// Safety limit to prevent unbounded queries. A single trainer managing
+// more than 500 active/pending connections is an extreme edge case.
+// If this limit is ever hit, the caller should migrate to paginated fetchAthletes().
+const FETCH_ALL_LIMIT = 500;
+
 export async function fetchAllAthletes(): Promise<AthleteListItem[]> {
   const supabase = await createClient();
   const {
@@ -125,7 +130,8 @@ export async function fetchAllAthletes(): Promise<AthleteListItem[]> {
     )
     .eq("trainer_id", user.id)
     .in("status", ["pending", "active"])
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(FETCH_ALL_LIMIT);
 
   if (error) {
     console.error("Failed to fetch all athletes:", error.message, error.code, error.details, error.hint);

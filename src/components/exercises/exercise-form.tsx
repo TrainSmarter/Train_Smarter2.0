@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useTypedLocale } from "@/hooks/use-typed-locale";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -57,13 +58,21 @@ type ExerciseFormValues = z.infer<typeof exerciseFormSchema>;
 /** Field names that support single-field AI optimization */
 type OptimizableField = "name_de" | "name_en" | "description_de" | "description_en";
 
+/** Form field names that can be AI-optimized (text fields only) */
+type OptimizableFormField = "nameDe" | "nameEn" | "descriptionDe" | "descriptionEn";
+
 /** Maps form field names to server action field names */
-const FIELD_MAP: Record<string, OptimizableField> = {
+const FIELD_MAP: Record<OptimizableFormField, OptimizableField> = {
   nameDe: "name_de",
   nameEn: "name_en",
   descriptionDe: "description_de",
   descriptionEn: "description_en",
 };
+
+/** Type guard to check if a string is an optimizable form field */
+function isOptimizableFormField(field: string): field is OptimizableFormField {
+  return field in FIELD_MAP;
+}
 
 interface ExerciseFormProps {
   /** Existing exercise (for edit mode) */
@@ -99,7 +108,7 @@ export function ExerciseForm({
 }: ExerciseFormProps) {
   const t = useTranslations("exercises");
   const tCommon = useTranslations("common");
-  const locale = useLocale() as "de" | "en";
+  const locale = useTypedLocale();
   const [isSaving, setIsSaving] = React.useState(false);
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [highlightedFields, setHighlightedFields] = React.useState<Set<string>>(new Set());
@@ -256,8 +265,8 @@ export function ExerciseForm({
 
   // Single-field optimization handler
   async function handleOptimizeField(formFieldName: string) {
+    if (!isOptimizableFormField(formFieldName)) return;
     const serverFieldName = FIELD_MAP[formFieldName];
-    if (!serverFieldName) return;
 
     const exerciseName = form.getValues("nameDe") || form.getValues("nameEn");
     if (!exerciseName?.trim()) {
@@ -265,7 +274,7 @@ export function ExerciseForm({
       return;
     }
 
-    const currentValue = form.getValues(formFieldName as keyof ExerciseFormValues) as string;
+    const currentValue = form.getValues(formFieldName) as string;
 
     setOptimizingField(formFieldName);
     try {
@@ -291,7 +300,7 @@ export function ExerciseForm({
       setUndoValues((prev) => new Map(prev).set(formFieldName, currentValue));
 
       // Set the optimized value
-      form.setValue(formFieldName as keyof ExerciseFormValues, result.data as never);
+      form.setValue(formFieldName, result.data);
 
       // Highlight the field
       setHighlightedFields(new Set([formFieldName]));
@@ -309,9 +318,10 @@ export function ExerciseForm({
 
   // Undo a single-field optimization
   function handleUndo(formFieldName: string) {
+    if (!isOptimizableFormField(formFieldName)) return;
     const previousValue = undoValues.get(formFieldName);
     if (previousValue !== undefined) {
-      form.setValue(formFieldName as keyof ExerciseFormValues, previousValue as never);
+      form.setValue(formFieldName, previousValue);
       setUndoValues((prev) => {
         const next = new Map(prev);
         next.delete(formFieldName);

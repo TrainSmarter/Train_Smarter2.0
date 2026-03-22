@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 
 /**
@@ -30,6 +31,8 @@ export async function GET(request: Request) {
     let isAuthorized = false;
 
     // Option 1: API key header
+    // NOTE: HEALTH_API_KEY should be rotated periodically (e.g., every 90 days).
+    // Store the rotation date alongside the key in your secrets manager.
     if (envApiKey && apiKey === envApiKey) {
       isAuthorized = true;
     }
@@ -58,9 +61,7 @@ export async function GET(request: Request) {
     }
 
     // ── Create admin client with service role key ──
-    const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const admin = createAdminClient();
 
     // ── Run all health checks ──
     const checks: CheckResult[] = [];
@@ -103,7 +104,10 @@ export async function GET(request: Request) {
       },
       {
         status: status === "unhealthy" ? 503 : 200,
-        headers: { "Cache-Control": "no-store" },
+        headers: {
+          "Cache-Control": "no-store",
+          "X-Key-Rotation-Hint": "Rotate HEALTH_API_KEY every 90 days",
+        },
       }
     );
   } catch (err) {
@@ -192,21 +196,70 @@ async function checkOrphanedProfiles(
   admin: SupabaseClient
 ): Promise<CheckResult> {
   try {
-    // Get all profile IDs
-    const { data: profiles, error: profilesError } = await admin
-      .from("profiles")
-      .select("id");
+    // Build a Set of all auth user IDs first (paginated in batches of 1000)
+    const authUserIds = new Set<string>();
+    let authPage = 1;
+    const authPerPage = 1000;
+    let authHasMore = true;
 
-    if (profilesError) {
-      return {
-        name: "orphaned_profiles",
-        status: "warn",
-        message: "Could not query profiles",
-        detail: { error: profilesError.message },
-      };
+    while (authHasMore) {
+      const {
+        data: { users },
+      } = await admin.auth.admin.listUsers({ page: authPage, perPage: authPerPage });
+
+      if (!users || users.length === 0) {
+        authHasMore = false;
+      } else {
+        users.forEach((u) => authUserIds.add(u.id));
+        if (users.length < authPerPage) authHasMore = false;
+        authPage++;
+      }
     }
 
-    if (!profiles || profiles.length === 0) {
+    // Process profiles in batches of 100 to avoid loading all into memory.
+    // Early termination: stop as soon as orphaned records are found.
+    const BATCH_SIZE = 100;
+    let offset = 0;
+    let totalProfilesChecked = 0;
+    const orphanedSample: string[] = [];
+    let orphanedCount = 0;
+
+    while (true) {
+      const { data: batch, error: batchError } = await admin
+        .from("profiles")
+        .select("id")
+        .range(offset, offset + BATCH_SIZE - 1);
+
+      if (batchError) {
+        return {
+          name: "orphaned_profiles",
+          status: "warn",
+          message: "Could not query profiles",
+          detail: { error: batchError.message },
+        };
+      }
+
+      if (!batch || batch.length === 0) break;
+
+      totalProfilesChecked += batch.length;
+
+      for (const p of batch) {
+        if (!authUserIds.has(p.id)) {
+          orphanedCount++;
+          if (orphanedSample.length < 5) {
+            orphanedSample.push(p.id);
+          }
+        }
+      }
+
+      // Early termination: if we already found orphaned records, report and stop
+      if (orphanedCount > 0 && batch.length < BATCH_SIZE) break;
+      if (batch.length < BATCH_SIZE) break;
+
+      offset += BATCH_SIZE;
+    }
+
+    if (totalProfilesChecked === 0) {
       return {
         name: "orphaned_profiles",
         status: "pass",
@@ -214,43 +267,19 @@ async function checkOrphanedProfiles(
       };
     }
 
-    // Get all auth user IDs (paginate in batches)
-    const authUserIds = new Set<string>();
-    let page = 1;
-    const perPage = 1000;
-    let hasMore = true;
-
-    while (hasMore) {
-      const {
-        data: { users },
-      } = await admin.auth.admin.listUsers({ page, perPage });
-
-      if (!users || users.length === 0) {
-        hasMore = false;
-      } else {
-        users.forEach((u) => authUserIds.add(u.id));
-        if (users.length < perPage) hasMore = false;
-        page++;
-      }
-    }
-
-    const orphanedIds = profiles
-      .filter((p) => !authUserIds.has(p.id))
-      .map((p) => p.id);
-
-    if (orphanedIds.length > 0) {
+    if (orphanedCount > 0) {
       return {
         name: "orphaned_profiles",
         status: "warn",
-        message: `${orphanedIds.length} profile(s) without matching auth.users record`,
-        detail: { count: orphanedIds.length, sample: orphanedIds.slice(0, 5) },
+        message: `${orphanedCount} profile(s) without matching auth.users record (checked ${totalProfilesChecked})`,
+        detail: { count: orphanedCount, sample: orphanedSample },
       };
     }
 
     return {
       name: "orphaned_profiles",
       status: "pass",
-      message: `All ${profiles.length} profiles have matching auth.users records`,
+      message: `All ${totalProfilesChecked} profiles have matching auth.users records`,
     };
   } catch (err) {
     return {
@@ -266,53 +295,56 @@ async function checkOrphanedReferences(
   admin: SupabaseClient
 ): Promise<CheckResult> {
   try {
-    // Get all auth user IDs
+    // Build auth user ID set (paginated)
     const authUserIds = new Set<string>();
-    let page = 1;
-    const perPage = 1000;
-    let hasMore = true;
+    let authPage = 1;
+    const authPerPage = 1000;
+    let authHasMore = true;
 
-    while (hasMore) {
+    while (authHasMore) {
       const {
         data: { users },
-      } = await admin.auth.admin.listUsers({ page, perPage });
+      } = await admin.auth.admin.listUsers({ page: authPage, perPage: authPerPage });
 
       if (!users || users.length === 0) {
-        hasMore = false;
+        authHasMore = false;
       } else {
         users.forEach((u) => authUserIds.add(u.id));
-        if (users.length < perPage) hasMore = false;
-        page++;
+        if (users.length < authPerPage) authHasMore = false;
+        authPage++;
       }
     }
 
     const orphaned: Record<string, number> = {};
+    const BATCH_SIZE = 100;
 
-    // Check user_consents
-    const { data: consents } = await admin
-      .from("user_consents")
-      .select("user_id");
+    // Check user_consents in batches with early termination
+    const tables = ["user_consents", "pending_deletions"] as const;
+    for (const table of tables) {
+      let offset = 0;
+      let tableOrphaned = 0;
 
-    if (consents) {
-      const orphanedConsents = consents.filter(
-        (c) => !authUserIds.has(c.user_id)
-      );
-      if (orphanedConsents.length > 0) {
-        orphaned["user_consents"] = orphanedConsents.length;
+      while (true) {
+        const { data: batch } = await admin
+          .from(table)
+          .select("user_id")
+          .range(offset, offset + BATCH_SIZE - 1);
+
+        if (!batch || batch.length === 0) break;
+
+        for (const row of batch) {
+          if (!authUserIds.has(row.user_id)) {
+            tableOrphaned++;
+          }
+        }
+
+        // Early termination: if orphaned records found and this is the last batch, stop
+        if (batch.length < BATCH_SIZE) break;
+        offset += BATCH_SIZE;
       }
-    }
 
-    // Check pending_deletions
-    const { data: deletions } = await admin
-      .from("pending_deletions")
-      .select("user_id");
-
-    if (deletions) {
-      const orphanedDeletions = deletions.filter(
-        (d) => !authUserIds.has(d.user_id)
-      );
-      if (orphanedDeletions.length > 0) {
-        orphaned["pending_deletions"] = orphanedDeletions.length;
+      if (tableOrphaned > 0) {
+        orphaned[table] = tableOrphaned;
       }
     }
 

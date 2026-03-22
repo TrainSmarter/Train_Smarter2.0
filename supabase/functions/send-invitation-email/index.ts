@@ -1,5 +1,5 @@
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -290,6 +290,16 @@ function validatePayload(
     if (!["http:", "https:"].includes(url.protocol)) {
       return { valid: false, error: "Invalid inviteLink protocol" };
     }
+    // Validate hostname against allowed domains
+    const hostname = url.hostname;
+    const isAllowed =
+      hostname === "localhost" ||
+      hostname === "train-smarter.at" ||
+      hostname === "www.train-smarter.at" ||
+      hostname.endsWith(".vercel.app");
+    if (!isAllowed) {
+      return { valid: false, error: "Invalid inviteLink domain" };
+    }
   } catch {
     return { valid: false, error: "Invalid inviteLink" };
   }
@@ -397,11 +407,9 @@ Deno.serve(async (req: Request) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("send-invitation-email error:", error);
+    console.error("Email sending failed:", error instanceof Error ? error.message : error);
     return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Internal error",
-      }),
+      JSON.stringify({ error: "Failed to send email. Please try again later." }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
