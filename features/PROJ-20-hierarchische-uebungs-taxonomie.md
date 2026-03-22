@@ -1,8 +1,9 @@
 # PROJ-20: Hierarchisches Übungs-Taxonomie-System
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-03-22
 **Last Updated:** 2026-03-22
+**Deployed:** 2026-03-22
 **QA Round 1:** 2026-03-22 -- 17 findings (1 CRITICAL, 5 HIGH, 6 MEDIUM, 5 LOW)
 **QA Round 2:** 2026-03-22 -- All 17 bugs verified fixed, 0 new bugs, ready for deploy
 **Priority:** P0 (MVP)
@@ -927,4 +928,9 @@ Verification details:
 **Verdict: All 17 bugs from Round 1 have been properly fixed. PROJ-20 is ready for deployment.**
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-03-22
+**Production URL:** https://www.train-smarter.at
+**Commit:** 638ad49
+**Migration:** 8 Supabase migrations applied (tables, functions, RLS, seed data, data migration, QA fixes)
+**Vercel:** Auto-deploy via push to main
