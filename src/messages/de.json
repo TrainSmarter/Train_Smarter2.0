@@ -1222,7 +1222,13 @@
     "moreItems": "+{count} weitere",
     "paginationPrev": "Vorherige Seite",
     "paginationNext": "Nächste Seite",
-    "viewSwitcher": "Ansicht wechseln"
+    "viewSwitcher": "Ansicht wechseln",
+    "sectionNames": "Bezeichnung",
+    "sectionNamesHint": "Gib den Übungsnamen in beiden Sprachen ein",
+    "sectionDescription": "Beschreibung",
+    "sectionDescriptionHint": "Beschreibe die korrekte Ausführung der Übung",
+    "sectionClassification": "Klassifikation",
+    "sectionClassificationHint": "Kategorisiere die Übung nach Typ, Muskelgruppen und Equipment"
   },
   "admin": {
     "pageTitle": "Benutzerverwaltung",

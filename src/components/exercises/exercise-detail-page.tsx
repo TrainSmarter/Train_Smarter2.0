@@ -217,23 +217,17 @@ export function ExerciseDetailPage({
 
       {/* Edit / Create Mode */}
       {isEditing && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="mx-auto max-w-3xl">
-              <ExerciseForm
-                exercise={isCreateMode ? null : exercise}
-                muscleGroups={muscleGroups}
-                equipment={equipment}
-                allExercises={allExercises}
-                onSuccess={handleFormSuccess}
-                onCancel={handleFormCancel}
-                onTaxonomyCreated={handleTaxonomyCreated}
-                showAiSuggest={showAiSuggest}
-                usageData={usageData}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        <ExerciseForm
+          exercise={isCreateMode ? null : exercise}
+          muscleGroups={muscleGroups}
+          equipment={equipment}
+          allExercises={allExercises}
+          onSuccess={handleFormSuccess}
+          onCancel={handleFormCancel}
+          onTaxonomyCreated={handleTaxonomyCreated}
+          showAiSuggest={showAiSuggest}
+          usageData={usageData}
+        />
       )}
 
       {/* Detail Mode (read-only) */}

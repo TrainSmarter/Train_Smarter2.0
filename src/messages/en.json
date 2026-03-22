@@ -1222,7 +1222,13 @@
     "moreItems": "+{count} more",
     "paginationPrev": "Previous page",
     "paginationNext": "Next page",
-    "viewSwitcher": "Switch view"
+    "viewSwitcher": "Switch view",
+    "sectionNames": "Name",
+    "sectionNamesHint": "Enter the exercise name in both languages",
+    "sectionDescription": "Description",
+    "sectionDescriptionHint": "Describe the correct execution of the exercise",
+    "sectionClassification": "Classification",
+    "sectionClassificationHint": "Categorize the exercise by type, muscle groups, and equipment"
   },
   "admin": {
     "pageTitle": "User Management",

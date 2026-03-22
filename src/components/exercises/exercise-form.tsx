@@ -6,13 +6,22 @@ import { useTypedLocale } from "@/hooks/use-typed-locale";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, AlertTriangle, Sparkles, Undo2 } from "lucide-react";
+import {
+  Loader2,
+  AlertTriangle,
+  Sparkles,
+  Undo2,
+  Type,
+  FileText,
+  Tags,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -380,12 +389,25 @@ export function ExerciseForm({
   // Disable AI button if rate limited
   const isAiButtonDisabled = !canShowAiButton || isAiLoading || isSaving || isRateLimited;
 
+  // Shared AI action props
+  const sharedAiProps = {
+    isDisabled: isAiLoading || isSaving || isRateLimited || !canShowAiButton,
+    optimizeLabel: t("aiOptimize"),
+    undoLabel: t("aiOptimizeUndo"),
+    rateLimitedTooltip: isRateLimited
+      ? t("aiLimitReached", {
+          limit: usageData?.limit ?? 0,
+          resetDate: resetDateFormatted,
+        })
+      : undefined,
+  };
+
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+    <form onSubmit={form.handleSubmit(onSubmit)}>
       {/* AI Suggest Toolbar */}
       {showAiSuggest && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 rounded-md border border-secondary/30 bg-secondary/5 p-3">
+        <div className="mb-6 space-y-2">
+          <div className="flex items-center gap-3 rounded-lg border border-secondary/30 bg-secondary/5 p-3">
             <Sparkles className="h-5 w-5 shrink-0 text-secondary" />
             <p className="flex-1 text-sm text-muted-foreground">
               {isAiLoading ? t("aiSuggestLoading") : t("aiSuggest")}
@@ -446,226 +468,268 @@ export function ExerciseForm({
         </div>
       )}
 
-      {/* Name DE */}
-      <div className="space-y-1.5">
-        <Label htmlFor="nameDe">{t("nameDe")} *</Label>
-        <div className="flex items-center gap-1.5">
-          <Input
-            id="nameDe"
-            {...form.register("nameDe")}
-            maxLength={100}
-            aria-invalid={!!form.formState.errors.nameDe}
-            aria-describedby={form.formState.errors.nameDe ? "nameDe-error" : undefined}
-            className={`flex-1 ${aiHighlight("nameDe")}`}
-          />
-          {showAiSuggest && (
-            <FieldAiActions
-              fieldName="nameDe"
-              isOptimizing={optimizingFields.has("nameDe")}
-              isDisabled={isAiLoading || isSaving || isRateLimited || !canShowAiButton}
-              hasUndo={undoValues.has("nameDe")}
-              onOptimize={() => handleOptimizeField("nameDe")}
-              onUndo={() => handleUndo("nameDe")}
-              optimizeLabel={t("aiOptimize")}
-              undoLabel={t("aiOptimizeUndo")}
-              rateLimitedTooltip={
-                isRateLimited
-                  ? t("aiLimitReached", {
-                      limit: usageData?.limit ?? 0,
-                      resetDate: resetDateFormatted,
-                    })
-                  : undefined
-              }
-            />
-          )}
+      {/* ── 2-Column Layout: Main Content + Sidebar ── */}
+      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+        {/* ── Main Content Column ── */}
+        <div className="space-y-8">
+          {/* ── Section: Names ── */}
+          <section aria-labelledby="section-names">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                <Type className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h2 id="section-names" className="text-body-lg font-semibold text-foreground">
+                  {t("sectionNames")}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {t("sectionNamesHint")}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-card p-4 sm:p-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Name DE */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="nameDe">{t("nameDe")} *</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      id="nameDe"
+                      {...form.register("nameDe")}
+                      maxLength={100}
+                      aria-invalid={!!form.formState.errors.nameDe}
+                      aria-describedby={form.formState.errors.nameDe ? "nameDe-error" : undefined}
+                      className={`flex-1 ${aiHighlight("nameDe")}`}
+                    />
+                    {showAiSuggest && (
+                      <FieldAiActions
+                        fieldName="nameDe"
+                        isOptimizing={optimizingFields.has("nameDe")}
+                        hasUndo={undoValues.has("nameDe")}
+                        onOptimize={() => handleOptimizeField("nameDe")}
+                        onUndo={() => handleUndo("nameDe")}
+                        {...sharedAiProps}
+                      />
+                    )}
+                  </div>
+                  {form.formState.errors.nameDe && (
+                    <p id="nameDe-error" className="text-caption text-error">
+                      {form.formState.errors.nameDe.message === "required"
+                        ? t("validationRequired")
+                        : form.formState.errors.nameDe.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Name EN */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="nameEn">{t("nameEn")} *</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      id="nameEn"
+                      {...form.register("nameEn")}
+                      maxLength={100}
+                      aria-invalid={!!form.formState.errors.nameEn}
+                      aria-describedby={form.formState.errors.nameEn ? "nameEn-error" : undefined}
+                      className={`flex-1 ${aiHighlight("nameEn")}`}
+                    />
+                    {showAiSuggest && (
+                      <FieldAiActions
+                        fieldName="nameEn"
+                        isOptimizing={optimizingFields.has("nameEn")}
+                        hasUndo={undoValues.has("nameEn")}
+                        onOptimize={() => handleOptimizeField("nameEn")}
+                        onUndo={() => handleUndo("nameEn")}
+                        {...sharedAiProps}
+                      />
+                    )}
+                  </div>
+                  {form.formState.errors.nameEn && (
+                    <p id="nameEn-error" className="text-caption text-error">
+                      {form.formState.errors.nameEn.message === "required"
+                        ? t("validationRequired")
+                        : form.formState.errors.nameEn.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Duplicate Warning */}
+              {hasDuplicate && (
+                <div className="mt-4 flex items-center gap-2 rounded-md border border-warning/50 bg-warning/10 p-3">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+                  <p className="text-sm text-warning-foreground">{t("duplicateWarning")}</p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* ── Section: Descriptions ── */}
+          <section aria-labelledby="section-description">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                <FileText className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h2 id="section-description" className="text-body-lg font-semibold text-foreground">
+                  {t("sectionDescription")}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {t("sectionDescriptionHint")}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-card p-4 sm:p-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Description DE */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="descriptionDe">{t("descriptionDe")}</Label>
+                    {showAiSuggest && (
+                      <FieldAiActions
+                        fieldName="descriptionDe"
+                        isOptimizing={optimizingFields.has("descriptionDe")}
+                        hasUndo={undoValues.has("descriptionDe")}
+                        onOptimize={() => handleOptimizeField("descriptionDe")}
+                        onUndo={() => handleUndo("descriptionDe")}
+                        {...sharedAiProps}
+                      />
+                    )}
+                  </div>
+                  <Textarea
+                    id="descriptionDe"
+                    {...form.register("descriptionDe")}
+                    maxLength={2000}
+                    rows={5}
+                    className={aiHighlight("descriptionDe")}
+                  />
+                </div>
+
+                {/* Description EN */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="descriptionEn">{t("descriptionEn")}</Label>
+                    {showAiSuggest && (
+                      <FieldAiActions
+                        fieldName="descriptionEn"
+                        isOptimizing={optimizingFields.has("descriptionEn")}
+                        hasUndo={undoValues.has("descriptionEn")}
+                        onOptimize={() => handleOptimizeField("descriptionEn")}
+                        onUndo={() => handleUndo("descriptionEn")}
+                        {...sharedAiProps}
+                      />
+                    )}
+                  </div>
+                  <Textarea
+                    id="descriptionEn"
+                    {...form.register("descriptionEn")}
+                    maxLength={2000}
+                    rows={5}
+                    className={aiHighlight("descriptionEn")}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-        {form.formState.errors.nameDe && (
-          <p id="nameDe-error" className="text-caption text-error">
-            {form.formState.errors.nameDe.message === "required"
-              ? t("validationRequired")
-              : form.formState.errors.nameDe.message}
-          </p>
-        )}
+
+        {/* ── Sidebar: Classification (sticky on desktop) ── */}
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <section aria-labelledby="section-classification">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                <Tags className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h2 id="section-classification" className="text-body-lg font-semibold text-foreground">
+                  {t("sectionClassification")}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {t("sectionClassificationHint")}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-card p-4 sm:p-5 space-y-5">
+              {/* Category */}
+              <div className="space-y-1.5">
+                <Label>{t("category")} *</Label>
+                <Select
+                  value={form.watch("exerciseType")}
+                  onValueChange={(v) => form.setValue("exerciseType", v as ExerciseType)}
+                >
+                  <SelectTrigger
+                    aria-label={t("selectCategory")}
+                    className={aiHighlight("exerciseType")}
+                  >
+                    <SelectValue placeholder={t("selectCategory")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="strength">{t("strength")}</SelectItem>
+                    <SelectItem value="endurance">{t("endurance")}</SelectItem>
+                    <SelectItem value="speed">{t("speed")}</SelectItem>
+                    <SelectItem value="flexibility">{t("flexibility")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Separator />
+
+              {/* Primary Muscle Groups */}
+              <div className="space-y-1.5">
+                <Label>{t("primaryMuscleGroupsLabel")}</Label>
+                <div className={aiHighlight("primaryMuscleGroupIds")}>
+                  <TaxonomyMultiSelect
+                    entries={muscleGroups}
+                    selectedIds={form.watch("primaryMuscleGroupIds")}
+                    onSelectionChange={(ids) => form.setValue("primaryMuscleGroupIds", ids)}
+                    taxonomyType="muscle_group"
+                    placeholder={t("selectItems")}
+                    onEntryCreated={onTaxonomyCreated}
+                  />
+                </div>
+              </div>
+
+              {/* Secondary Muscle Groups */}
+              <div className="space-y-1.5">
+                <Label>{t("secondaryMuscleGroupsLabel")}</Label>
+                <div className={aiHighlight("secondaryMuscleGroupIds")}>
+                  <TaxonomyMultiSelect
+                    entries={muscleGroups}
+                    selectedIds={form.watch("secondaryMuscleGroupIds")}
+                    onSelectionChange={(ids) => form.setValue("secondaryMuscleGroupIds", ids)}
+                    taxonomyType="muscle_group"
+                    placeholder={t("selectItems")}
+                    onEntryCreated={onTaxonomyCreated}
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Equipment */}
+              <div className="space-y-1.5">
+                <Label>{t("equipmentLabel")}</Label>
+                <div className={aiHighlight("equipmentIds")}>
+                  <TaxonomyMultiSelect
+                    entries={equipment}
+                    selectedIds={form.watch("equipmentIds")}
+                    onSelectionChange={(ids) => form.setValue("equipmentIds", ids)}
+                    taxonomyType="equipment"
+                    placeholder={t("selectItems")}
+                    onEntryCreated={onTaxonomyCreated}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        </aside>
       </div>
 
-      {/* Name EN */}
-      <div className="space-y-1.5">
-        <Label htmlFor="nameEn">{t("nameEn")} *</Label>
-        <div className="flex items-center gap-1.5">
-          <Input
-            id="nameEn"
-            {...form.register("nameEn")}
-            maxLength={100}
-            aria-invalid={!!form.formState.errors.nameEn}
-            aria-describedby={form.formState.errors.nameEn ? "nameEn-error" : undefined}
-            className={`flex-1 ${aiHighlight("nameEn")}`}
-          />
-          {showAiSuggest && (
-            <FieldAiActions
-              fieldName="nameEn"
-              isOptimizing={optimizingFields.has("nameEn")}
-              isDisabled={isAiLoading || isSaving || isRateLimited || !canShowAiButton}
-              hasUndo={undoValues.has("nameEn")}
-              onOptimize={() => handleOptimizeField("nameEn")}
-              onUndo={() => handleUndo("nameEn")}
-              optimizeLabel={t("aiOptimize")}
-              undoLabel={t("aiOptimizeUndo")}
-              rateLimitedTooltip={
-                isRateLimited
-                  ? t("aiLimitReached", {
-                      limit: usageData?.limit ?? 0,
-                      resetDate: resetDateFormatted,
-                    })
-                  : undefined
-              }
-            />
-          )}
-        </div>
-        {form.formState.errors.nameEn && (
-          <p id="nameEn-error" className="text-caption text-error">
-            {form.formState.errors.nameEn.message === "required"
-              ? t("validationRequired")
-              : form.formState.errors.nameEn.message}
-          </p>
-        )}
-      </div>
-
-      {/* Duplicate Warning */}
-      {hasDuplicate && (
-        <div className="flex items-center gap-2 rounded-md border border-warning/50 bg-warning/10 p-3">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-          <p className="text-sm text-warning-foreground">{t("duplicateWarning")}</p>
-        </div>
-      )}
-
-      {/* Description DE */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="descriptionDe">{t("descriptionDe")}</Label>
-          {showAiSuggest && (
-            <FieldAiActions
-              fieldName="descriptionDe"
-              isOptimizing={optimizingFields.has("descriptionDe")}
-              isDisabled={isAiLoading || isSaving || isRateLimited || !canShowAiButton}
-              hasUndo={undoValues.has("descriptionDe")}
-              onOptimize={() => handleOptimizeField("descriptionDe")}
-              onUndo={() => handleUndo("descriptionDe")}
-              optimizeLabel={t("aiOptimize")}
-              undoLabel={t("aiOptimizeUndo")}
-              rateLimitedTooltip={
-                isRateLimited
-                  ? t("aiLimitReached", {
-                      limit: usageData?.limit ?? 0,
-                      resetDate: resetDateFormatted,
-                    })
-                  : undefined
-              }
-            />
-          )}
-        </div>
-        <Textarea
-          id="descriptionDe"
-          {...form.register("descriptionDe")}
-          maxLength={2000}
-          rows={3}
-          className={aiHighlight("descriptionDe")}
-        />
-      </div>
-
-      {/* Description EN */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="descriptionEn">{t("descriptionEn")}</Label>
-          {showAiSuggest && (
-            <FieldAiActions
-              fieldName="descriptionEn"
-              isOptimizing={optimizingFields.has("descriptionEn")}
-              isDisabled={isAiLoading || isSaving || isRateLimited || !canShowAiButton}
-              hasUndo={undoValues.has("descriptionEn")}
-              onOptimize={() => handleOptimizeField("descriptionEn")}
-              onUndo={() => handleUndo("descriptionEn")}
-              optimizeLabel={t("aiOptimize")}
-              undoLabel={t("aiOptimizeUndo")}
-              rateLimitedTooltip={
-                isRateLimited
-                  ? t("aiLimitReached", {
-                      limit: usageData?.limit ?? 0,
-                      resetDate: resetDateFormatted,
-                    })
-                  : undefined
-              }
-            />
-          )}
-        </div>
-        <Textarea
-          id="descriptionEn"
-          {...form.register("descriptionEn")}
-          maxLength={2000}
-          rows={3}
-          className={aiHighlight("descriptionEn")}
-        />
-      </div>
-
-      {/* Category */}
-      <div className="space-y-1.5">
-        <Label>{t("category")} *</Label>
-        <Select
-          value={form.watch("exerciseType")}
-          onValueChange={(v) => form.setValue("exerciseType", v as ExerciseType)}
-        >
-          <SelectTrigger aria-label={t("selectCategory")}>
-            <SelectValue placeholder={t("selectCategory")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="strength">{t("strength")}</SelectItem>
-            <SelectItem value="endurance">{t("endurance")}</SelectItem>
-            <SelectItem value="speed">{t("speed")}</SelectItem>
-            <SelectItem value="flexibility">{t("flexibility")}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Primary Muscle Groups */}
-      <div className="space-y-1.5">
-        <Label>{t("primaryMuscleGroupsLabel")}</Label>
-        <TaxonomyMultiSelect
-          entries={muscleGroups}
-          selectedIds={form.watch("primaryMuscleGroupIds")}
-          onSelectionChange={(ids) => form.setValue("primaryMuscleGroupIds", ids)}
-          taxonomyType="muscle_group"
-          placeholder={t("selectItems")}
-          onEntryCreated={onTaxonomyCreated}
-        />
-      </div>
-
-      {/* Secondary Muscle Groups */}
-      <div className="space-y-1.5">
-        <Label>{t("secondaryMuscleGroupsLabel")}</Label>
-        <TaxonomyMultiSelect
-          entries={muscleGroups}
-          selectedIds={form.watch("secondaryMuscleGroupIds")}
-          onSelectionChange={(ids) => form.setValue("secondaryMuscleGroupIds", ids)}
-          taxonomyType="muscle_group"
-          placeholder={t("selectItems")}
-          onEntryCreated={onTaxonomyCreated}
-        />
-      </div>
-
-      {/* Equipment */}
-      <div className="space-y-1.5">
-        <Label>{t("equipmentLabel")}</Label>
-        <TaxonomyMultiSelect
-          entries={equipment}
-          selectedIds={form.watch("equipmentIds")}
-          onSelectionChange={(ids) => form.setValue("equipmentIds", ids)}
-          taxonomyType="equipment"
-          placeholder={t("selectItems")}
-          onEntryCreated={onTaxonomyCreated}
-        />
-      </div>
-
-      {/* Actions */}
-      <div className="flex justify-end gap-3 pt-2">
+      {/* ── Actions Bar ── */}
+      <div className="mt-8 flex items-center justify-end gap-3 border-t pt-5">
         <Button type="button" variant="outline" onClick={onCancel}>
           {tCommon("cancel")}
         </Button>
