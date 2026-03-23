@@ -41,8 +41,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { CategoryTreeNode } from "./category-tree-node";
-import { TaxonomyViewSwitcher, type TaxonomyViewMode } from "./taxonomy-view-switcher";
-import { CategoryTreeGraph } from "./category-tree-graph";
 
 import { reorderNodes, deleteNode } from "@/lib/taxonomy/actions";
 import type {
@@ -64,8 +62,6 @@ interface CategoryTreeProps {
   onEditDimension: () => void;
   onReorder: () => void;
   selectedNodeId: string | null;
-  viewMode: TaxonomyViewMode;
-  onViewModeChange: (mode: TaxonomyViewMode) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────
@@ -81,8 +77,6 @@ export function CategoryTree({
   onEditDimension,
   onReorder,
   selectedNodeId,
-  viewMode,
-  onViewModeChange,
 }: CategoryTreeProps) {
   const t = useTranslations("taxonomy");
   const locale = useTypedLocale();
@@ -247,19 +241,14 @@ export function CategoryTree({
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <TaxonomyViewSwitcher value={viewMode} onChange={onViewModeChange} />
-          {viewMode === "list" && (
-            <>
-              <Button variant="outline" size="sm" onClick={expandAll}>
-                <ChevronsUpDown className="mr-1.5 h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("treeExpandAll")}</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={collapseAll}>
-                <ChevronsDownUp className="mr-1.5 h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{t("treeCollapseAll")}</span>
-              </Button>
-            </>
-          )}
+          <Button variant="outline" size="sm" onClick={expandAll}>
+            <ChevronsUpDown className="mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{t("treeExpandAll")}</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={collapseAll}>
+            <ChevronsDownUp className="mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{t("treeCollapseAll")}</span>
+          </Button>
         </div>
         <Button
           size="sm"
@@ -285,13 +274,6 @@ export function CategoryTree({
             {t("addRootNode")}
           </Button>
         </div>
-      ) : viewMode === "graph" ? (
-        <CategoryTreeGraph
-          tree={tree}
-          onSelect={onSelect}
-          locale={locale}
-          selectedNodeId={selectedNodeId}
-        />
       ) : (
         <div className="rounded-lg border p-1">
           <DndContext

@@ -14,8 +14,6 @@ import { CategoryTree } from "./category-tree";
 import { NodeDetailSlideOver } from "./node-detail-slide-over";
 import { DimensionFormDialog } from "./dimension-form-dialog";
 import { MoveNodeDialog } from "./move-node-dialog";
-import type { TaxonomyViewMode } from "./taxonomy-view-switcher";
-
 import { buildTree } from "@/lib/taxonomy/tree-utils";
 import type {
   CategoryDimension,
@@ -50,27 +48,6 @@ export function TaxonomyAdminPage({
   const [dimensionDialogOpen, setDimensionDialogOpen] = React.useState(false);
   const [editingDimension, setEditingDimension] = React.useState<CategoryDimension | null>(null);
   const [moveNode, setMoveNode] = React.useState<CategoryNode | null>(null);
-
-  // View mode with localStorage persistence
-  const [viewMode, setViewMode] = React.useState<TaxonomyViewMode>(() => {
-    if (typeof window === "undefined") return "list";
-    try {
-      const stored = localStorage.getItem("taxonomy-view-mode");
-      if (stored === "list" || stored === "graph") return stored;
-    } catch {
-      // ignore
-    }
-    return "list";
-  });
-
-  const handleViewModeChange = React.useCallback((mode: TaxonomyViewMode) => {
-    setViewMode(mode);
-    try {
-      localStorage.setItem("taxonomy-view-mode", mode);
-    } catch {
-      // ignore
-    }
-  }, []);
 
   // Build trees per dimension
   const treesByDimension = React.useMemo(() => {
@@ -222,8 +199,6 @@ export function TaxonomyAdminPage({
                 onEditDimension={() => handleEditDimension(dim)}
                 onReorder={handleReorderSuccess}
                 selectedNodeId={selectedNode?.id ?? null}
-                viewMode={viewMode}
-                onViewModeChange={handleViewModeChange}
               />
             </TabsContent>
           ))}
